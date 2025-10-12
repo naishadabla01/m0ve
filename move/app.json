@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "move",
+    "slug": "move",
+    "scheme": "move",
+    "plugins": ["expo-router", "expo-camera", "@livekit/react-native-expo-plugin"],
+
+    "ios": {
+      "infoPlist": {
+        "NSCameraUsageDescription": "We use the camera to scan event QR codes.",
+        "NSMicrophoneUsageDescription": "We use the microphone for live audio during calls.",
+        "NSMotionUsageDescription": "We use motion data to track your movement for scoring."
+      }
+    },
+
+    "android": {
+      "package": "com.naishadabla.move",
+      "usesCleartextTraffic": true,              // <— allow http://10.0.2.2
+      "permissions": [
+        "CAMERA",
+        "ACTIVITY_RECOGNITION",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "category": ["BROWSABLE", "DEFAULT"],
+          "data": [{ "scheme": "move" }]
+        }
+      ]
+    },
+
+    "extra": {
+      "EXPO_PUBLIC_SUPABASE_URL": "https://jxjaqamunkkqnwhrlnzk.supabase.co",
+      "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_w7Zh42w1bNPIe3kicNVEEw_dBqEq_2I",
+      "EXPO_PUBLIC_INGEST_URL": "https://jxjaqamunkkqnwhrlnzk.supabase.co/functions/v1/ingest",
+
+      // make this explicit so nothing else overrides it
+      "EXPO_PUBLIC_API_BASE": "http://10.0.2.2:3000"
+    }
+  }
+}

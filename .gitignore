@@ -1,0 +1,35 @@
+# OS / editor
+.DS_Store
+.vscode/
+*.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env & secrets (root and any subfolder)
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Node / builds (anywhere)
+node_modules/
+**/node_modules/
+dist/
+build/
+.next/
+.out/
+coverage/
+
+# Expo
+.expo/
+.expo-shared/
+
+# React Native caches
+**/android/.gradle/
+**/android/app/build/
+**/ios/Pods/
+
+# If your Expo app is managed and you do NOT commit native projects, you may also ignore:
+# android/
+# ios/
