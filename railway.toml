@@ -1,0 +1,6 @@
+﻿[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "cd move-dashboard && npm run start"
+workdir = "move-dashboard"
