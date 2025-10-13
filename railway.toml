@@ -1,6 +1,12 @@
 ﻿[build]
-builder = "NIXPACKS"
+builder = "nixpacks"
+buildCommand = "cd move-dashboard && npm install && npm run build"
+watchPatterns = ["move-dashboard/**"]
 
 [deploy]
 startCommand = "cd move-dashboard && npm run start"
-workdir = "move-dashboard"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+[nixpacks]
+pkgs = ["nodejs_20"]
