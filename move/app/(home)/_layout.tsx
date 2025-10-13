@@ -14,9 +14,31 @@ export default function HomeLayout() {
         animation: Platform.OS === "android" ? "fade_from_bottom" : "default",
       }}
     >
+      {/* ✅ Home screen - NO back button */}
       <Stack.Screen
         name="index"
-        options={{ title: "Home" }}
+        options={{
+          title: "Home",
+          headerShown: false,  // ← This removes the entire header including back button
+        }}
+      />
+
+      {/* ✅ Events list screen */}
+      <Stack.Screen
+        name="events/index"
+        options={{
+          title: "All Events",
+          headerBackTitle: "Back",
+        }}
+      />
+
+      {/* ✅ NEW: Leaderboard screen */}
+      <Stack.Screen
+        name="leaderboard"
+        options={{
+          title: "Leaderboard",
+          headerBackTitle: "Back",
+        }}
       />
     </Stack>
   );

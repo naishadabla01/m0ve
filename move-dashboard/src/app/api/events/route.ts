@@ -57,17 +57,24 @@ export async function GET(req: Request) {
       }
     }
 
-    // fetch event metadata
+    // ✅ FIXED: fetch event metadata using event_id instead of id
     const ids = Object.keys(byEvent);
     let meta: Record<string, { name: string | null; short_code: string | null }> = {};
     if (ids.length) {
-      const { data: events } = await admin
+      const { data: events, error: eventsErr } = await admin
         .from("events")
-        .select("id, name, short_code")
-        .in("id", ids);
+        .select("event_id, name, title, short_code")  // ← Changed from "id" to "event_id"
+        .in("event_id", ids);  // ← Changed from "id" to "event_id"
+      
+      if (eventsErr) {
+        console.error("Failed to fetch event metadata:", eventsErr);
+      }
+
       for (const e of events || []) {
-        meta[(e as any).id] = {
-          name: (e as any).name ?? null,
+        // ✅ Use event_id as the key
+        const eventId = (e as any).event_id;
+        meta[eventId] = {
+          name: (e as any).name ?? (e as any).title ?? null,  // ← Try both name and title
           short_code: (e as any).short_code ?? null,
         };
       }

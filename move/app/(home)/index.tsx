@@ -1,61 +1,64 @@
 // app/(home)/index.tsx
 import { supabase } from "@/lib/supabase/client";
-import JoinEventCard from "@components/home/JoinEventCard"; // ⬅️ NEW
+import JoinEventCard from "@components/home/JoinEventCard";
 import LogoutCard from "@components/home/LogoutCard";
+import MovementCard from "@components/home/MovementCard";
 import OngoingEventsCard from "@components/home/OngoingEventsCard";
 import ProfileCard from "@components/home/ProfileCard";
+import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Platform, SafeAreaView, ScrollView, Text, View } from "react-native";
 
 export default function HomeScreen() {
   const [displayName, setDisplayName] = useState<string>("");
 
-    // app/(home)/index.tsx — add near the top of the component
-useEffect(() => {
-  const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-    if (!session) router.replace("/(auth)/signin");
-  });
-  return () => sub.subscription.unsubscribe();
-}, []);
+  // Auth state monitoring
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) router.replace("/(auth)/signin");
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
+  // Load display name
+  useEffect(() => {
+    let isMounted = true;
 
-  // app/(home)/index.tsx  — replace your useEffect entirely
-useEffect(() => {
-  let isMounted = true;
+    (async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        router.replace("/(auth)/signin");
+        return;
+      }
 
-  (async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      // no valid session -> go sign in
-      router.replace("/(auth)/signin");
-      return;
-    }
+      const uid = session.user.id;
+      if (!uid || !isMounted) return;
 
-    const uid = session.user.id;
-    if (!uid || !isMounted) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name, first_name, last_name")
+        .eq("user_id", uid)
+        .maybeSingle();
 
-    const { data } = await supabase
-      .from("profiles")
-      .select("display_name, first_name, last_name")
-      .eq("user_id", uid)
-      .maybeSingle();
+      if (!isMounted) return;
 
-    if (!isMounted) return;
+      setDisplayName(
+        (data?.display_name ||
+          [data?.first_name, data?.last_name].filter(Boolean).join(" ") ||
+          "Mover") as string
+      );
+    })();
 
-    setDisplayName(
-      (data?.display_name ||
-        [data?.first_name, data?.last_name].filter(Boolean).join(" ") ||
-        "Mover") as string
-    );
-  })();
-
-  return () => { isMounted = false; };
-}, []);
-
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
-      {/* Glows */}
+      {/* Background glows */}
       <View pointerEvents="none" style={{ position: "absolute", inset: 0 }}>
         <View
           style={{
@@ -79,16 +82,20 @@ useEffect(() => {
             height: 280,
             borderRadius: 9999,
             backgroundColor: "#22d3ee",
-            opacity: 0.10,
+            opacity: 0.1,
             filter: Platform.OS === "web" ? "blur(70px)" : undefined,
           }}
         />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 36, gap: 16 }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 20, paddingBottom: 36, gap: 16 }}
+      >
         {/* Header */}
         <View style={{ gap: 6, marginBottom: 6 }}>
-          <Text style={{ color: "#9ca3af", fontSize: 12, letterSpacing: 1 }}>
+          <Text
+            style={{ color: "#9ca3af", fontSize: 12, letterSpacing: 1 }}
+          >
             WELCOME TO
           </Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -129,15 +136,22 @@ useEffect(() => {
           Hey {displayName} 👋
         </Text>
         <Text style={{ color: "#9ca3af", marginBottom: 8 }}>
-          Here’s what’s happening right now.
+          Here's what's happening right now.
         </Text>
 
-        {/* NEW: Scan/Join card at the top */}
+        {/* 1. Scan/Join card */}
         <JoinEventCard />
 
-        {/* Existing sections */}
+        {/* 2. Ongoing events */}
         <OngoingEventsCard />
+
+        {/* 3. ✅ MOVED: Movement Screen card (was above OngoingEventsCard) */}
+        <MovementCard />
+
+        {/* 4. Profile */}
         <ProfileCard />
+
+        {/* 5. Logout */}
         <LogoutCard />
       </ScrollView>
     </SafeAreaView>

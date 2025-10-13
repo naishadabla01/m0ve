@@ -4,10 +4,13 @@ import { joinEventById, openLeaderboard } from "@/lib/join";
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
+// ✅ FIXED: Match the exact type from the API response
 type EventRow = {
   event_id: string;
-  energy: number;       // crowd energy total
-  last_ts?: string|null; // ISO for “last active”
+  name: string | null;
+  short_code: string | null;
+  energy: number;
+  last_activity: string | null;  // ← Was "last_ts", should be "last_activity"
 };
 
 export default function OngoingEventsCard() {
@@ -17,17 +20,36 @@ export default function OngoingEventsCard() {
   async function load() {
     try {
       setLoading(true);
-      // This endpoint is the same one you already wired for the “All events” page.
       const base = apiBase();
-      const r = await fetch(`${base}/api/events/ongoing`, { cache: "no-store" });
+      
+      // ✅ FIXED: Add query params like the events page does
+      const url = `${base}/api/events?minutes=60&limit=100`;
+      console.log("OngoingEventsCard fetching:", url);
+      
+      const r = await fetch(url, { cache: "no-store" });
       const j = await r.json();
-      if (Array.isArray(j?.rows)) setRows(j.rows as EventRow[]);
+      
+      console.log("OngoingEventsCard response:", j);
+      
+      // ✅ FIXED: Exact same logic as events/index.tsx
+      if (j?.ok && Array.isArray(j.rows)) {
+        console.log("OngoingEventsCard loaded", j.rows.length, "events");
+        setRows(j.rows);
+      } else {
+        console.warn("OngoingEventsCard: No events or bad response:", j);
+        setRows([]);
+      }
+    } catch (err) {
+      console.error("OngoingEventsCard error:", err);
+      setRows([]);
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { 
+    load(); 
+  }, []);
 
   // Top 3 only for the home card
   const top3 = useMemo(() => rows.slice(0, 3), [rows]);
@@ -48,8 +70,10 @@ export default function OngoingEventsCard() {
       )}
 
       {!loading && top3.map((ev) => {
-        const shortId = `${ev.event_id.slice(0, 6)}…${ev.event_id.slice(-4)}`;
-        const ago = ev.last_ts ? timeAgo(ev.last_ts) : "—";
+        // ✅ FIXED: Use name or short_code like the events page does
+        const displayName = ev.name || ev.short_code || `${ev.event_id.slice(0, 6)}…${ev.event_id.slice(-4)}`;
+        const ago = ev.last_activity ? timeAgo(ev.last_activity) : "—";  // ← Fixed field name
+        
         return (
           <View
             key={ev.event_id}
@@ -62,9 +86,11 @@ export default function OngoingEventsCard() {
               marginTop: 4,
             }}
           >
-            <Text style={{ color: "#d9e6ee", fontWeight: "700", marginBottom: 2 }}>{shortId}</Text>
+            <Text style={{ color: "#d9e6ee", fontWeight: "700", marginBottom: 2 }}>
+              {displayName}
+            </Text>
             <Text style={{ color: "#91a9b8", fontSize: 12, marginBottom: 10 }}>
-              {ev.energy} crowd energy • {ago}
+              {Math.round(ev.energy)} crowd energy • {ago}
             </Text>
 
             <View style={{ flexDirection: "row", gap: 8 }}>
@@ -100,13 +126,10 @@ export default function OngoingEventsCard() {
         );
       })}
 
-      {/* The “View all events” button still navigates to the full list page */}
+      {/* The "View all events" button */}
       <Pressable
         onPress={() => {
-          // go to the /events page (you already have it)
-          // NOTE: do NOT change this to /scan
-          // We navigate with Expo Router segment under (home)
-          // @ts-ignore - we can import here to avoid a top-level dep cycle
+          // @ts-ignore
           const { router } = require("expo-router");
           router.push("/(home)/events");
         }}
