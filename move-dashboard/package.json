@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack -H 0.0.0.0 -p 3000",
     "build": "next build --turbopack",
-    "start": "next start",
+    "start": "next start -p ${PORT:-3000}",
     "lint": "eslint",
     "dev:web": "cross-env EXPO_PUBLIC_API_BASE=http://localhost:3000 expo start --web",
     "dev:android": "cross-env EXPO_PUBLIC_API_BASE=auto expo start",
