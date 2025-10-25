@@ -7,37 +7,77 @@ export default function HomeLayout() {
   return (
     <Stack
       screenOptions={{
+        // ✅ MAIN FIX: Hide header by default (removes white bar)
+        headerShown: false,
+        
+        // 🎨 Consistent dark theme
         headerStyle: { backgroundColor: "#0a0a0a" },
-        headerTintColor: "#e5e7eb",
-        headerTitleStyle: { fontWeight: "700" },
+        headerTintColor: "#22d3ee",
+        headerTitleStyle: { 
+          fontWeight: "700",
+          fontSize: 18,
+        },
         contentStyle: { backgroundColor: "#0a0a0a" },
-        animation: Platform.OS === "android" ? "fade_from_bottom" : "default",
+        
+        // 🎨 Smooth animations for all platforms
+        animation: Platform.select({
+          ios: "slide_from_right",
+          android: "slide_from_right",
+          default: "slide_from_right",
+        }),
+        
+        // 🎨 Gesture navigation
+        gestureEnabled: true,
+        gestureDirection: "horizontal",
+        
+        // 🎨 iOS-specific optimizations
+        ...(Platform.OS === 'ios' && {
+          presentation: "card",
+        }),
+        
+        // 🎨 Remove header shadow
+        headerShadowVisible: false,
       }}
     >
-      {/* ✅ Home screen - NO back button */}
+      {/* HOME SCREEN */}
       <Stack.Screen
         name="index"
         options={{
-          title: "Home",
-          headerShown: false,  // ← This removes the entire header including back button
+          title: "Move",
+          headerShown: false,
+          gestureEnabled: false,
         }}
       />
 
-      {/* ✅ Events list screen */}
+      {/* EVENTS LIST */}
       <Stack.Screen
-        name="events/index"
+        name="events"
         options={{
           title: "All Events",
-          headerBackTitle: "Back",
+          headerShown: true,
+          headerBackTitle: "Home",
+          animation: "slide_from_bottom",
         }}
       />
 
-      {/* ✅ NEW: Leaderboard screen */}
+      {/* PROFILE */}
+      <Stack.Screen
+        name="profile"
+        options={{
+          title: "Profile",
+          headerShown: false,
+          animation: "slide_from_right",
+        }}
+      />
+
+      {/* LEADERBOARD */}
       <Stack.Screen
         name="leaderboard"
         options={{
           title: "Leaderboard",
+          headerShown: true,
           headerBackTitle: "Back",
+          animation: "fade",
         }}
       />
     </Stack>

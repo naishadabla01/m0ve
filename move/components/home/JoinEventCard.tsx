@@ -1,9 +1,12 @@
-// components/home/JoinEventCard.tsx
+// PATH: move/components/home/JoinEventCard.tsx
+// 3B.3-a — Drop-in replacement wired to the join guard (ended redirect) and existing success flow.
+
+import { joinByCode } from "@/../src/lib/join"; // <-- uses your updated 3B.1 helper
 import { apiBase } from "@/lib/apiBase";
 import * as Clipboard from "expo-clipboard";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { Platform, Pressable, Text, TextInput, View } from "react-native";
+import { Pressable, Text, TextInput, View } from "react-native";
 
 export default function JoinEventCard() {
   const [code, setCode] = useState("");
@@ -34,68 +37,54 @@ export default function JoinEventCard() {
         // not a URL, treat as code
       }
 
-      // Get current user
-      const { data: auth } = await (await import("@/lib/supabase/client")).supabase.auth.getUser();
+      // Get current user (keep behavior: require sign-in)
+      const { supabase } = await import("@/lib/supabase/client");
+      const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) {
         setErr("Please sign in first");
         return;
       }
 
-      const url = `${API_BASE}/api/join?code=${encodeURIComponent(
-        joinCode
-      )}&user_id=${encodeURIComponent(userId)}`;
+      // Call guarded join (POST /api/join)
+      const res = await joinByCode(userId, joinCode);
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-      try {
-        const r = await fetch(url, {
-          method: "GET",
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-
-        if (!r.ok) {
-          if (r.status === 404) {
-            setErr(`Event code "${joinCode}" not found`);
-          } else {
-            setErr(`Join failed (${r.status})`);
-          }
-          return;
-        }
-
-        const j = await r.json().catch(() => null);
-        if (!j?.ok || !j?.event_id) {
-          setErr("Unexpected response");
-          return;
-        }
-
-        // Save event
-        try {
-          const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-          await AsyncStorage.setItem("event_id", String(j.event_id));
-        } catch (e) {
-          console.error("Failed to save event_id:", e);
-        }
-
+      // Ended → redirect to Final Leaderboard
+      if (!res.ok && (res as any).reason === "ended" && "top10" in (res as any)) {
         setCode("");
         setShowCodeInput(false);
 
-        // Navigate to movement screen
-        setTimeout(() => {
-          if (Platform.OS !== "web") {
-            router.push({ pathname: "/move", params: { event_id: j.event_id } });
-          }
-        }, 300);
-      } catch (fetchError: any) {
-        clearTimeout(timeoutId);
-        if (fetchError.name === "AbortError") {
-          setErr("Connection timeout");
-        } else {
-          throw fetchError;
-        }
+        router.push({
+          pathname: "/final-leaderboard",
+          params: {
+            event: JSON.stringify((res as any).event),
+            top10: JSON.stringify((res as any).top10),
+            message: "Event has concluded",
+          },
+        });
+        return;
       }
+
+      // Error (non-ended)
+      if (!res.ok) {
+        setErr((res as any).error || "Join failed");
+        return;
+      }
+
+      // ok + joinable → save event_id and navigate to /move (same as before)
+      try {
+        const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+        await AsyncStorage.setItem("event_id", String(res.event_id));
+      } catch (e) {
+        console.error("Failed to save event_id:", e);
+      }
+
+      setCode("");
+      setShowCodeInput(false);
+
+      setTimeout(() => {
+        router.push({ pathname: "/move", params: { event_id: res.event_id } });
+      }, 300);
     } catch (e: any) {
       console.error("Join error:", e);
       setErr(e?.message || "Join failed");

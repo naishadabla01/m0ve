@@ -1,19 +1,47 @@
+import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 export function apiBase(): string {
-  const explicit = process.env.EXPO_PUBLIC_API_BASE?.trim();
-  if (explicit && explicit !== "auto") return explicit;
-
-  // WEB (Expo on :8081) -> talk to dashboard on :3000
-  if (typeof window !== "undefined") {
-    const { protocol, hostname, port, origin } = window.location;
-    if (port && port !== "3000") return `${protocol}//${hostname}:3000`;
-    return origin; // already on :3000
+  // METHOD 1: Try process.env (works in development and some production builds)
+  let explicit = process.env.EXPO_PUBLIC_API_BASE?.trim();
+  
+  // METHOD 2: Try Constants from app.json (works in Expo web builds)
+  if (!explicit || explicit === "auto") {
+    explicit = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_BASE;
+  }
+  
+  // DEBUG LOGGING - Will show in browser console
+  console.log("=== API BASE DEBUG ===");
+  console.log("📍 From process.env:", process.env.EXPO_PUBLIC_API_BASE);
+  console.log("📍 From Constants:", Constants.expoConfig?.extra?.EXPO_PUBLIC_API_BASE);
+  console.log("📍 Final value:", explicit);
+  console.log("📍 Platform:", Platform.OS);
+  console.log("=====================");
+  
+  // If we found a valid value from env or Constants, use it
+  if (explicit && explicit !== "auto") {
+    console.log("✅ Using explicit API base:", explicit);
+    return explicit;
   }
 
-  // NATIVE
-  if (Platform.OS === "android") return "http://10.0.2.2:3000"; // ← important
-  if (Platform.OS === "ios")     return "http://localhost:3000";
+  // FALLBACK FOR WEB: If on web and no env vars worked, hardcode Railway URL
+  if (Platform.OS === "web") {
+    console.log("⚠️  Using hardcoded Railway URL for web");
+    return "https://move-dashboard-deploy-production.up.railway.app";
+  }
 
-  return "http://localhost:3000";
+  // NATIVE FALLBACKS
+  if (Platform.OS === "android") {
+    console.log("⚠️  Using hardcoded Railway URL for Android");
+    return "https://move-dashboard-deploy-production.up.railway.app";
+  }
+  
+  if (Platform.OS === "ios") {
+    console.log("⚠️  Using hardcoded Railway URL for iOS");
+    return "https://move-dashboard-deploy-production.up.railway.app";
+  }
+
+  // ABSOLUTE FALLBACK
+  console.log("⚠️  Using absolute fallback Railway URL");
+  return "https://move-dashboard-deploy-production.up.railway.app";
 }

@@ -1,16 +1,16 @@
-// components/home/OngoingEventsCard.tsx
+// components/home/OngoingEventsCard.tsx - WORKING VERSION
 import { apiBase } from "@/lib/apiBase";
-import { joinEventById, openLeaderboard } from "@/lib/join";
+import { joinEventById } from "@/lib/join";
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
-// ✅ FIXED: Match the exact type from the API response
 type EventRow = {
   event_id: string;
   name: string | null;
   short_code: string | null;
   energy: number;
-  last_activity: string | null;  // ← Was "last_ts", should be "last_activity"
+  last_activity: string | null;
+  status?: string;
 };
 
 export default function OngoingEventsCard() {
@@ -22,8 +22,8 @@ export default function OngoingEventsCard() {
       setLoading(true);
       const base = apiBase();
       
-      // ✅ FIXED: Add query params like the events page does
-      const url = `${base}/api/events?minutes=60&limit=100`;
+      // Use the same API endpoint that works
+      const url = `${base}/api/events?minutes=10800&limit=100`;
       console.log("OngoingEventsCard fetching:", url);
       
       const r = await fetch(url, { cache: "no-store" });
@@ -31,10 +31,13 @@ export default function OngoingEventsCard() {
       
       console.log("OngoingEventsCard response:", j);
       
-      // ✅ FIXED: Exact same logic as events/index.tsx
       if (j?.ok && Array.isArray(j.rows)) {
-        console.log("OngoingEventsCard loaded", j.rows.length, "events");
-        setRows(j.rows);
+        // Filter out ended events if status field exists
+        const activeEvents = j.rows.filter((ev: any) => 
+          !ev.status || ev.status !== 'ended'
+        );
+        console.log("OngoingEventsCard loaded", activeEvents.length, "active events");
+        setRows(activeEvents);
       } else {
         console.warn("OngoingEventsCard: No events or bad response:", j);
         setRows([]);
@@ -48,117 +51,152 @@ export default function OngoingEventsCard() {
   }
 
   useEffect(() => { 
-    load(); 
+    load();
+    // Refresh every 30 seconds
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   // Top 3 only for the home card
   const top3 = useMemo(() => rows.slice(0, 3), [rows]);
 
   return (
-    <View style={{ backgroundColor: "#07141c", borderRadius: 16, borderWidth: 1, borderColor: "#0f2430", padding: 16, gap: 12 }}>
-      <Text style={{ color: "#e5eef5", fontSize: 16, fontWeight: "700" }}>On-Going Events</Text>
-      <Text style={{ color: "#8aa3b3", fontSize: 12, marginTop: -4 }}>Top playing right now.</Text>
+    <View style={{ 
+      backgroundColor: "#07141c", 
+      borderRadius: 16, 
+      borderWidth: 1, 
+      borderColor: "#0f2430", 
+      padding: 16, 
+      gap: 12 
+    }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View>
+          <Text style={{ color: "#e5eef5", fontSize: 16, fontWeight: "700" }}>
+            On-Going Events
+          </Text>
+          <Text style={{ color: "#8aa3b3", fontSize: 12, marginTop: 2 }}>
+            Top playing right now
+          </Text>
+        </View>
+        
+        <Pressable onPress={load}>
+          <Text style={{ color: "#4ECDC4", fontSize: 12 }}>Refresh</Text>
+        </Pressable>
+      </View>
 
       {loading && (
         <View style={{ alignItems: "center", paddingVertical: 24 }}>
-          <ActivityIndicator />
+          <ActivityIndicator color="#4ECDC4" />
         </View>
       )}
 
       {!loading && top3.length === 0 && (
-        <Text style={{ color: "#7c93a3" }}>No active events yet.</Text>
+        <View style={{ alignItems: 'center', paddingVertical: 30 }}>
+          <Text style={{ color: "#7c93a3", fontSize: 14 }}>
+            No active events yet
+          </Text>
+          <Text style={{ color: "#5a6a7a", fontSize: 12, marginTop: 5 }}>
+            Check back later or create one!
+          </Text>
+        </View>
       )}
 
       {!loading && top3.map((ev) => {
-        // ✅ FIXED: Use name or short_code like the events page does
-        const displayName = ev.name || ev.short_code || `${ev.event_id.slice(0, 6)}…${ev.event_id.slice(-4)}`;
-        const ago = ev.last_activity ? timeAgo(ev.last_activity) : "—";  // ← Fixed field name
+        const displayName = ev.name || ev.short_code || `Event ${ev.event_id.slice(0, 6)}`;
+        const ago = ev.last_activity ? timeAgo(ev.last_activity) : "Just now";
         
         return (
           <View
             key={ev.event_id}
             style={{
-              backgroundColor: "#0b1b25",
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: "#0a1823",
               borderRadius: 12,
-              borderWidth: 1,
-              borderColor: "#0f2a37",
               padding: 14,
-              marginTop: 4,
+              borderWidth: 1,
+              borderColor: "#152230",
             }}
           >
-            <Text style={{ color: "#d9e6ee", fontWeight: "700", marginBottom: 2 }}>
-              {displayName}
-            </Text>
-            <Text style={{ color: "#91a9b8", fontSize: 12, marginBottom: 10 }}>
-              {Math.round(ev.energy)} crowd energy • {ago}
-            </Text>
-
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              <Pressable
-                onPress={() => joinEventById(ev.event_id)}
-                style={{
-                  backgroundColor: "#0f5d42",
-                  borderColor: "#177a58",
-                  borderWidth: 1,
-                  paddingVertical: 8,
-                  paddingHorizontal: 14,
-                  borderRadius: 999,
-                }}
-              >
-                <Text style={{ color: "#d3f4e7", fontWeight: "700" }}>Join</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => openLeaderboard(ev.event_id)}
-                style={{
-                  backgroundColor: "#0e2b4a",
-                  borderColor: "#173c66",
-                  borderWidth: 1,
-                  paddingVertical: 8,
-                  paddingHorizontal: 14,
-                  borderRadius: 999,
-                }}
-              >
-                <Text style={{ color: "#cfe3ff", fontWeight: "700" }}>Leaderboard</Text>
-              </Pressable>
+            <View style={{ 
+              width: 40, 
+              height: 40, 
+              borderRadius: 20, 
+              backgroundColor: "#4ECDC4",
+              opacity: 0.2,
+              alignItems: "center",
+              justifyContent: "center",
+              marginRight: 12,
+            }}>
+              <Text style={{ fontSize: 18 }}>🏃</Text>
             </View>
+
+            <View style={{ flex: 1 }}>
+              <Text style={{ 
+                color: "#ffffff", 
+                fontSize: 14, 
+                fontWeight: "600",
+                marginBottom: 2,
+              }}>
+                {displayName}
+              </Text>
+              <View style={{ flexDirection: "row", gap: 12 }}>
+                <Text style={{ color: "#6a8090", fontSize: 12 }}>
+                  {ev.energy} GP
+                </Text>
+                <Text style={{ color: "#6a8090", fontSize: 12 }}>
+                  {ago}
+                </Text>
+              </View>
+            </View>
+
+            <Pressable
+              onPress={() => {
+                joinEventById(ev.event_id);
+              }}
+              style={{
+                backgroundColor: "#10b981",
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 8,
+              }}
+            >
+              <Text style={{ color: "#000", fontSize: 12, fontWeight: "600" }}>
+                Join
+              </Text>
+            </Pressable>
           </View>
         );
       })}
 
-      {/* The "View all events" button */}
-      <Pressable
-        onPress={() => {
-          // @ts-ignore
-          const { router } = require("expo-router");
-          router.push("/(home)/events");
-        }}
-        style={{
-          alignSelf: "flex-start",
-          marginTop: 6,
-          paddingVertical: 10,
-          paddingHorizontal: 14,
-          borderRadius: 999,
-          backgroundColor: "#0b1b25",
-          borderColor: "#103448",
-          borderWidth: 1,
-        }}
-      >
-        <Text style={{ color: "#cfe3ff", fontWeight: "700" }}>View all events</Text>
-      </Pressable>
+      {!loading && rows.length > 3 && (
+        <Pressable
+          onPress={() => {
+            // Navigate to events page - adjust path as needed
+            const { router } = require('expo-router');
+            router.push("/(home)/events");
+          }}
+          style={{
+            alignItems: "center",
+            paddingTop: 8,
+          }}
+        >
+          <Text style={{ color: "#4ECDC4", fontSize: 13 }}>
+            View all {rows.length} events →
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }
 
-function timeAgo(iso: string) {
-  const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 5_000) return "just now";
-  const s = Math.floor(ms / 1000);
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  return `${d}d ago`;
+function timeAgo(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (seconds < 60) return "Just now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  return `${Math.floor(seconds / 86400)}d ago`;
 }

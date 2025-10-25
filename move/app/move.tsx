@@ -8,6 +8,7 @@ import { Accelerometer } from "expo-sensors";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Platform, Pressable, SafeAreaView, ScrollView, Text, View } from "react-native";
 
+
 type EventInfo = {
   event_id: string;
   name?: string;
@@ -176,16 +177,30 @@ export default function MoveScreen() {
   }, []);
 
   const start = () => {
-    if (running) return;
+  if (running) return;
 
-    if (Platform.OS === "web") {
-      Alert.alert("Web preview", "Motion streaming runs on a real device. Use Android/iOS app.");
-      return;
+  if (Platform.OS === "web") {
+    // Use browser-native confirm dialog instead of Alert.alert
+    const userChoice = window.confirm(
+      "📱 Motion Tracking Not Available on Web\n\n" +
+      "Motion tracking requires device sensors and only works in the native Android/iOS app.\n\n" +
+      "Would you like to return to the home screen?"
+    );
+    
+    if (userChoice) {
+      // User clicked OK - go back to home
+      router.push("/(home)");
     }
+    // If user clicked Cancel, just close the dialog and stay on page
+    return;
+  }
 
-    streamRef.current = startMotionStream(eventId!, 1000);
-    setRunning(true);
-  };
+  // Native platforms: Start motion tracking
+  streamRef.current = startMotionStream(eventId!, 1000);
+  setRunning(true);
+  
+  console.log("✅ Motion tracking started for event:", eventId);
+};
 
   const stop = () => {
     try {

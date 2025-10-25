@@ -1,10 +1,28 @@
 {
   "expo": {
+    "web": {
+      "bundler": "metro",
+      "favicon": "@/assets/favicon.png"
+    },
     "name": "move",
     "slug": "move",
+    "extra": {
+      "EXPO_PUBLIC_SUPABASE_URL": "https://jxjaqamunkkqnwhrlnzk.supabase.co",
+      "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_w7Zh42w1bNPIe3kicNVEEw_dBqEq_2I",
+      "EXPO_PUBLIC_INGEST_URL": "https://jxjaqamunkkqnwhrlnzk.supabase.co/functions/v1/ingest",
+      "EXPO_PUBLIC_API_BASE": "https://move-dashboard-deploy-production.up.railway.app",
+      "router": {},
+      "eas": {
+        "projectId": "96370249-284e-417e-bb0e-4b1aacaaa305"
+      }
+    },
+    "version": "1.0.0",
     "scheme": "move",
-    "plugins": ["expo-router", "expo-camera", "@livekit/react-native-expo-plugin"],
-
+    "plugins": [
+      "expo-router",
+      "expo-camera",
+      "@livekit/react-native-expo-plugin"
+    ],
     "ios": {
       "infoPlist": {
         "NSCameraUsageDescription": "We use the camera to scan event QR codes.",
@@ -12,10 +30,9 @@
         "NSMotionUsageDescription": "We use motion data to track your movement for scoring."
       }
     },
-
     "android": {
       "package": "com.naishadabla.move",
-      "usesCleartextTraffic": true,              // <— allow http://10.0.2.2
+      "usesCleartextTraffic": true,
       "permissions": [
         "CAMERA",
         "ACTIVITY_RECOGNITION",
@@ -25,19 +42,18 @@
       "intentFilters": [
         {
           "action": "VIEW",
-          "category": ["BROWSABLE", "DEFAULT"],
-          "data": [{ "scheme": "move" }]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
+          "data": [
+            {
+              "scheme": "move"
+            }
+          ]
         }
       ]
     },
-
-    "extra": {
-      "EXPO_PUBLIC_SUPABASE_URL": "https://jxjaqamunkkqnwhrlnzk.supabase.co",
-      "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_w7Zh42w1bNPIe3kicNVEEw_dBqEq_2I",
-      "EXPO_PUBLIC_INGEST_URL": "https://jxjaqamunkkqnwhrlnzk.supabase.co/functions/v1/ingest",
-
-      // make this explicit so nothing else overrides it
-      "EXPO_PUBLIC_API_BASE": "http://10.0.2.2:3000"
-    }
+    
   }
 }

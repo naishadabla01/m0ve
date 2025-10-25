@@ -1,4 +1,8 @@
-// move/app/join.tsx
+// PATH: move/app/join.tsx
+
+import { joinByCode } from '@/../src/lib/join';
+import { apiBase } from '@/lib/apiBase';
+import { fetchJson } from '@/lib/http';
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -14,18 +18,20 @@ async function ensureSession() {
   }
 }
 
-async function resolveEventId(value: string): Promise<string> {
-  const v = value.trim();
-  if (v.length <= 8) {
-    const { data, error } = await supabase
-      .from('events')
-      .select('event_id')
-      .eq('short_code', v)
-      .single();
-    if (error || !data) throw new Error('Invalid event code');
-    return data.event_id;
+function extractCodeOrId(input: string): { code?: string; event_id?: string } {
+  const v = input.trim();
+  if (!v) return {};
+  // Allow full QR URLs with ?code=
+  try {
+    const u = new URL(v);
+    const q = u.searchParams.get('code');
+    if (q) return { code: q.trim() };
+  } catch {
+    // not a URL
   }
-  return v; // assume full uuid
+  // Heuristic: short value -> treat as code, long -> assume UUID
+  if (v.length <= 8) return { code: v };
+  return { event_id: v };
 }
 
 export default function JoinScreen() {
@@ -42,29 +48,65 @@ export default function JoinScreen() {
     try {
       await ensureSession();
 
-      const event_id = await resolveEventId(value);
-
+      // Who am I?
       const { data: me } = await supabase.auth.getUser();
       const user_id = me?.user?.id;
       if (!user_id) throw new Error('No auth user');
 
-      // insert participant (ignore duplicates)
+      // Decide code vs event_id
+      const { code, event_id: maybeId } = extractCodeOrId(value);
+
+      // 1) Ask the join guard first (prevents joining ended events)
+      let guard: any;
+      if (code) {
+        guard = await joinByCode(user_id, code); // POST /api/join with { code }
+      } else {
+        // POST /api/join with { event_id }
+        const url = new URL('/api/join', apiBase());
+        guard = await fetchJson(url.toString(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ event_id: maybeId }),
+        });
+      }
+
+      // 2) If event has ended -> Final Leaderboard
+      if (!guard?.ok && guard?.reason === 'ended' && Array.isArray(guard?.top10)) {
+        router.replace({
+          pathname: '/final-leaderboard',
+          params: {
+            event: JSON.stringify(guard.event),
+            top10: JSON.stringify(guard.top10),
+            message: 'Event has concluded',
+          },
+        });
+        return;
+      }
+
+      // 3) Other errors
+      if (!guard?.ok || !guard?.event_id) {
+        throw new Error(guard?.error || 'Join failed');
+      }
+
+      const event_id = guard.event_id as string;
+
+      // 4) Insert participant (client-side) — keep your original behavior
       const { error } = await supabase
-        .from('event_participants')
-        .insert({ event_id, user_id }, { returning: 'minimal' });
+      .from('event_participants')
+      .insert({ event_id, user_id })
+      .select('event_id')   // <- returns selected columns
+      .single();
 
       if (error) {
-        // If already joined, PostgREST may return 409 with unique violation.
-        // Treat it as success and continue.
         const msg = String(error.message || '');
         const dup = msg.includes('duplicate key value') || msg.includes('event_participants_pkey');
         if (!dup) throw error;
       }
 
-      // Persist active event id for the movement screen.
-    await AsyncStorage.setItem('last_event_id', event_id);
+      // 5) Persist active event id for the movement screen.
+      await AsyncStorage.setItem('last_event_id', event_id);
 
-      Alert.alert('Joined', 'You have joined the event.');
+      // 6) Navigate to your original destination
       router.replace({ pathname: '/stage', params: { event_id } });
     } catch (e: any) {
       console.error(e);

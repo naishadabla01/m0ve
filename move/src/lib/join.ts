@@ -1,82 +1,114 @@
-// src/lib/join.ts
+// PATH: move/src/lib/join.ts
+// (3B.1) Updated to POST /api/join and handle "ended" responses without breaking existing callers.
+
 import { apiBase } from "@/lib/apiBase";
 import { fetchJson } from "@/lib/http";
 import { supabase } from "@/lib/supabase/client";
 import { router } from "expo-router";
 import { Alert } from "react-native";
 
-type JoinOk = { ok: true; joined: boolean; event_id?: string; code?: string };
+type JoinOk = { ok: true; joined?: boolean; joinable: true; event_id: string; code: string; event?: any };
+type JoinEndedTop = { rank: number; user_id: string; name: string; avatar_url: string | null; score: number };
+type JoinEnded = {
+  ok: false;
+  joinable: false;
+  reason: "ended";
+  event_id: string;
+  code: string;
+  event: { id: string; title: string; cover_url?: string | null; code: string };
+  top10: JoinEndedTop[];
+};
 type JoinErr = { ok: false; error: string };
-export type JoinResponse = JoinOk | JoinErr;
 
-export async function joinEvent(opts: {
-  code?: string;
-  eventId?: string;
-  userId: string;
-}): Promise<JoinResponse> {
-  const { code, eventId, userId } = opts;
+export type JoinResponse = JoinOk | JoinEnded | JoinErr;
+
+// ---- internal helper: POST /api/join ----
+async function postJoin(body: { code?: string; event_id?: string }): Promise<JoinResponse> {
   const base = apiBase();
   const url = new URL("/api/join", base);
-  if (code) url.searchParams.set("code", code);
-  if (eventId) url.searchParams.set("event_id", eventId);
-  url.searchParams.set("user_id", userId);
-
-  console.log("[join] →", url.toString());
-  const j = await fetchJson(url.toString(), { method: "GET" });
-  return j as JoinResponse;
+  const res = await fetchJson(url.toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return res as JoinResponse;
 }
 
-export async function joinByCode(userId: string, code: string) {
-  const url = `${apiBase()}/api/join?code=${encodeURIComponent(
-    code
-  )}&user_id=${encodeURIComponent(userId)}`;
-  const j = await fetchJson(url, { method: "GET" });
-  if (!j?.ok) throw new Error(j?.error || "join failed");
-  return j.event_id as string;
+// Public API that mirrors your previous surface but supports ended case
+export async function joinEvent(opts: { code?: string; eventId?: string; userId: string }): Promise<JoinResponse> {
+  // userId no longer required by API; keeping in signature for backward compatibility
+  const { code, eventId } = opts;
+  return postJoin({ code, event_id: eventId });
+}
+
+export async function joinByCode(userId: string, code: string): Promise<JoinResponse> {
+  // userId kept for backward compatibility; not sent to API
+  return postJoin({ code });
 }
 
 /**
- * ✅ FIXED: Now shows custom modal and navigates to /move screen
+ * Join event by ID and navigate to movement screen (ok path).
+ * If the event has ENDED, we DO NOT navigate here; we return the ended payload to the caller.
+ * Caller (3B.2) can then redirect to the Final Leaderboard page with Top 10.
  */
-export async function joinEventById(eventId: string) {
+export async function joinEventById(eventId: string): Promise<JoinResponse> {
   const { data: auth } = await supabase.auth.getUser();
   const uid = auth.user?.id;
+
   if (!uid) {
-    Alert.alert("Not signed in", "Please sign in first.");
-    return;
+    if (typeof window !== "undefined") {
+      window.alert("Please sign in first to join events.");
+    } else {
+      Alert.alert("Not signed in", "Please sign in first.");
+    }
+    return { ok: false, error: "Not signed in" };
   }
 
-  const url = `${apiBase()}/api/join?event_id=${encodeURIComponent(
-    eventId
-  )}&user_id=${encodeURIComponent(uid)}`;
-  
   try {
-    await fetchJson(url, { method: "GET" });
-    
-    // ✅ Show success and navigate to movement screen
-    Alert.alert(
-      "Joined!",
-      "You're in! Press OK to start moving.",
-      [
-        {
-          text: "OK",
-          onPress: () => {
-            router.push({ pathname: "/move", params: { event_id: eventId } });
-          },
-        },
-      ]
-    );
+    const response = await postJoin({ event_id: eventId });
+
+    // If the server says the event has ended, surface it to caller (no navigation here).
+    if (!response.ok && (response as any).reason === "ended") {
+      return response;
+    }
+
+    if (!response.ok) {
+      throw new Error((response as JoinErr).error || "Join failed");
+    }
+
+    // ok + joinable → keep your existing behavior (persist + navigate to /move)
+    try {
+      const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+      await AsyncStorage.setItem("event_id", String(eventId));
+    } catch (storageError) {
+      console.warn("Failed to save event_id to storage:", storageError);
+    }
+
+    setTimeout(() => {
+      router.push({
+        pathname: "/move",
+        params: { event_id: response.event_id },
+      });
+    }, 100);
+
+    return response;
   } catch (e: any) {
-    Alert.alert("Join failed", e?.message ?? "Unknown error");
+    console.error("❌ Join failed:", e);
+    const errorMessage = e?.message || "Failed to join event. Please try again.";
+    if (typeof window !== "undefined") {
+      window.alert(errorMessage);
+    } else {
+      Alert.alert("Join failed", errorMessage);
+    }
+    return { ok: false, error: errorMessage };
   }
 }
 
 /**
- * ✅ FIXED: Now navigates within app using Expo Router instead of opening browser
+ * Navigate to in-app leaderboard screen (unchanged)
  */
 export function openLeaderboard(eventId: string) {
   try {
-    // Navigate to in-app leaderboard screen
     router.push({
       pathname: "/(home)/leaderboard",
       params: { event_id: eventId },
@@ -85,17 +117,4 @@ export function openLeaderboard(eventId: string) {
     console.error("Failed to open leaderboard:", e);
     Alert.alert("Error", "Unable to open leaderboard. Please try again.");
   }
-}
-
-/**
- * Join by event ID and navigate to the events list or specified screen
- */
-export async function joinByEventId(userId: string, eventId: string): Promise<string> {
-  const url = `${apiBase()}/api/join?event_id=${encodeURIComponent(
-    eventId
-  )}&user_id=${encodeURIComponent(userId)}`;
-  
-  const j = await fetchJson(url, { method: "GET" });
-  if (!j?.ok) throw new Error(j?.error || "join failed");
-  return j.event_id as string;
 }

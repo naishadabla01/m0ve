@@ -1,9 +1,17 @@
+// app/(home)/events/index.tsx
 import { apiBase } from "@/lib/apiBase";
-import { joinByEventId } from "@/lib/join";
-import { supabase } from "@/lib/supabase/client";
-import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Pressable, SafeAreaView, Text, View } from "react-native";
+import { joinEventById, openLeaderboard } from "@/lib/join";
+import { router } from "expo-router"; // ← Add this import
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 
 type EventRow = {
   event_id: string;
@@ -13,96 +21,228 @@ type EventRow = {
   last_activity: string | null;
 };
 
-export default function EventsIndex() {
-  const router = useRouter();
-  const [items, setItems] = useState<EventRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const API = useMemo(() => apiBase(), []);
+export default function AllEventsScreen() {
+  const [rows, setRows] = useState<EventRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   async function load() {
-    setLoading(true);
     try {
-      const r = await fetch(`${API}/api/events?minutes=60&limit=100`, { cache: "no-store" });
+      const base = apiBase();
+      const url = `${base}/api/events?minutes=10800&limit=100`;
+      
+      const r = await fetch(url, { cache: "no-store" });
       const j = await r.json();
-      if (j?.ok && Array.isArray(j.rows)) setItems(j.rows);
-    } catch (e) {
-      // ignore
+      
+      if (j?.ok && Array.isArray(j.rows)) {
+        setRows(j.rows);
+      } else {
+        setRows([]);
+      }
+    } catch (err) {
+      console.error("Events error:", err);
+      setRows([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
-  const onJoin = async (eventId: string) => {
-    try {
-      const { data: auth } = await supabase.auth.getUser();
-      const uid = auth.user?.id;
-      if (!uid) throw new Error("not signed in");
-
-      const joinedEventId = await joinByEventId(uid, eventId);
-      router.replace({ pathname: "/move", params: { event_id: joinedEventId } });
-    } catch (e: any) {
-      Alert.alert("Join failed", e?.message || "error");
-    }
+  const onRefresh = () => {
+    setRefreshing(true);
+    load();
   };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
-      <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 }}>
-        <Text style={{ color: "#fff", fontSize: 22, fontWeight: "800" }}>All On-Going Events</Text>
-        <Text style={{ color: "#9ca3af", marginTop: 2 }}>Most active at the top.</Text>
+      {/* ✅ CUSTOM HEADER WITH BACK BUTTON */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          borderBottomWidth: 1,
+          borderBottomColor: "#1f2937",
+          backgroundColor: "#0a0a0a",
+        }}
+      >
+        {/* Back Button */}
+        <Pressable
+          onPress={() => router.back()}
+          style={({ pressed }) => ({
+            marginRight: 12,
+            padding: 8,
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <Text style={{ color: "#22d3ee", fontSize: 18, fontWeight: "600" }}>
+            ← Back
+          </Text>
+        </Pressable>
+
+        {/* Title */}
+        <Text
+          style={{
+            color: "#e5e7eb",
+            fontSize: 20,
+            fontWeight: "700",
+            flex: 1,
+          }}
+        >
+          All On-Going Events
+        </Text>
+
+        {/* Optional: Refresh Icon */}
+        <Pressable
+          onPress={onRefresh}
+          disabled={refreshing}
+          style={({ pressed }) => ({
+            padding: 8,
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <Text style={{ color: "#22d3ee", fontSize: 20 }}>
+            {refreshing ? "⟳" : "↻"}
+          </Text>
+        </Pressable>
       </View>
-      {loading && (
-        <View style={{ paddingTop: 24 }}>
-          <ActivityIndicator color="#22d3ee" />
-        </View>
-      )}
 
-      {!loading && (
-        <FlatList
-          data={items}
-          keyExtractor={(i) => i.event_id}
-          contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 12 }}
-          renderItem={({ item }) => (
-            <View style={{ backgroundColor: "#0a1926", borderRadius: 14, borderWidth: 1, borderColor: "#122a3a", padding: 14, gap: 8 }}>
-              <Text style={{ color: "#e5e7eb", fontSize: 16, fontWeight: "700" }}>
-                {item.name || item.short_code || `${item.event_id.slice(0, 6)}…${item.event_id.slice(-4)}`}
-              </Text>
-              <Text style={{ color: "#9fb5c7", fontSize: 12 }}>
-                {Math.round(item.energy)} crowd energy • {item.last_activity ? timeAgo(item.last_activity) : "—"}
-              </Text>
-              <View style={{ flexDirection: "row", gap: 10, marginTop: 6 }}>
-                <Pressable
-                  onPress={() => onJoin(item.event_id)}
-                  style={({ pressed }) => ({
-                    backgroundColor: pressed ? "#115e59" : "#0f766e",
-                    paddingHorizontal: 14,
-                    paddingVertical: 8,
-                    borderRadius: 9999,
-                  })}
-                >
-                  <Text style={{ color: "white", fontWeight: "700" }}>Join</Text>
-                </Pressable>
+      {/* Subtitle */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}>
+        <Text style={{ color: "#9ca3af", fontSize: 14 }}>
+          Most active at the top.
+        </Text>
+      </View>
 
-                <Pressable
-                  onPress={() => router.push({ pathname: "/leaderboard", params: { event_id: item.event_id } })}
-                  style={({ pressed }) => ({
-                    backgroundColor: pressed ? "#0b2230" : "#0a1926",
-                    borderColor: "#123244",
-                    borderWidth: 1,
-                    paddingHorizontal: 14,
-                    paddingVertical: 8,
-                    borderRadius: 9999,
-                  })}
+      {/* Events List */}
+      <ScrollView
+        contentContainerStyle={{ padding: 16, gap: 16 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#22d3ee"
+          />
+        }
+      >
+        {loading && (
+          <View style={{ alignItems: "center", paddingVertical: 40 }}>
+            <ActivityIndicator size="large" color="#22d3ee" />
+            <Text style={{ color: "#9ca3af", marginTop: 12 }}>
+              Loading events...
+            </Text>
+          </View>
+        )}
+
+        {!loading && rows.length === 0 && (
+          <View
+            style={{
+              padding: 40,
+              alignItems: "center",
+              backgroundColor: "#111827",
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: "#1f2937",
+            }}
+          >
+            <Text style={{ color: "#6b7280", fontSize: 40, marginBottom: 12 }}>
+              🎭
+            </Text>
+            <Text style={{ color: "#9ca3af", fontSize: 16, textAlign: "center" }}>
+              No active events right now
+            </Text>
+            <Text
+              style={{
+                color: "#6b7280",
+                fontSize: 14,
+                marginTop: 8,
+                textAlign: "center",
+              }}
+            >
+              Check back later or create one!
+            </Text>
+          </View>
+        )}
+
+        {!loading &&
+          rows.map((ev) => {
+            const displayName =
+              ev.name ||
+              ev.short_code ||
+              `${ev.event_id.slice(0, 6)}…${ev.event_id.slice(-4)}`;
+            const ago = ev.last_activity ? timeAgo(ev.last_activity) : "—";
+
+            return (
+              <View
+                key={ev.event_id}
+                style={{
+                  backgroundColor: "#111827",
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: "#1f2937",
+                  padding: 20,
+                  gap: 12,
+                }}
+              >
+                {/* Event Name */}
+                <Text
+                  style={{
+                    color: "#e5e7eb",
+                    fontSize: 18,
+                    fontWeight: "700",
+                  }}
                 >
-                  <Text style={{ color: "#22d3ee", fontWeight: "700" }}>View leaderboard</Text>
-                </Pressable>
+                  {displayName}
+                </Text>
+
+                {/* Stats */}
+                <Text style={{ color: "#9ca3af", fontSize: 14 }}>
+                  {Math.round(ev.energy)} crowd energy • {ago}
+                </Text>
+
+                {/* Actions */}
+                <View style={{ flexDirection: "row", gap: 12, marginTop: 4 }}>
+                  <Pressable
+                    onPress={() => joinEventById(ev.event_id)}
+                    style={({ pressed }) => ({
+                      flex: 1,
+                      backgroundColor: pressed ? "#0d9488" : "#10b981",
+                      paddingVertical: 14,
+                      borderRadius: 12,
+                      alignItems: "center",
+                    })}
+                  >
+                    <Text style={{ color: "#000", fontWeight: "700" }}>
+                      Join
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => openLeaderboard(ev.event_id)}
+                    style={({ pressed }) => ({
+                      flex: 1,
+                      backgroundColor: pressed ? "#1e3a4f" : "#0a1926",
+                      paddingVertical: 14,
+                      borderRadius: 12,
+                      alignItems: "center",
+                      borderWidth: 1,
+                      borderColor: "#1f2937",
+                    })}
+                  >
+                    <Text style={{ color: "#22d3ee", fontWeight: "700" }}>
+                      Leaderboard
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
-            </View>
-          )}
-        />
-      )}
+            );
+          })}
+      </ScrollView>
     </SafeAreaView>
   );
 }

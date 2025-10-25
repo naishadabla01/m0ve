@@ -4,10 +4,9 @@ import JoinEventCard from "@components/home/JoinEventCard";
 import LogoutCard from "@components/home/LogoutCard";
 import MovementCard from "@components/home/MovementCard";
 import OngoingEventsCard from "@components/home/OngoingEventsCard";
-import ProfileCard from "@components/home/ProfileCard";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Platform, SafeAreaView, ScrollView, Text, View } from "react-native";
+import { Platform, Pressable, SafeAreaView, ScrollView, Text, View } from "react-native";
 
 export default function HomeScreen() {
   const [displayName, setDisplayName] = useState<string>("");
@@ -39,7 +38,7 @@ export default function HomeScreen() {
       const { data } = await supabase
         .from("profiles")
         .select("display_name, first_name, last_name")
-        .eq("user_id", uid)
+        .eq("id", uid)
         .maybeSingle();
 
       if (!isMounted) return;
@@ -91,37 +90,55 @@ export default function HomeScreen() {
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: 36, gap: 16 }}
       >
-        {/* Header */}
-        <View style={{ gap: 6, marginBottom: 6 }}>
-          <Text
-            style={{ color: "#9ca3af", fontSize: 12, letterSpacing: 1 }}
-          >
-            WELCOME TO
-          </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <View
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 6,
-                backgroundColor: "#10b981",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ color: "#0a0a0a", fontWeight: "800" }}>M</Text>
-            </View>
-            <Text
-              style={{
-                color: "#fff",
-                fontSize: 28,
-                fontWeight: "800",
-                letterSpacing: 0.3,
-              }}
-            >
-              Move
+        {/* Header with Profile Button */}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <View style={{ gap: 6, flex: 1 }}>
+            <Text style={{ color: "#9ca3af", fontSize: 12, letterSpacing: 1 }}>
+              WELCOME TO
             </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 6,
+                  backgroundColor: "#10b981",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ color: "#0a0a0a", fontWeight: "800" }}>M</Text>
+              </View>
+              <Text
+                style={{
+                  color: "#fff",
+                  fontSize: 28,
+                  fontWeight: "800",
+                  letterSpacing: 0.3,
+                }}
+              >
+                Move
+              </Text>
+            </View>
           </View>
+
+          {/* Quick Profile Access Button */}
+          <Pressable
+            onPress={() => router.push("/(home)/profile")}
+            style={{
+              backgroundColor: "#0b1920",
+              borderColor: "#1a2e3a",
+              borderWidth: 1,
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              alignItems: "center",
+              justifyContent: "center",
+              marginTop: 4,
+            }}
+          >
+            <Text style={{ fontSize: 20 }}>👤</Text>
+          </Pressable>
         </View>
 
         <Text
@@ -145,11 +162,10 @@ export default function HomeScreen() {
         {/* 2. Ongoing events */}
         <OngoingEventsCard />
 
-        {/* 3. ✅ MOVED: Movement Screen card (was above OngoingEventsCard) */}
+        {/* 3. Movement Screen card */}
         <MovementCard />
 
-        {/* 4. Profile */}
-        <ProfileCard />
+        {/* 4. Profile Card (detailed profile link) */}
 
         {/* 5. Logout */}
         <LogoutCard />

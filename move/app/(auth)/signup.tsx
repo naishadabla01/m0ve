@@ -1,321 +1,255 @@
-// app/(auth)/signup.tsx
-import { supabase } from "@/lib/supabase/client";
-import { router } from "expo-router";
-import React, { useState } from "react";
+// app/(auth)/signup.tsx - FIXED WITHOUT LINEAR GRADIENT
+import { supabase } from '@/lib/supabase/client';
+import { Link, router } from 'expo-router';
+import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Platform,
-  Pressable,
-  SafeAreaView,
-  StatusBar,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
-} from "react-native";
+} from 'react-native';
 
-export default function SignupScreen() {
-  const [displayName, setDisplayName] = useState("");
-  const [firstName,   setFirstName]   = useState("");
-  const [lastName,    setLastName]    = useState("");
-  const [email,       setEmail]       = useState("");
-  const [password,    setPassword]    = useState("");
-  const [busy,        setBusy]        = useState(false);
+export default function SignUpScreen() {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  async function doSignup() {
+  const handleSignUp = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Email and password are required');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      if (!email.trim() || !password.trim()) {
-        Alert.alert("Missing", "Enter email and password");
-        return;
-      }
-      setBusy(true);
-
-      // 1) Create auth user — names in metadata are for convenience only
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password: password.trim(),
+      // Sign up user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password,
         options: {
           data: {
-            display_name: displayName || null,
-            first_name: firstName || null,
-            last_name:  lastName  || null,
-          },
-        },
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+            display_name: displayName.trim() || firstName.trim(),
+          }
+        }
       });
-      if (error) throw error;
 
-      // 2) Upsert profiles — DO NOT write display_name (it's GENERATED in DB)
-      const uid = data.user?.id;
-      if (uid) {
-        const { error: upErr } = await supabase
-          .from("profiles")
-          .upsert(
-            {
-              user_id: uid,
-              first_name: firstName || null,
-              last_name:  lastName  || null,
-              email: email.trim(),
-              role: "user", // ensure new users get 'user'
-            },
-            { onConflict: "user_id" }
-          );
-        if (upErr) throw upErr;
+      if (authError) throw authError;
+
+      // Create profile with user_id (not id)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          user_id: authData.user?.id,
+          email: email.trim().toLowerCase(),
+          first_name: firstName.trim() || null,
+          last_name: lastName.trim() || null,
+          display_name: displayName.trim() || firstName.trim() || email.split('@')[0],
+        }, { 
+          onConflict: 'user_id' 
+        });
+
+      if (profileError) {
+        console.warn('Profile creation warning:', profileError);
       }
 
-      Alert.alert("Account created", "You are now signed in.");
-      router.replace("/scan");
-    } catch (e: any) {
-      Alert.alert("Sign up failed", e?.message ?? "unknown error");
+      Alert.alert(
+        'Success! 🎉',
+        'Your account has been created!',
+        [{ text: 'Get Started', onPress: () => router.replace('/(home)') }]
+      );
+
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to create account');
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
-      <StatusBar barStyle="light-content" />
-
-      {/* Background drops */}
-      <View pointerEvents="none" style={{ position: "absolute", inset: 0 }}>
-        <View
-          style={{
-            position: "absolute",
-            top: -70,
-            right: -50,
-            width: 240,
-            height: 240,
-            borderRadius: 9999,
-            backgroundColor: "#10b981",
-            opacity: 0.15,
-            filter: Platform.OS === "web" ? "blur(60px)" : undefined,
-          }}
-        />
-        <View
-          style={{
-            position: "absolute",
-            bottom: -90,
-            left: -70,
-            width: 280,
-            height: 280,
-            borderRadius: 9999,
-            backgroundColor: "#22d3ee",
-            opacity: 0.10,
-            filter: Platform.OS === "web" ? "blur(70px)" : undefined,
-          }}
-        />
-      </View>
-
-      {/* Header */}
-      <View
-        style={{
-          paddingHorizontal: 24,
-          paddingTop: 12,
-          paddingBottom: 8,
-          borderBottomColor: "#1f2937",
-          borderBottomWidth: 1,
-        }}
+    <View style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
       >
-        <Text style={{ color: "#a3a3a3", fontSize: 12, letterSpacing: 1.1 }}>
-          CREATE ACCOUNT FOR
-        </Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <View
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 6,
-              backgroundColor: "#10b981",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text style={{ color: "#0a0a0a", fontWeight: "700" }}>M</Text>
-          </View>
-          <Text
-            style={{
-              color: "#fff",
-              fontSize: 28,
-              fontWeight: "700",
-              letterSpacing: 0.5,
-            }}
-          >
-            Move
-          </Text>
-        </View>
-      </View>
-
-      {/* Body */}
-      <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 36 }}>
-        <Text
-          style={{
-            color: "#d4d4d4",
-            fontSize: 22,
-            fontWeight: "700",
-            marginBottom: 18,
-          }}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
-          Let’s get you moving ✨
-        </Text>
+          <View style={styles.header}>
+            <Text style={styles.logo}>🏃 movement</Text>
+            <Text style={styles.subtitle}>Create your account</Text>
+          </View>
 
-        <View style={{ gap: 14 }}>
-          <LabeledInput
-            label="Display name (optional)"
-            value={displayName}
-            onChangeText={setDisplayName}
-            placeholder="What should we call you?"
-          />
-
-          <DoubleRow>
-            <LabeledInput
-              flex
-              label="First name"
+          <View style={styles.form}>
+            <TextInput
+              style={styles.input}
+              placeholder="First Name (Optional)"
+              placeholderTextColor="#666"
               value={firstName}
               onChangeText={setFirstName}
-              placeholder="Alex"
+              autoCapitalize="words"
             />
-            <LabeledInput
-              flex
-              label="Last name"
+
+            <TextInput
+              style={styles.input}
+              placeholder="Last Name (Optional)"
+              placeholderTextColor="#666"
               value={lastName}
               onChangeText={setLastName}
-              placeholder="Taylor"
+              autoCapitalize="words"
             />
-          </DoubleRow>
 
-          <LabeledInput
-            label="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            placeholder="you@example.com"
-          />
+            <TextInput
+              style={styles.input}
+              placeholder="Display Name (Optional)"
+              placeholderTextColor="#666"
+              value={displayName}
+              onChangeText={setDisplayName}
+            />
 
-          <LabeledInput
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            placeholder="Create a strong password"
-          />
+            <TextInput
+              style={styles.input}
+              placeholder="Email *"
+              placeholderTextColor="#666"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
 
-          <PrimaryButton
-            title={busy ? "Creating…" : "Sign up"}
-            onPress={doSignup}
-            disabled={busy}
-          />
+            <TextInput
+              style={styles.input}
+              placeholder="Password *"
+              placeholderTextColor="#666"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
 
-          <SecondaryButton
-            title="I already have an account"
-            onPress={() => router.replace("/(auth)/signin")}
-          />
-        </View>
-      </View>
+            <TextInput
+              style={styles.input}
+              placeholder="Confirm Password *"
+              placeholderTextColor="#666"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+            />
 
-      {/* Footer */}
-      <View
-        style={{
-          paddingHorizontal: 24,
-          paddingVertical: 16,
-          borderTopColor: "#1f2937",
-          borderTopWidth: 1,
-          opacity: 0.85,
-        }}
-      >
-        <Text style={{ color: "#9ca3af", fontSize: 12, textAlign: "center" }}>
-          By continuing you agree to the community guidelines.
-        </Text>
-      </View>
-    </SafeAreaView>
-  );
-}
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleSignUp}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#000" />
+              ) : (
+                <Text style={styles.buttonText}>Create account</Text>
+              )}
+            </TouchableOpacity>
 
-/* ——— Reusable bits to keep the same style as Sign in / Home ——— */
-
-function LabeledInput(props: any) {
-  const { label, flex, style, ...inputProps } = props;
-  return (
-    <View style={[{ gap: 6, flex: flex ? 1 : undefined }, style]}>
-      <Text style={{ color: "#9ca3af", fontSize: 13 }}>{label}</Text>
-      <TextInput
-        {...inputProps}
-        placeholderTextColor="#6b7280"
-        style={{
-          backgroundColor: "#0f172a",
-          borderColor: "#1f2937",
-          borderWidth: 1,
-          borderRadius: 14,
-          paddingVertical: 14,
-          paddingHorizontal: 14,
-          color: "#e5e7eb",
-        }}
-      />
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Already have an account? </Text>
+              <Link href="/(auth)/signin" asChild>
+                <TouchableOpacity>
+                  <Text style={styles.link}>Sign in</Text>
+                </TouchableOpacity>
+              </Link>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
-function DoubleRow({ children }: { children: React.ReactNode }) {
-  return (
-    <View style={{ flexDirection: "row", gap: 12 }}>
-      {children}
-    </View>
-  );
-}
-
-function PrimaryButton({
-  title,
-  onPress,
-  disabled,
-}: {
-  title: string;
-  onPress: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <Pressable
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        backgroundColor: pressed ? "#0ea371" : "#10b981",
-        paddingVertical: 14,
-        borderRadius: 14,
-        alignItems: "center",
-        opacity: disabled ? 0.7 : 1,
-        shadowColor: "#10b981",
-        shadowOpacity: 0.25,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 6 },
-        elevation: 2,
-      })}
-    >
-      <Text style={{ color: "#051b13", fontWeight: "700", fontSize: 16 }}>
-        {title}
-      </Text>
-    </Pressable>
-  );
-}
-
-function SecondaryButton({
-  title,
-  onPress,
-}: {
-  title: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({
-        backgroundColor: pressed ? "#111827" : "transparent",
-        paddingVertical: 14,
-        borderRadius: 14,
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: "#1f2937",
-      })}
-    >
-      <Text style={{ color: "#e5e7eb", fontWeight: "600", fontSize: 16 }}>
-        {title}
-      </Text>
-    </Pressable>
-  );
-}
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#1a1a1a',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  logo: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#4ECDC4',
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+  },
+  form: {
+    width: '100%',
+  },
+  input: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    color: '#fff',
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  button: {
+    backgroundColor: '#4ECDC4',
+    borderRadius: 12,
+    padding: 18,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  buttonText: {
+    color: '#000',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  footerText: {
+    color: '#666',
+    fontSize: 14,
+  },
+  link: {
+    color: '#4ECDC4',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+});

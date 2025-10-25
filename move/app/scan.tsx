@@ -1,153 +1,300 @@
 // app/scan.tsx
-import { joinEvent } from "@/lib/join";
-import { supabase } from "@/lib/supabase";
-import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
-
-
-import { Platform, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import { router } from "expo-router";
+import { useState } from "react";
+import { Alert, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 
 export default function ScanScreen() {
-  const { code: codeParam } = useLocalSearchParams<{ code?: string }>();
-  const [value, setValue] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [permission, requestPermission] = useCameraPermissions();
+  const [scanned, setScanned] = useState(false);
 
-  // Pre-fill from ?code=XXXX (works with our short links /e/CODE)
-  useEffect(() => {
-    if (typeof codeParam === "string" && codeParam.trim()) {
-      setValue(codeParam.trim().toUpperCase());
-    }
-  }, [codeParam]);
+  // Permission not determined yet
+  if (!permission) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.message}>Checking camera permissions...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-  useEffect(() => {
-  let mounted = true;
+  // Permission denied
+  if (!permission.granted) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.permissionContainer}>
+          <Text style={styles.title}>Camera Access Required</Text>
+          <Text style={styles.message}>
+            We need camera access to scan event QR codes.
+          </Text>
+          <Pressable onPress={requestPermission} style={styles.grantButton}>
+            <Text style={styles.grantButtonText}>Grant Permission</Text>
+          </Pressable>
+          <Pressable onPress={() => router.back()} style={styles.backButton}>
+            <Text style={styles.backButtonText}>Go Back</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-  (async () => {
+  const handleBarCodeScanned = ({ data }: { data: string }) => {
+    if (scanned) return;
+    
+    setScanned(true);
+    console.log("QR scanned:", data);
+
     try {
-      const { data } = await supabase.auth.getUser();
-      if (mounted) setUserId(data.user?.id ?? null);
-    } catch {
-      if (mounted) setUserId(null);
+      // Try to parse as URL
+      const url = new URL(data);
+      const code = url.searchParams.get("code");
+      const eventId = url.searchParams.get("event_id");
+
+      if (code) {
+        // Has event code - navigate to join with code
+        router.replace({
+          pathname: "/(home)",
+          params: { autoJoinCode: code },
+        });
+      } else if (eventId) {
+        // Has event ID - navigate directly to event
+        router.replace({
+          pathname: "/move",
+          params: { event_id: eventId },
+        });
+      } else {
+        throw new Error("No code or event_id in QR");
+      }
+    } catch (e) {
+      // Not a URL, treat as plain event code
+      const trimmed = data.trim();
+      
+      if (trimmed.length === 6 || trimmed.length === 36) {
+        // Valid code format
+        router.replace({
+          pathname: "/(home)",
+          params: { autoJoinCode: trimmed },
+        });
+      } else {
+        Alert.alert(
+          "Invalid QR Code",
+          "This doesn't appear to be a valid event QR code.",
+          [
+            { text: "Scan Again", onPress: () => setScanned(false) },
+            { text: "Cancel", onPress: () => router.back() },
+          ]
+        );
+      }
     }
-  })();
-
-  const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-    setUserId(session?.user?.id ?? null);
-  });
-
-  return () => {
-    mounted = false;
-    sub?.subscription.unsubscribe();
   };
-}, []);
-
-const handleJoin = async () => {
-  const input = value.trim();
-  if (!input) {
-    setErr("Enter a 6-char code or an event UUID.");
-    return;
-  }
-  if (!userId) {
-    setErr("Sign in first to join an event.");
-    return;
-  }
-
-  setErr(null);
-  setBusy(true);
-
-  try {
-    let code: string | undefined;
-    let eventId: string | undefined;
-
-    // If user pasted a URL, extract ?code / ?event_id
-    if (/^https?:\/\//i.test(input)) {
-      const u = new URL(input);
-      code = u.searchParams.get("code") ?? undefined;
-      eventId = u.searchParams.get("event_id") ?? undefined;
-    } else if (/^[A-Za-z0-9]{6}$/.test(input)) {
-      code = input.toUpperCase();
-    } else if (/^[0-9a-fA-F-]{36}$/.test(input)) {
-      eventId = input;
-    } else {
-      setErr("Enter a 6-char code or a valid event UUID.");
-      return;
-    }
-
-    const r = await joinEvent({ code, eventId, userId });
-    if (!r.ok) throw new Error(r.error);
-
-    const joinedEventId = r.event_id ?? eventId;
-if (!joinedEventId) {
-  throw new Error("Joined but no event_id returned.");
-}
-
-// Go to the in-app movement screen
-    router.replace({ pathname: "/move", params: { event_id: joinedEventId } });
-    // TODO: navigate or toast (example)
-    // router.push(`/leaderboard?event_id=${r.event_id ?? eventId}`);
-  } catch (e: any) {
-    setErr(e?.message || "Join failed.");
-    console.error("join failed:", e);
-  } finally {
-    setBusy(false);
-  }
-};
-
-
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000", padding: 20 }}>
-      <Text style={{ color: "#fff", fontSize: 20, marginBottom: 16 }}>Scan / Enter Event</Text>
-      <Text style={{ color: "#9ca3af", marginBottom: 12 }}>
-        Paste a QR link (…/leaderboard?code=XXXXXX), a 6-char code, or the event UUID.
-      </Text>
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} style={styles.backIconButton}>
+          <Text style={styles.backIcon}>←</Text>
+        </Pressable>
+        <Text style={styles.headerTitle}>Scan Event QR</Text>
+        <View style={{ width: 40 }} />
+      </View>
 
-      <TextInput
-        value={value}
-        onChangeText={setValue}
-        placeholder="JRYBJB or uuid…"
-        placeholderTextColor="#6b7280"
-        autoCapitalize="characters"
-        autoCorrect={false}
-        style={{
-          backgroundColor: "#111827",
-          color: "#e5e7eb",
-          borderColor: "#374151",
-          borderWidth: 1,
-          borderRadius: 8,
-          paddingHorizontal: 14,
-          paddingVertical: Platform.OS === "ios" ? 14 : 10,
-          marginBottom: 14,
-        }}
-      />
+      {/* Camera */}
+      <View style={styles.cameraContainer}>
+        <CameraView
+          style={styles.camera}
+          facing="back"
+          onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+          barcodeScannerSettings={{
+            barcodeTypes: ["qr"],
+          }}
+        />
 
-      {!!err && (
-        <Text style={{ color: "#fca5a5", marginBottom: 12 }}>
-          {err}
-        </Text>
+        {/* Scan Frame Overlay */}
+        <View style={styles.overlay}>
+          <View style={styles.scanArea}>
+            <View style={[styles.corner, styles.topLeft]} />
+            <View style={[styles.corner, styles.topRight]} />
+            <View style={[styles.corner, styles.bottomLeft]} />
+            <View style={[styles.corner, styles.bottomRight]} />
+          </View>
+        </View>
+
+        {/* Instructions */}
+        <View style={styles.instructions}>
+          <Text style={styles.instructionsText}>
+            Position the QR code within the frame
+          </Text>
+        </View>
+      </View>
+
+      {/* Scan Again Button (shown after scan) */}
+      {scanned && (
+        <View style={styles.footer}>
+          <Pressable
+            onPress={() => setScanned(false)}
+            style={styles.scanAgainButton}
+          >
+            <Text style={styles.scanAgainButtonText}>Scan Again</Text>
+          </Pressable>
+        </View>
       )}
-
-      <TouchableOpacity
-        onPress={handleJoin}
-        disabled={busy}
-        style={{
-          backgroundColor: busy ? "#2563eb88" : "#2563eb",
-          paddingVertical: 14,
-          borderRadius: 8,
-          alignItems: "center",
-        }}
-      >
-        <Text style={{ color: "#fff", fontWeight: "600" }}>{busy ? "Joining…" : "JOIN"}</Text>
-      </TouchableOpacity>
-
-      <View style={{ height: 20 }} />
-
-      <Text style={{ color: "#9ca3af" }}>
-        Tip: on web / Expo Go we’re using the text field. We’ll enable camera scanning after we make a
-        custom dev build.
-      </Text>
-    </View>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#0a0a0a",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  permissionContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+    gap: 16,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#fff",
+    marginBottom: 8,
+  },
+  message: {
+    fontSize: 16,
+    color: "#9ca3af",
+    textAlign: "center",
+    lineHeight: 24,
+  },
+  grantButton: {
+    backgroundColor: "#10b981",
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  grantButtonText: {
+    color: "#000",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  backButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  backButtonText: {
+    color: "#22d3ee",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    backgroundColor: "#0b1920",
+  },
+  backIconButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  backIcon: {
+    color: "#22d3ee",
+    fontSize: 24,
+  },
+  headerTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  cameraContainer: {
+    flex: 1,
+    position: "relative",
+  },
+  camera: {
+    flex: 1,
+  },
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  scanArea: {
+    width: 250,
+    height: 250,
+    position: "relative",
+  },
+  corner: {
+    position: "absolute",
+    width: 40,
+    height: 40,
+    borderColor: "#10b981",
+  },
+  topLeft: {
+    top: 0,
+    left: 0,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+  },
+  topRight: {
+    top: 0,
+    right: 0,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+  },
+  bottomLeft: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+  },
+  bottomRight: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+  },
+  instructions: {
+    position: "absolute",
+    bottom: 80,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  },
+  instructionsText: {
+    color: "#fff",
+    fontSize: 14,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  footer: {
+    padding: 24,
+    backgroundColor: "#0b1920",
+  },
+  scanAgainButton: {
+    backgroundColor: "#10b981",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  scanAgainButtonText: {
+    color: "#000",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+});

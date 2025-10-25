@@ -1,4 +1,5 @@
 // app/(auth)/signin.tsx
+const [error, setError] = useState<string | null>(null);
 import { supabase } from "@/lib/supabase/client";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -12,6 +13,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+
+
 
 export default function SigninScreen() {
   const [email, setEmail] = useState("");

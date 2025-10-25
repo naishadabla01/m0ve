@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"name": "move-dashboard",
+			"path": "../move-dashboard"
+		},
+		{
+			"path": "."
+		},
+		{
+			"path": ".."
+		}
+	],
+	"settings": {
+		"typescript.validate.enable": false
+	}
+}

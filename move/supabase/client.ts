@@ -1,13 +1,12 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient } from '@supabase/supabase-js';
+// src/lib/supabase/client.ts
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { createClient } from "@supabase/supabase-js";
+import "react-native-url-polyfill/auto";
 
-// Put your values here (or read from constants/env)
-export const SUPABASE_URL = 'https://jxjaqamunkkqnwhrlnzk.supabase.co';
-export const SUPABASE_ANON_KEY = 'sb_publishable_w7Zh42w1bNPIe3kicNVEEw_dBqEq_2I';
+const url = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+const anon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
-
-
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+export const supabase = createClient(url, anon, {
   auth: {
     persistSession: true,
     storage: AsyncStorage,
