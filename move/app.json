@@ -24,12 +24,17 @@
       "@livekit/react-native-expo-plugin"
     ],
     "ios": {
-      "infoPlist": {
-        "NSCameraUsageDescription": "We use the camera to scan event QR codes.",
-        "NSMicrophoneUsageDescription": "We use the microphone for live audio during calls.",
-        "NSMotionUsageDescription": "We use motion data to track your movement for scoring."
-      }
-    },
+  "bundleIdentifier": "com.naishadabla.move",
+  "supportsTablet": true,
+  "infoPlist": {
+    "NSCameraUsageDescription": "We use the camera to scan event QR codes.",
+    "NSMicrophoneUsageDescription": "We use the microphone for live audio during calls.",
+    "NSMotionUsageDescription": "We use motion data to track your movement for scoring.",
+    "UIBackgroundModes": [
+      "audio"
+    ]
+  }
+},
     "android": {
       "package": "com.naishadabla.move",
       "usesCleartextTraffic": true,
@@ -53,7 +58,6 @@
           ]
         }
       ]
-    },
-    
+    }
   }
 }
