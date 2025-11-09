@@ -1,38 +1,39 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const url  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// src/app/api/events/list/route.ts
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 export async function GET(req: Request) {
   try {
-    const supabase = createClient(url, anon, {
-      global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
-    });
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ ok: false, error: "No auth user" }, { status: 401 });
+    const url = new URL(req.url);
+    const scope = url.searchParams.get('scope') || 'mine';
 
-    const { searchParams } = new URL(req.url);
-    const scope = searchParams.get("scope") ?? "mine"; // mine|all|upcoming
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { global: { headers: { Authorization: req.headers.get('authorization') || '' } } }
+    );
+
+    const {
+      data: { user },
+      error: authErr,
+    } = await supabase.auth.getUser();
+    if (authErr || !user) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
 
     let q = supabase
-      .from("events")
-      .select("event_id, short_code, start_at, end_at, artist_id, name, title")
-      .order("start_at", { ascending: false });
+      .from('events')
+      .select('event_id, name, title, short_code, code, start_at, end_at, ended_at, status, artist_id')
+      .order('start_at', { ascending: false });
 
-    if (scope === "mine") q = q.eq("artist_id", user.id);
-    else if (scope === "upcoming") q = q.gte("start_at", new Date().toISOString());
-
+    if (scope === 'mine') q = q.eq('artist_id', user.id);
+    if (scope === 'ongoing') {
+  const nowISO = new Date().toISOString();
+  q = q.neq('status', 'ended').or(`end_at.is.null,end_at.gt.${nowISO}`);
+}
     const { data, error } = await q;
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-
-    const events = (data ?? []).map((e: any) => ({
-      ...e,
-      display_name: e.name ?? e.title ?? "(untitled)",
-    }));
-
-    return NextResponse.json({ ok: true, events });
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    return NextResponse.json({ ok: true, events: data });
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
+    console.error('list route error:', e);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }

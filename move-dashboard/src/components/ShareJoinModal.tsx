@@ -19,7 +19,7 @@ export default function ShareJoinModal({
   if (!open) return null;
 
   const origin =
-    typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    typeof window !== 'undefined' ? window.location.origin : 'https://move-dashboard-deploy-production.up.railway.app';
 
   const query = eventId ? `event_id=${eventId}` : shortCode ? `code=${shortCode}` : '';
   const appLink = `move://join${query ? `?${query}` : ''}`;

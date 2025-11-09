@@ -1,204 +1,167 @@
-// move-dashboard/src/app/api/join/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { admin } from "@/lib/supabase/service";
+// PATH: move-dashboard/src/app/api/join/route.ts
 
-// Supabase service client needs Node APIs
-export const runtime = "nodejs";
-// Ensure this route is always dynamic (no static errors)
-export const dynamic = "force-dynamic";
+import { NextResponse } from 'next/server';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-// ---------- CORS ----------
-function cors(req: NextRequest) {
-  const origin = req.headers.get("origin") ?? "*";
-  return {
-    "Access-Control-Allow-Origin": origin,
-    "Vary": "Origin",
-    "Access-Control-Allow-Credentials": "true",
-    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
-    "Access-Control-Max-Age": "86400",
-  };
+function endedCheck(ev: any) {
+  const now = Date.now();
+  const endTs = ev?.end_at ? new Date(ev.end_at).getTime() : null;
+  return ev?.status === 'ended' || !!ev?.ended_at || (endTs ? now >= endTs : false);
 }
 
-export async function OPTIONS(req: NextRequest) {
-  return new NextResponse(null, { status: 204, headers: cors(req) });
-}
+const SELECT =
+  'event_id, title, status, start_at, end_at, ended_at, cover_url, code, short_code';
 
-// ---------- helpers ----------
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const isUuid = (v: string) => UUID_RE.test(v);
+// Try multiple strategies: eq(code), eq(short_code), ilike(code), ilike(short_code)
+async function fetchEventByCode(
+  sb: SupabaseClient<any, 'public', any>,
+  raw: string
+) {
+  const code = (raw ?? '').trim();
+  const upper = code.toUpperCase();
 
-async function findEventIdByCode(code: string): Promise<string | null> {
-  // Try exact code
-  {
-    const { data, error } = await admin
-      .from("events")
-      .select("event_id")
-      .eq("code", code)
-      .maybeSingle();
-    if (error) throw new Error(`lookup code failed: ${error.message}`);
-    if (data?.event_id) return data.event_id as string;
-  }
-  // Try short_code
-  {
-    const { data, error } = await admin
-      .from("events")
-      .select("event_id")
-      .eq("short_code", code)
-      .maybeSingle();
-    if (error) throw new Error(`lookup short_code failed: ${error.message}`);
-    if (data?.event_id) return data.event_id as string;
-  }
-  // Try case-insensitive match on code (in case input case differs)
-  {
-    const { data, error } = await admin
-      .from("events")
-      .select("event_id")
-      .ilike("code", code)
-      .maybeSingle();
-    if (error) throw new Error(`lookup ilike code failed: ${error.message}`);
-    if (data?.event_id) return data.event_id as string;
-  }
-  // Try case-insensitive short_code
-  {
-    const { data, error } = await admin
-      .from("events")
-      .select("event_id")
-      .ilike("short_code", code)
-      .maybeSingle();
-    if (error) throw new Error(`lookup ilike short_code failed: ${error.message}`);
-    if (data?.event_id) return data.event_id as string;
-  }
+  // 1) exact code
+  let r = await sb.from('events').select(SELECT).eq('code', code).limit(1).maybeSingle();
+  if (r.data) return r.data;
+
+  // 2) exact short_code
+  r = await sb.from('events').select(SELECT).eq('short_code', code).limit(1).maybeSingle();
+  if (r.data) return r.data;
+
+  // 3) case-insensitive on code
+  r = await sb.from('events').select(SELECT).ilike('code', upper).limit(1).maybeSingle();
+  if (r.data) return r.data;
+
+  // 4) case-insensitive on short_code
+  r = await sb.from('events').select(SELECT).ilike('short_code', upper).limit(1).maybeSingle();
+  if (r.data) return r.data;
 
   return null;
 }
 
-async function resolveEventId(raw: string): Promise<string | null> {
-  const s = (raw || "").trim();
-  if (!s) return null;
+async function handleJoin(params: { code?: string | null; event_id?: string | null }) {
+  const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const SUPA_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const supabase = createClient(SUPA_URL, SUPA_KEY);
 
-  // If URL, check params first
-  try {
-    if (s.includes("://")) {
-      const u = new URL(s);
-      const eid = (u.searchParams.get("event_id") || "").trim();
-      const code = (u.searchParams.get("code") || "").trim();
-      if (eid && isUuid(eid)) return eid;
-      if (code) return (await findEventIdByCode(code)) ?? null;
-    }
-  } catch {
-    // fall through
+  const code = params.code?.trim() || null;
+  const event_id = params.event_id || null;
+
+  if (!code && !event_id) {
+    return NextResponse.json({ ok: false, error: 'code or event_id required' }, { status: 400 });
   }
 
-  if (isUuid(s)) return s;
+  let ev: any = null;
 
-  return await findEventIdByCode(s);
-}
-
-async function ensureScoreRow(event_id: string, user_id: string) {
-  // 1) fast-path: does it already exist?
-  const { data, error } = await admin
-    .from("scores")
-    .select("event_id")
-    .eq("event_id", event_id)
-    .eq("user_id", user_id)
-    .maybeSingle();
-
-  if (error && (error as any).code !== "PGRST116") {
-    // PGRST116 = no rows / maybeSingle empty in some versions; ignore that
-    throw new Error(`scores existence check failed: ${error.message}`);
+  if (code) {
+    ev = await fetchEventByCode(supabase, code);
+  } else {
+    const { data } = await supabase
+      .from('events')
+      .select(SELECT)
+      .eq('event_id', event_id!)
+      .limit(1)
+      .maybeSingle();
+    ev = data ?? null;
   }
-  if (data) return; // already present — nothing to do
 
-  // 2) try insert; if a race inserts first, ignore 23505 unique violation
-  const { error: insErr } = await admin
-    .from("scores")
-    .insert({ event_id, user_id, score: 0 });
-
-  if (insErr) {
-    const code = (insErr as any).code;
-    if (code === "23505") return; // duplicate key — safe to ignore
-    throw new Error(`ensure scores row failed: ${insErr.message}`);
-  }
-}
-
-
-// ---------- main handlers ----------
-export async function GET(req: NextRequest) {
-  const headers = cors(req);
-  try {
-    const url = new URL(req.url);
-    const raw =
-      url.searchParams.get("event") ??
-      url.searchParams.get("code") ??
-      url.searchParams.get("event_id") ??
-      "";
-    const user_id = url.searchParams.get("user_id") ?? "";
-
-    if (!raw) {
-      return NextResponse.json(
-        { ok: false, error: "missing event" },
-        { status: 400, headers }
-      );
-    }
-
-    const event_id = await resolveEventId(raw);
-    if (!event_id) {
-      return NextResponse.json(
-        { ok: false, error: "event not found" },
-        { status: 404, headers }
-      );
-    }
-
-    if (user_id) {
-      await ensureScoreRow(event_id, user_id);
-    }
-
-    return NextResponse.json({ ok: true, event_id }, { headers });
-  } catch (e: any) {
+  if (!ev) {
     return NextResponse.json(
-      { ok: false, error: e?.message ?? "internal error" },
-      { status: 500, headers }
+      { ok: false, error: 'Event not found', debug: { supabaseUrl: SUPA_URL } },
+      { status: 404 }
     );
   }
+
+  const normalizedCode = ev.code || ev.short_code || null;
+
+if (endedCheck(ev)) {
+  // 1) Get top 10 scores for the event (no join)
+  const { data: top, error: scoreErr } = await supabase
+    .from('scores')
+    .select('user_id, score')
+    .eq('event_id', ev.event_id)
+    .order('score', { ascending: false })
+    .limit(10);
+
+  if (scoreErr) {
+    return NextResponse.json({ ok: false, error: scoreErr.message }, { status: 400 });
+  }
+
+  // 2) Fetch profiles for those users in one shot
+  const userIds = (top ?? []).map(r => r.user_id);
+  let profMap: Record<string, { display_name: string | null; avatar_url: string | null }> = {};
+
+  if (userIds.length > 0) {
+    const { data: profs, error: profErr } = await supabase
+      .from('profiles')
+      .select('user_id, display_name, avatar_url')
+      .in('user_id', userIds);
+
+    if (profErr) {
+      return NextResponse.json({ ok: false, error: profErr.message }, { status: 400 });
+    }
+
+    for (const p of profs ?? []) {
+      profMap[p.user_id] = {
+        display_name: p.display_name ?? null,
+        avatar_url: p.avatar_url ?? null,
+      };
+    }
+  }
+
+  const top10 = (top ?? []).map((r, i) => {
+    const p = profMap[r.user_id] || { display_name: null, avatar_url: null };
+    return {
+      rank: i + 1,
+      user_id: r.user_id,
+      name: p.display_name ?? 'Player',
+      avatar_url: p.avatar_url,
+      score: Number(r.score ?? 0),
+    };
+  });
+
+  const normalizedCode = ev.code || ev.short_code || null;
+
+  return NextResponse.json({
+    ok: false,
+    joinable: false,
+    reason: 'ended',
+    event_id: ev.event_id,
+    code: normalizedCode,
+    event: { id: ev.event_id, title: ev.title, cover_url: ev.cover_url, code: normalizedCode },
+    top10,
+    version: 'join-v5',
+  });
 }
 
-export async function POST(req: NextRequest) {
-  const headers = cors(req);
+  return NextResponse.json({
+    ok: true,
+    joinable: true,
+    event_id: ev.event_id,
+    code: normalizedCode,
+    event: { id: ev.event_id, title: ev.title, cover_url: ev.cover_url, code: normalizedCode },
+    version: 'join-v4',
+    debug: { supabaseUrl: SUPA_URL },
+  });
+}
+
+export async function POST(req: Request) {
   try {
-    let body: any = null;
-    try { body = await req.json(); } catch {}
-
-    const url = new URL(req.url);
-    const raw =
-      body?.event ??
-      url.searchParams.get("event") ??
-      url.searchParams.get("code") ??
-      url.searchParams.get("event_id") ??
-      "";
-    const user_id = body?.user_id ?? url.searchParams.get("user_id") ?? "";
-
-    if (!user_id) {
-      return NextResponse.json(
-        { ok: false, error: "missing user_id" },
-        { status: 400, headers }
-      );
-    }
-
-    const event_id = await resolveEventId(raw);
-    if (!event_id) {
-      return NextResponse.json(
-        { ok: false, error: "event not found" },
-        { status: 404, headers }
-      );
-    }
-
-    await ensureScoreRow(event_id, user_id);
-    return NextResponse.json({ ok: true, event_id }, { headers });
+    const body = await req.json().catch(() => ({}));
+    return handleJoin({ code: body?.code, event_id: body?.event_id });
   } catch (e: any) {
-    return NextResponse.json(
-      { ok: false, error: e?.message ?? "internal error" },
-      { status: 500, headers }
-    );
+    return NextResponse.json({ ok: false, error: e?.message || 'Server error' }, { status: 500 });
+  }
+}
+
+export async function GET(req: Request) {
+  try {
+    const url = new URL(req.url);
+    return handleJoin({
+      code: url.searchParams.get('code'),
+      event_id: url.searchParams.get('event_id'),
+    });
+  } catch (e: any) {
+    return NextResponse.json({ ok: false, error: e?.message || 'Server error' }, { status: 500 });
   }
 }

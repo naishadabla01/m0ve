@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 type Row<T> = T extends Array<infer U> ? U : never;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const serviceKey  = process.env.SUPABASE_SERVICE_ROLE!;
+const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const sb = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 
 export async function GET(req: Request) {

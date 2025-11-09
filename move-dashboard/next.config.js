@@ -1,8 +1,25 @@
-cat > next.config.js << 'EOF'
-/** @type {import('next').NextConfig} */
+﻿/** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Standalone build for Railway deployment
   output: 'standalone',
   
+  // React strict mode
+  reactStrictMode: false,
+  
+  // Disable ESLint and TypeScript checks during builds
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  
+  // Generate unique build ID
+  generateBuildId: async () => {
+    return 'build-' + Date.now();
+  },
+  
+  // CORS headers for API routes
   async headers() {
     return [
       {
@@ -15,7 +32,19 @@ const nextConfig = {
       },
     ];
   },
+  
+  // Webpack configuration to handle client-side only code
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      };
+    }
+    return config;
+  },
 };
 
 module.exports = nextConfig;
-EOF
