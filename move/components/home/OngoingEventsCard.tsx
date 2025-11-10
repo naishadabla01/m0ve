@@ -1,5 +1,5 @@
-// components/home/OngoingEventsCard.tsx - WORKING VERSION
-import { apiBase } from "@/lib/apiBase";
+// components/home/OngoingEventsCard.tsx - Query Supabase directly
+import { supabase } from "@/lib/supabase/client";
 import { joinEventById } from "@/lib/join";
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
@@ -8,9 +8,10 @@ type EventRow = {
   event_id: string;
   name: string | null;
   short_code: string | null;
-  energy: number;
-  last_activity: string | null;
-  status?: string;
+  status: string | null;
+  start_at: string | null;
+  end_at: string | null;
+  ended_at: string | null;
 };
 
 export default function OngoingEventsCard() {
@@ -20,28 +21,32 @@ export default function OngoingEventsCard() {
   async function load() {
     try {
       setLoading(true);
-      const base = apiBase();
-      
-      // Use the same API endpoint that works
-      const url = `${base}/api/events?minutes=10800&limit=100`;
-      console.log("OngoingEventsCard fetching:", url);
-      
-      const r = await fetch(url, { cache: "no-store" });
-      const j = await r.json();
-      
-      console.log("OngoingEventsCard response:", j);
-      
-      if (j?.ok && Array.isArray(j.rows)) {
-        // Filter out ended events if status field exists
-        const activeEvents = j.rows.filter((ev: any) => 
-          !ev.status || ev.status !== 'ended'
-        );
-        console.log("OngoingEventsCard loaded", activeEvents.length, "active events");
-        setRows(activeEvents);
-      } else {
-        console.warn("OngoingEventsCard: No events or bad response:", j);
+
+      const { data, error } = await supabase
+        .from("events")
+        .select("event_id, name, short_code, status, start_at, end_at, ended_at")
+        .or("status.is.null,status.neq.ended")
+        .order("start_at", { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error("OngoingEventsCard error:", error);
         setRows([]);
+        return;
       }
+
+      const now = new Date();
+      const activeEvents = (data || []).filter((ev) => {
+        if (ev.status === 'ended' || ev.ended_at) return false;
+        if (ev.start_at) {
+          const startTime = new Date(ev.start_at);
+          if (startTime > now) return false;
+        }
+        return true;
+      });
+
+      console.log("OngoingEventsCard loaded", activeEvents.length, "active events");
+      setRows(activeEvents);
     } catch (err) {
       console.error("OngoingEventsCard error:", err);
       setRows([]);
@@ -50,24 +55,22 @@ export default function OngoingEventsCard() {
     }
   }
 
-  useEffect(() => { 
+  useEffect(() => {
     load();
-    // Refresh every 30 seconds
     const interval = setInterval(load, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // Top 3 only for the home card
   const top3 = useMemo(() => rows.slice(0, 3), [rows]);
 
   return (
-    <View style={{ 
-      backgroundColor: "#07141c", 
-      borderRadius: 16, 
-      borderWidth: 1, 
-      borderColor: "#0f2430", 
-      padding: 16, 
-      gap: 12 
+    <View style={{
+      backgroundColor: "#07141c",
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: "#0f2430",
+      padding: 16,
+      gap: 12
     }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <View>
@@ -78,7 +81,6 @@ export default function OngoingEventsCard() {
             Top playing right now
           </Text>
         </View>
-        
         <Pressable onPress={load}>
           <Text style={{ color: "#4ECDC4", fontSize: 12 }}>Refresh</Text>
         </Pressable>
@@ -103,8 +105,8 @@ export default function OngoingEventsCard() {
 
       {!loading && top3.map((ev) => {
         const displayName = ev.name || ev.short_code || `Event ${ev.event_id.slice(0, 6)}`;
-        const ago = ev.last_activity ? timeAgo(ev.last_activity) : "Just now";
-        
+        const timeInfo = ev.start_at ? timeAgo(ev.start_at) : "Just now";
+
         return (
           <View
             key={ev.event_id}
@@ -118,10 +120,10 @@ export default function OngoingEventsCard() {
               borderColor: "#152230",
             }}
           >
-            <View style={{ 
-              width: 40, 
-              height: 40, 
-              borderRadius: 20, 
+            <View style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
               backgroundColor: "#4ECDC4",
               opacity: 0.2,
               alignItems: "center",
@@ -132,22 +134,17 @@ export default function OngoingEventsCard() {
             </View>
 
             <View style={{ flex: 1 }}>
-              <Text style={{ 
-                color: "#ffffff", 
-                fontSize: 14, 
+              <Text style={{
+                color: "#ffffff",
+                fontSize: 14,
                 fontWeight: "600",
                 marginBottom: 2,
               }}>
                 {displayName}
               </Text>
-              <View style={{ flexDirection: "row", gap: 12 }}>
-                <Text style={{ color: "#6a8090", fontSize: 12 }}>
-                  {ev.energy} GP
-                </Text>
-                <Text style={{ color: "#6a8090", fontSize: 12 }}>
-                  {ago}
-                </Text>
-              </View>
+              <Text style={{ color: "#6a8090", fontSize: 12 }}>
+                {timeInfo}
+              </Text>
             </View>
 
             <Pressable
@@ -172,7 +169,6 @@ export default function OngoingEventsCard() {
       {!loading && rows.length > 3 && (
         <Pressable
           onPress={() => {
-            // Navigate to events page - adjust path as needed
             const { router } = require('expo-router');
             router.push("/(home)/events");
           }}
@@ -194,7 +190,7 @@ function timeAgo(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();
   const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  
+
   if (seconds < 60) return "Just now";
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;

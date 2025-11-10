@@ -1,7 +1,7 @@
 // app/(home)/events/index.tsx
-import { apiBase } from "@/lib/apiBase";
+import { supabase } from "@/lib/supabase/client";
 import { joinEventById, openLeaderboard } from "@/lib/join";
-import { router } from "expo-router"; // ← Add this import
+import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -17,8 +17,10 @@ type EventRow = {
   event_id: string;
   name: string | null;
   short_code: string | null;
-  energy: number;
-  last_activity: string | null;
+  status: string | null;
+  start_at: string | null;
+  end_at: string | null;
+  ended_at: string | null;
 };
 
 export default function AllEventsScreen() {
@@ -28,17 +30,30 @@ export default function AllEventsScreen() {
 
   async function load() {
     try {
-      const base = apiBase();
-      const url = `${base}/api/events?minutes=10800&limit=100`;
-      
-      const r = await fetch(url, { cache: "no-store" });
-      const j = await r.json();
-      
-      if (j?.ok && Array.isArray(j.rows)) {
-        setRows(j.rows);
-      } else {
+      const { data, error } = await supabase
+        .from("events")
+        .select("event_id, name, short_code, status, start_at, end_at, ended_at")
+        .or("status.is.null,status.neq.ended")
+        .order("start_at", { ascending: false })
+        .limit(100);
+
+      if (error) {
+        console.error("Events error:", error);
         setRows([]);
+        return;
       }
+
+      const now = new Date();
+      const activeEvents = (data || []).filter((ev) => {
+        if (ev.status === 'ended' || ev.ended_at) return false;
+        if (ev.start_at) {
+          const startTime = new Date(ev.start_at);
+          if (startTime > now) return false;
+        }
+        return true;
+      });
+
+      setRows(activeEvents);
     } catch (err) {
       console.error("Events error:", err);
       setRows([]);
@@ -59,7 +74,7 @@ export default function AllEventsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
-      {/* ✅ CUSTOM HEADER WITH BACK BUTTON */}
+      {/* CUSTOM HEADER WITH BACK BUTTON */}
       <View
         style={{
           flexDirection: "row",
@@ -97,7 +112,7 @@ export default function AllEventsScreen() {
           All On-Going Events
         </Text>
 
-        {/* Optional: Refresh Icon */}
+        {/* Refresh Icon */}
         <Pressable
           onPress={onRefresh}
           disabled={refreshing}
@@ -174,8 +189,8 @@ export default function AllEventsScreen() {
             const displayName =
               ev.name ||
               ev.short_code ||
-              `${ev.event_id.slice(0, 6)}…${ev.event_id.slice(-4)}`;
-            const ago = ev.last_activity ? timeAgo(ev.last_activity) : "—";
+              `Event ${ev.event_id.slice(0, 6)}`;
+            const timeInfo = ev.start_at ? timeAgo(ev.start_at) : "Just now";
 
             return (
               <View
@@ -190,20 +205,20 @@ export default function AllEventsScreen() {
                 }}
               >
                 {/* Event Name */}
-                <Text
-                  style={{
-                    color: "#e5e7eb",
-                    fontSize: 18,
-                    fontWeight: "700",
-                  }}
-                >
-                  {displayName}
-                </Text>
-
-                {/* Stats */}
-                <Text style={{ color: "#9ca3af", fontSize: 14 }}>
-                  {Math.round(ev.energy)} crowd energy • {ago}
-                </Text>
+                <View style={{ gap: 4 }}>
+                  <Text
+                    style={{
+                      color: "#e5e7eb",
+                      fontSize: 18,
+                      fontWeight: "700",
+                    }}
+                  >
+                    {displayName}
+                  </Text>
+                  <Text style={{ color: "#9ca3af", fontSize: 14 }}>
+                    Started {timeInfo}
+                  </Text>
+                </View>
 
                 {/* Actions */}
                 <View style={{ flexDirection: "row", gap: 12, marginTop: 4 }}>
