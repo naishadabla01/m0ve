@@ -1,6 +1,7 @@
 // app/(home)/index.tsx - iOS 26 Redesigned Home Page
 import { supabase } from "@/lib/supabase/client";
 import { normalizeScoreForDisplay } from "@/lib/scoreUtils";
+import { eventEmitter } from "@/lib/events";
 import { router } from "expo-router";
 import React, { useEffect, useState, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -76,6 +77,16 @@ export default function HomeScreen() {
       if (!session) router.replace("/(auth)/signin");
     });
     return () => sub.subscription.unsubscribe();
+  }, []);
+
+  // Listen for QR button press from floating tab bar
+  useEffect(() => {
+    const handleQRPress = () => {
+      setShowJoinModal(true);
+    };
+
+    eventEmitter.on("openJoinModal", handleQRPress);
+    return () => eventEmitter.off("openJoinModal", handleQRPress);
   }, []);
 
   // Load joined event from AsyncStorage
