@@ -106,7 +106,7 @@ export default function HomeScreen() {
       // Load events from database (created by artists via move-dashboard-deploy)
       const { data: events, error: eventsError } = await supabase
         .from("events")
-        .select("event_id, artist_id, name, title, short_code, venue, location, start_at, end_at, ended_at, status")
+        .select("event_id, artist_id, name, title, short_code, start_at, end_at, ended_at, status")
         .order("start_at", { ascending: false })
         .limit(20);
 
@@ -628,7 +628,7 @@ function EventCard({ event, isPast = false }: { event: Event; isPast?: boolean }
               marginBottom: Spacing.sm,
             }}
           >
-            {event.venue || event.location || 'Location TBA'}
+            {event.short_code ? `Code: ${event.short_code}` : 'Event'}
           </Text>
 
           {event.status === 'live' && !isPast && (
@@ -980,7 +980,7 @@ function LiveEventCard({ event, onJoin }: { event: Event; onJoin: () => void }) 
               marginBottom: Spacing.sm,
             }}
           >
-            {event.venue || event.location || 'Location TBA'}
+            {event.short_code ? `Code: ${event.short_code}` : 'Tap to join'}
           </Text>
 
           {/* Join Button */}
