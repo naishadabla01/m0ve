@@ -143,10 +143,16 @@ export default function ProfileScreen() {
   async function saveProfile() {
     if (!profile) return;
 
+    if (!displayName.trim()) {
+      Alert.alert("Error", "Display name is required");
+      return;
+    }
+
     try {
       setSaving(true);
 
       const updates = {
+  display_name: displayName.trim(),
   first_name: firstName.trim() || null,
   last_name: lastName.trim() || null,
   bio: bio.trim() || null,
@@ -497,6 +503,38 @@ export default function ProfileScreen() {
                 Edit Profile
               </Text>
 
+              {/* Display Name */}
+              <View style={{ marginBottom: Spacing.md }}>
+                <Text style={{
+                  color: Colors.text.muted,
+                  fontSize: Typography.size.xs,
+                  fontWeight: Typography.weight.semibold,
+                  marginBottom: Spacing.xs,
+                  textTransform: "uppercase",
+                }}>
+                  Display Name *
+                </Text>
+                <View style={{
+                  backgroundColor: Colors.background.card,
+                  borderColor: Colors.border.glass,
+                  borderWidth: 1,
+                  borderRadius: BorderRadius.lg,
+                  overflow: "hidden",
+                }}>
+                  <TextInput
+                    value={displayName}
+                    onChangeText={setDisplayName}
+                    placeholder="Your display name"
+                    placeholderTextColor={Colors.text.tertiary}
+                    style={{
+                      padding: Spacing.md,
+                      color: Colors.text.primary,
+                      fontSize: Typography.size.base,
+                    }}
+                  />
+                </View>
+              </View>
+
               {/* First Name */}
               <View style={{ marginBottom: Spacing.md }}>
                 <Text style={{
@@ -602,6 +640,7 @@ export default function ProfileScreen() {
                 <Pressable
                   onPress={() => {
                     setEditing(false);
+                    setDisplayName(profile.display_name || "");
                     setFirstName(profile.first_name || "");
                     setLastName(profile.last_name || "");
                     setBio(profile.bio || "");
