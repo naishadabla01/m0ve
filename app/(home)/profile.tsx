@@ -1,10 +1,12 @@
-// app/(home)/profile.tsx
+// app/(home)/profile.tsx - iOS 26 Redesigned Profile
 import { supabase } from "@/lib/supabase/client";
 import { normalizeScoreForDisplay } from "@/lib/scoreUtils";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from "expo-linear-gradient";
+import { Colors, Gradients, BorderRadius, Spacing, Typography, Shadows } from "../../constants/Design";
 
 import {
   ActivityIndicator,
@@ -26,8 +28,8 @@ type Profile = {
   bio: string | null;
   avatar_url: string | null;
   role: string | null;
-  eventsJoined?: number;    // ← ADD THIS
-  totalEnergy?: number;     // ← ADD THIS
+  eventsJoined?: number;
+  totalEnergy?: number;
 };
 
 export default function ProfileScreen() {
@@ -105,7 +107,7 @@ export default function ProfileScreen() {
         setLoading(false);
         return;
       }
-      
+
       const { count: eventsJoined } = await supabase
       .from("event_participants")
       .select("*", { count: "exact", head: true })
@@ -121,9 +123,9 @@ export default function ProfileScreen() {
       setProfile({
       ...data,
       eventsJoined: eventsJoined || 0,
-      totalEnergy: Math.round(totalEnergy),  // Store raw score for internal use
+      totalEnergy: Math.round(totalEnergy),
     });
-      
+
       // Initialize edit form
       setDisplayName(data.display_name || "");
     setFirstName(data.first_name || "");
@@ -145,7 +147,6 @@ export default function ProfileScreen() {
       setSaving(true);
 
       const updates = {
-  // Removed display_name - it's auto-generated from first_name + last_name
   first_name: firstName.trim() || null,
   last_name: lastName.trim() || null,
   bio: bio.trim() || null,
@@ -161,10 +162,9 @@ export default function ProfileScreen() {
       // Reload profile
       await loadProfile();
       setEditing(false);
-
       Alert.alert("Success", "Profile updated!");
     } catch (err: any) {
-      console.error("Save error:", err);
+      console.error("Failed to save profile:", err);
       Alert.alert("Error", "Failed to save profile");
     } finally {
       setSaving(false);
@@ -172,373 +172,548 @@ export default function ProfileScreen() {
   }
 
   async function signOut() {
-  let shouldSignOut = false;
-
-  // Different confirm dialogs for web vs native
-  if (Platform.OS === 'web') {
-    // Web: Use window.confirm
-    shouldSignOut = window.confirm("Are you sure you want to sign out?");
-  } else {
-    // Native: Use Alert.alert with Promise
-    shouldSignOut = await new Promise<boolean>((resolve) => {
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm("Are you sure you want to sign out?");
+      if (!confirmed) return;
+    } else {
       Alert.alert(
         "Sign Out",
         "Are you sure you want to sign out?",
         [
-          { 
-            text: "Cancel", 
-            style: "cancel", 
-            onPress: () => resolve(false) 
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Sign Out",
+            style: "destructive",
+            onPress: async () => {
+              await doSignOut();
+            },
           },
-          { 
-            text: "Sign Out", 
-            style: "destructive", 
-            onPress: () => resolve(true) 
-          },
-        ],
-        { cancelable: false }
+        ]
       );
-    });
+      return;
+    }
+    await doSignOut();
   }
 
-  if (shouldSignOut) {
+  async function doSignOut() {
     try {
-      // Clear event_id from AsyncStorage to prevent showing joined event modal on next login
       await AsyncStorage.removeItem("event_id");
-
       await supabase.auth.signOut();
       router.replace("/(auth)/signin");
     } catch (error) {
       console.error("Sign out error:", error);
-
-      if (Platform.OS === 'web') {
-        window.alert("Failed to sign out. Please try again.");
-      } else {
-        Alert.alert("Error", "Failed to sign out. Please try again.");
-      }
     }
   }
-}
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <ActivityIndicator size="large" color="#10b981" />
-          <Text style={{ color: "#9ca3af", marginTop: 12 }}>Loading profile...</Text>
-        </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
+        <LinearGradient
+          colors={[Colors.background.primary, Colors.background.secondary]}
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
+          <ActivityIndicator size="large" color={Colors.accent.purple.light} />
+          <Text style={{ color: Colors.text.muted, marginTop: Spacing.lg, fontSize: Typography.size.base }}>
+            Loading your profile...
+          </Text>
+        </LinearGradient>
       </SafeAreaView>
     );
   }
 
   if (!profile) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 24 }}>
-          <Text style={{ color: "#9ca3af", fontSize: 16, marginBottom: 16 }}>
-            Profile not found
+      <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
+        <LinearGradient
+          colors={[Colors.background.primary, Colors.background.secondary]}
+          style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: Spacing.xl }}
+        >
+          <Text style={{ color: Colors.text.primary, fontSize: Typography.size.xl, fontWeight: Typography.weight.bold }}>
+            Profile Not Found
           </Text>
           <Pressable
-            onPress={() => router.back()}
-            style={{ backgroundColor: "#10b981", paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8 }}
+            onPress={loadProfile}
+            style={{ marginTop: Spacing.lg }}
           >
-            <Text style={{ color: "#000", fontWeight: "700" }}>Go Back</Text>
+            <LinearGradient
+              colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{
+                paddingHorizontal: Spacing.xl,
+                paddingVertical: Spacing.md,
+                borderRadius: BorderRadius.xl,
+              }}
+            >
+              <Text style={{ color: Colors.text.primary, fontWeight: Typography.weight.bold }}>
+                Retry
+              </Text>
+            </LinearGradient>
           </Pressable>
-        </View>
+        </LinearGradient>
       </SafeAreaView>
     );
   }
 
-  const isArtist = profile.role === "artist";
+  const displayFullName = [profile.first_name, profile.last_name]
+    .filter(Boolean)
+    .join(" ") || "Anonymous";
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
-        {/* Header */}
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <Pressable onPress={() => router.back()} style={{ padding: 8 }}>
-            <Text style={{ color: "#22d3ee", fontSize: 18 }}>←</Text>
-          </Pressable>
-          <Text style={{ color: "#fff", fontSize: 20, fontWeight: "700" }}>Profile</Text>
-          <Pressable onPress={signOut} style={{ padding: 8 }}>
-            <Text style={{ color: "#ef4444", fontSize: 14, fontWeight: "600" }}>Sign Out</Text>
-          </Pressable>
-        </View>
-
-        {/* Profile Card */}
-        <View
-          style={{
-            backgroundColor: "#0b1920",
-            borderColor: "#1a2e3a",
-            borderWidth: 1,
-            padding: 20,
-            borderRadius: 14,
-            alignItems: "center",
-            gap: 16,
-          }}
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
+      <LinearGradient
+        colors={[Colors.background.primary, Colors.background.secondary]}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={{ padding: Spacing.lg, paddingBottom: Spacing['4xl'] }}
+          showsVerticalScrollIndicator={false}
         >
-          {/* Avatar */}
-          <View style={{ position: "relative" }}>
-            {profile.avatar_url ? (
-              <Image
-                source={{ uri: profile.avatar_url }}
-                style={{ width: 100, height: 100, borderRadius: 50 }}
-              />
-            ) : (
-              <View
-                style={{
-                  width: 100,
-                  height: 100,
-                  borderRadius: 50,
-                  backgroundColor: isArtist ? "#7c3aed" : "#10b981",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text style={{ fontSize: 40, color: "#fff" }}>
-                  {(displayName || firstName || "?")[0].toUpperCase()}
-                </Text>
-              </View>
-            )}
-            
-            {/* Artist Badge */}
-            {isArtist && (
-              <View
-                style={{
-                  position: "absolute",
-                  bottom: 0,
-                  right: 0,
-                  backgroundColor: "#7c3aed",
-                  borderRadius: 12,
-                  paddingHorizontal: 8,
-                  paddingVertical: 4,
-                  borderWidth: 2,
-                  borderColor: "#0b1920",
-                }}
-              >
-                <Text style={{ fontSize: 16 }}>✨</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Name */}
-          {!editing && (
-            <>
-              <Text style={{ color: "#e5e7eb", fontSize: 24, fontWeight: "700", textAlign: "center" }}>
-                {profile.display_name || 
-                 `${profile.first_name || ""} ${profile.last_name || ""}`.trim() ||
-                 "Anonymous User"}
-              </Text>
-
-              {isArtist && (
-                <View
-                  style={{
-                    backgroundColor: "#581c87",
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderRadius: 999,
-                  }}
-                >
-                  <Text style={{ color: "#e9d5ff", fontSize: 12, fontWeight: "700" }}>
-                    ✨ ARTIST
-                  </Text>
-                </View>
-              )}
-
-              {profile.email && (
-                <Text style={{ color: "#9ca3af", fontSize: 14 }}>
-                  {profile.email}
-                </Text>
-              )}
-
-              {profile.bio && (
-                <Text
-                  style={{
-                    color: "#d1d5db",
-                    fontSize: 14,
-                    textAlign: "center",
-                    marginTop: 8,
-                    lineHeight: 20,
-                  }}
-                >
-                  {profile.bio}
-                </Text>
-              )}
-
-              <Pressable
-                onPress={() => setEditing(true)}
-                style={{
-                  backgroundColor: "#0ea5e9",
-                  paddingVertical: 12,
-                  paddingHorizontal: 24,
-                  borderRadius: 999,
-                  marginTop: 8,
-                }}
-              >
-                <Text style={{ color: "#000", fontWeight: "700" }}>Edit Profile</Text>
-              </Pressable>
-            </>
-          )}
-        </View>
-
-        {/* Edit Form */}
-        {editing && (
-          <View
+          {/* Header Section with Avatar */}
+          <LinearGradient
+            colors={Gradients.glass.medium}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
             style={{
-              backgroundColor: "#0b1920",
-              borderColor: "#1a2e3a",
+              borderRadius: BorderRadius['2xl'],
               borderWidth: 1,
-              padding: 20,
-              borderRadius: 14,
-              gap: 16,
+              borderColor: Colors.border.glass,
+              padding: Spacing.xl,
+              marginBottom: Spacing.lg,
+              ...Shadows.lg,
             }}
           >
-            <Text style={{ color: "#e5e7eb", fontSize: 18, fontWeight: "700" }}>
-              Edit Profile
-            </Text>
-
-            {/* First Name */}
-            <View style={{ gap: 6 }}>
-              <Text style={{ color: "#9ca3af", fontSize: 12, fontWeight: "600" }}>
-                First Name
-              </Text>
-              <TextInput
-                value={firstName}
-                onChangeText={setFirstName}
-                placeholder="Your first name"
-                placeholderTextColor="#4b5563"
+            <View style={{ alignItems: "center" }}>
+              {/* Avatar with Gradient Border */}
+              <LinearGradient
+                colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={{
-                  backgroundColor: "#060f14",
-                  borderColor: "#1f2937",
-                  borderWidth: 1,
-                  borderRadius: 8,
-                  padding: 12,
-                  color: "#e5e7eb",
-                  fontSize: 14,
-                }}
-              />
-            </View>
-
-            {/* Last Name */}
-            <View style={{ gap: 6 }}>
-              <Text style={{ color: "#9ca3af", fontSize: 12, fontWeight: "600" }}>
-                Last Name
-              </Text>
-              <TextInput
-                value={lastName}
-                onChangeText={setLastName}
-                placeholder="Your last name"
-                placeholderTextColor="#4b5563"
-                style={{
-                  backgroundColor: "#060f14",
-                  borderColor: "#1f2937",
-                  borderWidth: 1,
-                  borderRadius: 8,
-                  padding: 12,
-                  color: "#e5e7eb",
-                  fontSize: 14,
-                }}
-              />
-            </View>
-
-            {/* Bio */}
-            <View style={{ gap: 6 }}>
-              <Text style={{ color: "#9ca3af", fontSize: 12, fontWeight: "600" }}>
-                Bio
-              </Text>
-              <TextInput
-                value={bio}
-                onChangeText={setBio}
-                placeholder="Tell us about yourself"
-                placeholderTextColor="#4b5563"
-                multiline
-                numberOfLines={4}
-                style={{
-                  backgroundColor: "#060f14",
-                  borderColor: "#1f2937",
-                  borderWidth: 1,
-                  borderRadius: 8,
-                  padding: 12,
-                  color: "#e5e7eb",
-                  fontSize: 14,
-                  height: 100,
-                  textAlignVertical: "top",
-                }}
-              />
-            </View>
-
-            {/* Buttons */}
-            <View style={{ flexDirection: "row", gap: 12, marginTop: 8 }}>
-              <Pressable
-                onPress={() => {
-                  setEditing(false);
-                  // Reset form
-                  setDisplayName(profile.display_name || "");
-                  setFirstName(profile.first_name || "");
-                  setLastName(profile.last_name || "");
-                  setBio(profile.bio || "");
-                }}
-                disabled={saving}
-                style={{
-                  flex: 1,
-                  backgroundColor: "#374151",
-                  paddingVertical: 12,
-                  borderRadius: 8,
-                  alignItems: "center",
+                  padding: 4,
+                  borderRadius: BorderRadius.full,
+                  marginBottom: Spacing.md,
                 }}
               >
-                <Text style={{ color: "#9ca3af", fontWeight: "700" }}>Cancel</Text>
-              </Pressable>
+                <View
+                  style={{
+                    width: 120,
+                    height: 120,
+                    borderRadius: BorderRadius.full,
+                    backgroundColor: Colors.background.primary,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden",
+                  }}
+                >
+                  {profile.avatar_url ? (
+                    <Image
+                      source={{ uri: profile.avatar_url }}
+                      style={{ width: "100%", height: "100%", borderRadius: BorderRadius.full }}
+                    />
+                  ) : (
+                    <Text style={{
+                      fontSize: Typography.size['5xl'],
+                      color: Colors.accent.purple.light,
+                      fontWeight: Typography.weight.bold,
+                    }}>
+                      {displayFullName.charAt(0).toUpperCase()}
+                    </Text>
+                  )}
+                </View>
+              </LinearGradient>
 
-              <Pressable
-                onPress={saveProfile}
-                disabled={saving}
-                style={{
-                  flex: 1,
-                  backgroundColor: saving ? "#065f46" : "#10b981",
-                  paddingVertical: 12,
-                  borderRadius: 8,
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ color: "#000", fontWeight: "700" }}>
-                  {saving ? "Saving..." : "Save"}
-                </Text>
-              </Pressable>
+              {/* Name */}
+              <Text style={{
+                color: Colors.text.primary,
+                fontSize: Typography.size['3xl'],
+                fontWeight: Typography.weight.bold,
+                marginBottom: Spacing.xs,
+                textAlign: "center",
+              }}>
+                {displayFullName}
+              </Text>
+
+              {/* Email */}
+              <Text style={{
+                color: Colors.text.muted,
+                fontSize: Typography.size.sm,
+                marginBottom: Spacing.md,
+              }}>
+                {profile.email}
+              </Text>
+
+              {/* Role Badge */}
+              {profile.role && profile.role !== "user" && (
+                <LinearGradient
+                  colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{
+                    paddingHorizontal: Spacing.md,
+                    paddingVertical: Spacing.xs,
+                    borderRadius: BorderRadius.full,
+                  }}
+                >
+                  <Text style={{
+                    color: Colors.text.primary,
+                    fontSize: Typography.size.xs,
+                    fontWeight: Typography.weight.bold,
+                    textTransform: "uppercase",
+                  }}>
+                    {profile.role}
+                  </Text>
+                </LinearGradient>
+              )}
             </View>
+          </LinearGradient>
+
+          {/* Stats Cards */}
+          <View style={{
+            flexDirection: "row",
+            gap: Spacing.md,
+            marginBottom: Spacing.lg,
+          }}>
+            {/* Events Joined */}
+            <LinearGradient
+              colors={Gradients.glass.light}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                flex: 1,
+                borderRadius: BorderRadius.xl,
+                borderWidth: 1,
+                borderColor: Colors.border.glass,
+                padding: Spacing.lg,
+                alignItems: "center",
+                ...Shadows.sm,
+              }}
+            >
+              <Text style={{
+                fontSize: Typography.size['4xl'],
+                fontWeight: Typography.weight.bold,
+                color: Colors.accent.purple.light,
+                marginBottom: Spacing.xs,
+              }}>
+                {profile.eventsJoined || 0}
+              </Text>
+              <Text style={{
+                fontSize: Typography.size.xs,
+                color: Colors.text.muted,
+                textAlign: "center",
+              }}>
+                Events Joined
+              </Text>
+            </LinearGradient>
+
+            {/* Total Energy */}
+            <LinearGradient
+              colors={Gradients.glass.light}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                flex: 1,
+                borderRadius: BorderRadius.xl,
+                borderWidth: 1,
+                borderColor: Colors.border.glass,
+                padding: Spacing.lg,
+                alignItems: "center",
+                ...Shadows.sm,
+              }}
+            >
+              <Text style={{
+                fontSize: Typography.size['4xl'],
+                fontWeight: Typography.weight.bold,
+                color: Colors.accent.pink.light,
+                marginBottom: Spacing.xs,
+              }}>
+                {normalizeScoreForDisplay(profile.totalEnergy || 0)}
+              </Text>
+              <Text style={{
+                fontSize: Typography.size.xs,
+                color: Colors.text.muted,
+                textAlign: "center",
+              }}>
+                Total Energy
+              </Text>
+            </LinearGradient>
           </View>
-        )}
 
-        {/* Stats Card (for future features) */}
-        <View
-          style={{
-            backgroundColor: "#0b1920",
-            borderColor: "#1a2e3a",
-            borderWidth: 1,
-            padding: 20,
-            borderRadius: 14,
-            gap: 12,
-          }}
-        >
-          <Text style={{ color: "#e5e7eb", fontSize: 16, fontWeight: "700" }}>
-            Stats
-          </Text>
-          <View style={{ flexDirection: "row", justifyContent: "space-around" }}>
-  <View style={{ alignItems: "center" }}>
-    <Text style={{ color: "#10b981", fontSize: 24, fontWeight: "700" }}>
-      {profile?.eventsJoined || 0}
-    </Text>
-    <Text style={{ color: "#9ca3af", fontSize: 12 }}>Events Joined</Text>
-  </View>
-  <View style={{ alignItems: "center" }}>
-    <Text style={{ color: "#22d3ee", fontSize: 24, fontWeight: "700" }}>
-      {normalizeScoreForDisplay(profile?.totalEnergy || 0)}
-    </Text>
-    <Text style={{ color: "#9ca3af", fontSize: 12 }}>Total Energy</Text>
-  </View>
-</View>
-        </View>
-      </ScrollView>
+          {/* Bio Section */}
+          {!editing && profile.bio && (
+            <LinearGradient
+              colors={Gradients.glass.light}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                borderRadius: BorderRadius.xl,
+                borderWidth: 1,
+                borderColor: Colors.border.glass,
+                padding: Spacing.lg,
+                marginBottom: Spacing.lg,
+                ...Shadows.sm,
+              }}
+            >
+              <Text style={{
+                color: Colors.text.muted,
+                fontSize: Typography.size.xs,
+                fontWeight: Typography.weight.semibold,
+                marginBottom: Spacing.sm,
+                textTransform: "uppercase",
+              }}>
+                About
+              </Text>
+              <Text style={{
+                color: Colors.text.secondary,
+                fontSize: Typography.size.base,
+                lineHeight: Typography.size.base * Typography.lineHeight.relaxed,
+              }}>
+                {profile.bio}
+              </Text>
+            </LinearGradient>
+          )}
+
+          {/* Edit Profile Form */}
+          {editing ? (
+            <LinearGradient
+              colors={Gradients.glass.medium}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                borderRadius: BorderRadius.xl,
+                borderWidth: 1,
+                borderColor: Colors.border.glass,
+                padding: Spacing.lg,
+                marginBottom: Spacing.lg,
+                ...Shadows.md,
+              }}
+            >
+              <Text style={{
+                color: Colors.text.primary,
+                fontSize: Typography.size.xl,
+                fontWeight: Typography.weight.bold,
+                marginBottom: Spacing.lg,
+              }}>
+                Edit Profile
+              </Text>
+
+              {/* First Name */}
+              <View style={{ marginBottom: Spacing.md }}>
+                <Text style={{
+                  color: Colors.text.muted,
+                  fontSize: Typography.size.xs,
+                  fontWeight: Typography.weight.semibold,
+                  marginBottom: Spacing.xs,
+                  textTransform: "uppercase",
+                }}>
+                  First Name
+                </Text>
+                <View style={{
+                  backgroundColor: Colors.background.card,
+                  borderColor: Colors.border.glass,
+                  borderWidth: 1,
+                  borderRadius: BorderRadius.lg,
+                  overflow: "hidden",
+                }}>
+                  <TextInput
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    placeholder="Your first name"
+                    placeholderTextColor={Colors.text.tertiary}
+                    style={{
+                      padding: Spacing.md,
+                      color: Colors.text.primary,
+                      fontSize: Typography.size.base,
+                    }}
+                  />
+                </View>
+              </View>
+
+              {/* Last Name */}
+              <View style={{ marginBottom: Spacing.md }}>
+                <Text style={{
+                  color: Colors.text.muted,
+                  fontSize: Typography.size.xs,
+                  fontWeight: Typography.weight.semibold,
+                  marginBottom: Spacing.xs,
+                  textTransform: "uppercase",
+                }}>
+                  Last Name
+                </Text>
+                <View style={{
+                  backgroundColor: Colors.background.card,
+                  borderColor: Colors.border.glass,
+                  borderWidth: 1,
+                  borderRadius: BorderRadius.lg,
+                  overflow: "hidden",
+                }}>
+                  <TextInput
+                    value={lastName}
+                    onChangeText={setLastName}
+                    placeholder="Your last name"
+                    placeholderTextColor={Colors.text.tertiary}
+                    style={{
+                      padding: Spacing.md,
+                      color: Colors.text.primary,
+                      fontSize: Typography.size.base,
+                    }}
+                  />
+                </View>
+              </View>
+
+              {/* Bio */}
+              <View style={{ marginBottom: Spacing.lg }}>
+                <Text style={{
+                  color: Colors.text.muted,
+                  fontSize: Typography.size.xs,
+                  fontWeight: Typography.weight.semibold,
+                  marginBottom: Spacing.xs,
+                  textTransform: "uppercase",
+                }}>
+                  Bio
+                </Text>
+                <View style={{
+                  backgroundColor: Colors.background.card,
+                  borderColor: Colors.border.glass,
+                  borderWidth: 1,
+                  borderRadius: BorderRadius.lg,
+                  overflow: "hidden",
+                }}>
+                  <TextInput
+                    value={bio}
+                    onChangeText={setBio}
+                    placeholder="Tell us about yourself..."
+                    placeholderTextColor={Colors.text.tertiary}
+                    multiline
+                    numberOfLines={4}
+                    style={{
+                      padding: Spacing.md,
+                      color: Colors.text.primary,
+                      fontSize: Typography.size.base,
+                      height: 100,
+                      textAlignVertical: "top",
+                    }}
+                  />
+                </View>
+              </View>
+
+              {/* Action Buttons */}
+              <View style={{ flexDirection: "row", gap: Spacing.md }}>
+                <Pressable
+                  onPress={() => {
+                    setEditing(false);
+                    setFirstName(profile.first_name || "");
+                    setLastName(profile.last_name || "");
+                    setBio(profile.bio || "");
+                  }}
+                  disabled={saving}
+                  style={{ flex: 1 }}
+                >
+                  <LinearGradient
+                    colors={Gradients.glass.dark}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{
+                      paddingVertical: Spacing.md,
+                      borderRadius: BorderRadius.lg,
+                      borderWidth: 1,
+                      borderColor: Colors.border.glass,
+                      alignItems: "center",
+                      opacity: saving ? 0.5 : 1,
+                    }}
+                  >
+                    <Text style={{
+                      color: Colors.text.secondary,
+                      fontWeight: Typography.weight.bold,
+                      fontSize: Typography.size.base,
+                    }}>
+                      Cancel
+                    </Text>
+                  </LinearGradient>
+                </Pressable>
+
+                <Pressable
+                  onPress={saveProfile}
+                  disabled={saving}
+                  style={{ flex: 1 }}
+                >
+                  <LinearGradient
+                    colors={saving
+                      ? [Colors.accent.purple.dark, Colors.accent.pink.dark]
+                      : [Colors.accent.purple.light, Colors.accent.pink.light]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{
+                      paddingVertical: Spacing.md,
+                      borderRadius: BorderRadius.lg,
+                      alignItems: "center",
+                      ...Shadows.md,
+                    }}
+                  >
+                    <Text style={{
+                      color: Colors.text.primary,
+                      fontWeight: Typography.weight.bold,
+                      fontSize: Typography.size.base,
+                    }}>
+                      {saving ? "Saving..." : "Save Changes"}
+                    </Text>
+                  </LinearGradient>
+                </Pressable>
+              </View>
+            </LinearGradient>
+          ) : (
+            /* Edit Profile Button */
+            <Pressable onPress={() => setEditing(true)} style={{ marginBottom: Spacing.lg }}>
+              <LinearGradient
+                colors={Gradients.glass.medium}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  paddingVertical: Spacing.lg,
+                  borderRadius: BorderRadius.xl,
+                  borderWidth: 1,
+                  borderColor: Colors.border.glass,
+                  alignItems: "center",
+                  ...Shadows.sm,
+                }}
+              >
+                <Text style={{
+                  color: Colors.accent.purple.light,
+                  fontWeight: Typography.weight.bold,
+                  fontSize: Typography.size.lg,
+                }}>
+                  ✏️ Edit Profile
+                </Text>
+              </LinearGradient>
+            </Pressable>
+          )}
+
+          {/* Sign Out Button */}
+          <Pressable onPress={signOut}>
+            <LinearGradient
+              colors={['rgba(239, 68, 68, 0.15)', 'rgba(220, 38, 38, 0.15)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                paddingVertical: Spacing.lg,
+                borderRadius: BorderRadius.xl,
+                borderWidth: 1,
+                borderColor: 'rgba(239, 68, 68, 0.3)',
+                alignItems: "center",
+                ...Shadows.sm,
+              }}
+            >
+              <Text style={{
+                color: Colors.status.error,
+                fontWeight: Typography.weight.bold,
+                fontSize: Typography.size.lg,
+              }}>
+                🚪 Sign Out
+              </Text>
+            </LinearGradient>
+          </Pressable>
+        </ScrollView>
+      </LinearGradient>
     </SafeAreaView>
   );
 }
