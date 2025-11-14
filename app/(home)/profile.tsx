@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase/client";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import {
   ActivityIndicator,
@@ -168,11 +169,14 @@ export default function ProfileScreen() {
 
   if (shouldSignOut) {
     try {
+      // Clear event_id from AsyncStorage to prevent showing joined event modal on next login
+      await AsyncStorage.removeItem("event_id");
+
       await supabase.auth.signOut();
       router.replace("/(auth)/signin");
     } catch (error) {
       console.error("Sign out error:", error);
-      
+
       if (Platform.OS === 'web') {
         window.alert("Failed to sign out. Please try again.");
       } else {

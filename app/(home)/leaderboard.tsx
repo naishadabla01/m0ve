@@ -1,378 +1,541 @@
-// app/(home)/leaderboard.tsx
-import { apiBase } from "@/lib/apiBase";
+// app/(home)/leaderboard.tsx - iOS 26 Themed Leaderboard
+import { supabase } from "@/lib/supabase/client";
+import { normalizeScoreForDisplay } from "@/lib/scoreUtils";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Pressable,
-    RefreshControl,
-    SafeAreaView,
-    ScrollView,
-    Text,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  SafeAreaView,
+  Text,
+  View,
+  Image,
+  Platform,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Colors, Gradients, BorderRadius, Spacing, Typography, Shadows } from "../../constants/Design";
 
 type LeaderboardEntry = {
-  rank: number;
   user_id: string;
-  display_name?: string;
-  name?: string;
+  name: string;
   score: number;
-  seconds?: number;
-  last_activity?: string;
-  last_seen?: string;
+  rank: number;
+  profile_picture_url?: string;
 };
 
-type LeaderboardData = {
+type EventInfo = {
   event_id: string;
-  event_name?: string;
-  event_title?: string;
-  short_code?: string;
-  entries: LeaderboardEntry[];
-  total_energy?: number;
+  name?: string;
+  title?: string;
+  artist_name?: string;
+  cover_image_url?: string;
 };
 
 export default function LeaderboardScreen() {
-  const { event_id } = useLocalSearchParams<{ event_id: string }>();
-  const [data, setData] = useState<LeaderboardData | null>(null);
+  const { event_id: eventIdParam } = useLocalSearchParams<{ event_id?: string }>();
+  const [eventId, setEventId] = useState<string | null>(null);
+  const [eventInfo, setEventInfo] = useState<EventInfo | null>(null);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserRank, setCurrentUserRank] = useState<number | null>(null);
+  const [currentUserScore, setCurrentUserScore] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  async function load() {
-    if (!event_id) return;
-    
-    setError(null);
-    
-    try {
-      const base = apiBase();
-      const url = `${base}/api/scores?event_id=${encodeURIComponent(event_id)}`;
-      console.log("🔍 Fetching leaderboard:", url);
-      
-      const res = await fetch(url);
-      const json = await res.json();
-      
-      console.log("📊 Leaderboard API response:", JSON.stringify(json, null, 2));
-      
-      if (!json?.ok) {
-        setError(json?.error || "Failed to load leaderboard");
-        setData(null);
+  // Get current user ID on mount
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setCurrentUserId(user.id);
+    })();
+  }, []);
+
+  // Resolve event_id
+  useEffect(() => {
+    let isMounted = true;
+
+    (async () => {
+      const fromParam = (eventIdParam || "").trim();
+      if (fromParam) {
+        if (isMounted) setEventId(fromParam);
+        try {
+          await AsyncStorage.setItem("event_id", fromParam);
+        } catch {}
         return;
       }
 
-      // ✅ FIXED: Handle both 'rows' and 'scores' response formats
-      const rawEntries = json.scores || json.rows || [];
-      
-      console.log(`📋 Found ${rawEntries.length} entries`);
+      try {
+        const saved = (await AsyncStorage.getItem("event_id")) || "";
+        if (isMounted) setEventId(saved || null);
+      } catch {
+        if (isMounted) setEventId(null);
+      }
+    })();
 
-      // ✅ FIXED: Map to consistent format, handling both field name variants
-      const entries: LeaderboardEntry[] = rawEntries.map((entry: any, idx: number) => {
-        const score = parseFloat(entry.score || entry.seconds || 0);
-        const displayName = 
-          entry.display_name || 
-          entry.name || 
-          `User ${entry.user_id?.slice(0, 6) || 'unknown'}`;
-        
-        console.log(`  ${idx + 1}. ${displayName}: ${score}`);
+    return () => {
+      isMounted = false;
+    };
+  }, [eventIdParam]);
 
-        return {
-          rank: idx + 1,
-          user_id: entry.user_id || "unknown",
-          display_name: displayName,
-          score: score,
-          last_activity: entry.last_activity || entry.last_seen || entry.updated_at,
-        };
-      });
+  // Fetch leaderboard data
+  const fetchLeaderboard = async (isRefresh = false) => {
+    if (!eventId) {
+      setLoading(false);
+      return;
+    }
 
-      // ✅ Get event name from response
-      const eventName = json.event_name || json.event_title || null;
-      console.log("🏷️  Event name:", eventName);
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
 
-      setData({
-        event_id: event_id,
-        event_name: eventName,
-        short_code: json.short_code,
-        entries,
-        total_energy: json.total_energy,
-      });
-    } catch (e) {
-      console.error("❌ Failed to load leaderboard:", e);
-      setError(e instanceof Error ? e.message : "Unknown error");
-      setData(null);
+    try {
+      // Get event info
+      const { data: event } = await supabase
+        .from("events")
+        .select("event_id, name, title, artist_name, cover_image_url")
+        .eq("event_id", eventId)
+        .maybeSingle();
+
+      if (event) {
+        setEventInfo(event);
+      }
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Get top 100 from leaderboard with proper join
+      const { data: topScores, error } = await supabase
+        .from("scores")
+        .select(`
+          user_id,
+          score,
+          profiles (
+            display_name,
+            first_name,
+            last_name,
+            avatar_url
+          )
+        `)
+        .eq("event_id", eventId)
+        .order("score", { ascending: false })
+        .limit(100);
+
+      console.log("Leaderboard query result:", { topScores, error, eventId });
+
+      if (topScores && topScores.length > 0) {
+        const formattedLeaderboard: LeaderboardEntry[] = topScores.map((entry, idx) => {
+          const profile = entry.profiles as any;
+          const displayName = profile?.display_name ||
+            [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
+            "Anonymous";
+
+          return {
+            user_id: entry.user_id,
+            name: displayName,
+            score: entry.score || 0,
+            rank: idx + 1,
+            profile_picture_url: profile?.avatar_url,
+          };
+        });
+
+        setLeaderboard(formattedLeaderboard);
+
+        // Find current user's rank and score
+        if (user) {
+          const userEntry = formattedLeaderboard.find(e => e.user_id === user.id);
+          if (userEntry) {
+            setCurrentUserRank(userEntry.rank);
+            setCurrentUserScore(userEntry.score);
+          } else {
+            // User not in top 100, get their actual rank
+            const { data: userScore } = await supabase
+              .from("scores")
+              .select("score")
+              .eq("event_id", eventId)
+              .eq("user_id", user.id)
+              .maybeSingle();
+
+            if (userScore) {
+              setCurrentUserScore(userScore.score || 0);
+
+              // Calculate rank
+              const { count } = await supabase
+                .from("scores")
+                .select("*", { count: "exact", head: true })
+                .eq("event_id", eventId)
+                .gt("score", userScore.score || 0);
+
+              setCurrentUserRank((count || 0) + 1);
+            }
+          }
+        }
+      } else {
+        setLeaderboard([]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch leaderboard:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }
-
-  useEffect(() => {
-    load();
-  }, [event_id]);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    load();
   };
 
-  if (!event_id) {
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [eventId]);
+
+  const getRankEmoji = (rank: number) => {
+    if (rank === 1) return "🥇";
+    if (rank === 2) return "🥈";
+    if (rank === 3) return "🥉";
+    return null;
+  };
+
+  const getRankColor = (rank: number) => {
+    if (rank === 1) return "#ffd700"; // Gold
+    if (rank === 2) return "#c0c0c0"; // Silver
+    if (rank === 3) return "#cd7f32"; // Bronze
+    return Colors.accent.purple.light;
+  };
+
+  const renderLeaderboardItem = ({ item, index }: { item: LeaderboardEntry; index: number }) => {
+    const isCurrentUser = currentUserId && item.user_id === currentUserId;
+    const isTop3 = item.rank <= 3;
+
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 24 }}>
-          <Text style={{ color: "#ef4444", fontSize: 16 }}>No event ID provided</Text>
-          <Pressable
-            onPress={() => router.back()}
-            style={{ marginTop: 16, paddingVertical: 12, paddingHorizontal: 20, backgroundColor: "#1f2937", borderRadius: 8 }}
-          >
-            <Text style={{ color: "#fff", fontWeight: "600" }}>Go Back</Text>
-          </Pressable>
+      <LinearGradient
+        colors={isCurrentUser
+          ? ['rgba(168, 85, 247, 0.15)', 'rgba(236, 72, 153, 0.15)']
+          : Gradients.glass.medium}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          padding: Spacing.lg,
+          borderRadius: BorderRadius.xl,
+          marginBottom: Spacing.sm,
+          borderWidth: isCurrentUser ? 2 : 1,
+          borderColor: isCurrentUser ? Colors.accent.purple.light : Colors.border.glass,
+          ...Shadows.sm,
+        }}
+      >
+        {/* Rank */}
+        <View style={{ width: 60, alignItems: "center" }}>
+          {getRankEmoji(item.rank) ? (
+            <View style={{ alignItems: "center" }}>
+              <Text style={{ fontSize: 32 }}>{getRankEmoji(item.rank)}</Text>
+            </View>
+          ) : (
+            <Text style={{
+              color: isCurrentUser ? Colors.accent.purple.light : Colors.text.muted,
+              fontSize: Typography.size.xl,
+              fontWeight: '700',
+            }}>
+              #{item.rank}
+            </Text>
+          )}
         </View>
+
+        {/* Profile Picture */}
+        {item.profile_picture_url ? (
+          <Image
+            source={{ uri: item.profile_picture_url }}
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: BorderRadius.full,
+              borderWidth: 2,
+              borderColor: isCurrentUser ? Colors.accent.purple.light : Colors.border.glass,
+              marginRight: Spacing.md,
+            }}
+          />
+        ) : (
+          <View
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: BorderRadius.full,
+              backgroundColor: isCurrentUser ? 'rgba(168, 85, 247, 0.2)' : Colors.background.elevated,
+              borderWidth: 2,
+              borderColor: isCurrentUser ? Colors.accent.purple.light : Colors.border.glass,
+              alignItems: "center",
+              justifyContent: "center",
+              marginRight: Spacing.md,
+            }}
+          >
+            <Text style={{ fontSize: 20 }}>👤</Text>
+          </View>
+        )}
+
+        {/* Name and Score */}
+        <View style={{ flex: 1 }}>
+          <Text style={{
+            color: isCurrentUser ? Colors.accent.purple.light : Colors.text.primary,
+            fontSize: Typography.size.base,
+            fontWeight: '700',
+          }}>
+            {item.name} {isCurrentUser && "⭐"}
+          </Text>
+          <Text style={{
+            color: Colors.text.muted,
+            fontSize: Typography.size.sm,
+            marginTop: 2,
+          }}>
+            {normalizeScoreForDisplay(item.score).toLocaleString()} energy
+          </Text>
+        </View>
+
+        {/* Badge for top 3 */}
+        {isTop3 && (
+          <View
+            style={{
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: BorderRadius.full,
+              backgroundColor: `${getRankColor(item.rank)}20`,
+              borderWidth: 1,
+              borderColor: `${getRankColor(item.rank)}40`,
+            }}
+          >
+            <Text style={{ color: getRankColor(item.rank), fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>
+              TOP {item.rank}
+            </Text>
+          </View>
+        )}
+      </LinearGradient>
+    );
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
+        <LinearGradient
+          colors={[Colors.background.primary, Colors.background.secondary]}
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
+          <ActivityIndicator size="large" color={Colors.accent.purple.light} />
+          <Text style={{ color: Colors.text.muted, marginTop: Spacing.md, fontSize: Typography.size.sm }}>
+            Loading leaderboard...
+          </Text>
+        </LinearGradient>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          borderBottomWidth: 1,
-          borderBottomColor: "#1f2937",
-        }}
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
+      <LinearGradient
+        colors={[Colors.background.primary, Colors.background.secondary]}
+        style={{ flex: 1 }}
       >
-        <Pressable
-          onPress={() => router.back()}
-          style={{ marginRight: 12, padding: 8 }}
-        >
-          <Text style={{ color: "#22d3ee", fontSize: 18 }}>←</Text>
-        </Pressable>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: "#fff", fontSize: 20, fontWeight: "700" }}>Leaderboard</Text>
-          {/* ✅ FIXED: Show event name instead of just code */}
-          {(data?.event_name || data?.short_code) && (
-            <Text style={{ color: "#9ca3af", fontSize: 12, marginTop: 2 }}>
-              {data.event_name || `Event ${data.short_code}`}
-            </Text>
-          )}
-        </View>
-        <Pressable
-          onPress={onRefresh}
-          disabled={refreshing}
-          style={{
-            paddingVertical: 6,
-            paddingHorizontal: 12,
-            backgroundColor: refreshing ? "#374151" : "#1f2937",
-            borderRadius: 8,
-          }}
-        >
-          <Text style={{ color: "#22d3ee", fontWeight: "600" }}>
-            {refreshing ? "..." : "Refresh"}
-          </Text>
-        </Pressable>
-      </View>
-
-      {/* Stats Card */}
-      {data?.total_energy !== undefined && (
+        {/* Header */}
         <View
           style={{
-            marginHorizontal: 16,
-            marginTop: 16,
-            padding: 16,
-            backgroundColor: "#0b1920",
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: "#1f2937",
+            paddingTop: Spacing.md,
+            paddingBottom: Spacing.lg,
+            paddingHorizontal: Spacing.lg,
+            borderBottomWidth: 1,
+            borderBottomColor: Colors.border.subtle,
+            marginBottom: Spacing.md,
+            backgroundColor: 'rgba(0, 0, 0, 0.3)',
           }}
         >
-          <Text style={{ color: "#9ca3af", fontSize: 12, marginBottom: 4 }}>Total Crowd Energy</Text>
-          <Text style={{ color: "#10b981", fontSize: 28, fontWeight: "700" }}>
-            {Math.round(data.total_energy || 0)}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
+            <Text style={{
+              color: Colors.text.primary,
+              fontSize: Typography.size['2xl'],
+              fontWeight: '600',
+              letterSpacing: 2,
+              fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
+            }}>
+              LEADERBOARD
+            </Text>
+            <Pressable onPress={() => router.back()} style={{ position: 'absolute', right: 0 }}>
+              {({ pressed }) => (
+                <LinearGradient
+                  colors={Gradients.glass.medium}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: BorderRadius.full,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    opacity: pressed ? 0.7 : 1,
+                    borderWidth: 1,
+                    borderColor: Colors.border.glass,
+                    ...Shadows.md,
+                  }}
+                >
+                  <Text style={{ fontSize: 20, color: Colors.text.muted }}>✕</Text>
+                </LinearGradient>
+              )}
+            </Pressable>
+          </View>
         </View>
-      )}
 
-      {/* Loading State */}
-      {loading && !data && (
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <ActivityIndicator size="large" color="#22d3ee" />
-          <Text style={{ color: "#9ca3af", marginTop: 12 }}>Loading leaderboard...</Text>
-        </View>
-      )}
-
-      {/* Error State */}
-      {error && !loading && (
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 24 }}>
-          <Text style={{ color: "#ef4444", fontSize: 16, marginBottom: 12 }}>
-            {error}
-          </Text>
-          <Pressable
-            onPress={load}
-            style={{
-              paddingVertical: 12,
-              paddingHorizontal: 20,
-              backgroundColor: "#1f2937",
-              borderRadius: 8,
-            }}
-          >
-            <Text style={{ color: "#22d3ee", fontWeight: "600" }}>Try Again</Text>
-          </Pressable>
-        </View>
-      )}
-
-      {/* Leaderboard Table */}
-      {!loading && !error && data && (
-        <ScrollView
-          contentContainerStyle={{ padding: 16 }}
+        <FlatList
+          data={leaderboard}
+          renderItem={renderLeaderboardItem}
+          keyExtractor={(item) => item.user_id}
+          contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingBottom: 100 }}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22d3ee" />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchLeaderboard(true)}
+              tintColor={Colors.accent.purple.light}
+            />
           }
-        >
-          {data.entries.length === 0 ? (
-            <View
-              style={{
-                padding: 32,
-                backgroundColor: "#0b1920",
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: "#1f2937",
-              }}
-            >
-              <Text style={{ color: "#9ca3af", textAlign: "center" }}>
-                No participants yet. Be the first to join!
-              </Text>
-            </View>
-          ) : (
-            <View
-              style={{
-                backgroundColor: "#0b1920",
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: "#1f2937",
-                overflow: "hidden",
-              }}
-            >
-              {/* Table Header */}
-              <View
-                style={{
-                  flexDirection: "row",
-                  paddingVertical: 12,
-                  paddingHorizontal: 14,
-                  backgroundColor: "#111827",
-                  borderBottomWidth: 1,
-                  borderBottomColor: "#1f2937",
-                }}
-              >
-                <Text style={{ color: "#9ca3af", fontSize: 12, fontWeight: "700", width: 40 }}>#</Text>
-                <Text style={{ color: "#9ca3af", fontSize: 12, fontWeight: "700", flex: 1 }}>User</Text>
-                <Text style={{ color: "#9ca3af", fontSize: 12, fontWeight: "700", width: 80, textAlign: "right" }}>
-                  Score
-                </Text>
-              </View>
-
-              {/* Table Rows */}
-              {data.entries.map((entry, idx) => {
-                const isTop3 = entry.rank <= 3;
-                const isFirst = entry.rank === 1;
-
-                return (
-                  <View
-                    key={entry.user_id}
-                    style={{
-                      flexDirection: "row",
-                      paddingVertical: 14,
-                      paddingHorizontal: 14,
-                      borderBottomWidth: idx < data.entries.length - 1 ? 1 : 0,
-                      borderBottomColor: "#1f2937",
-                      backgroundColor: isFirst ? "#064e3b" : isTop3 ? "#0b1920" : "transparent",
-                    }}
-                  >
-                    {/* Rank */}
-                    <View style={{ width: 40, justifyContent: "center" }}>
-                      {isFirst ? (
-                        <Text style={{ fontSize: 20 }}>🥇</Text>
-                      ) : entry.rank === 2 ? (
-                        <Text style={{ fontSize: 20 }}>🥈</Text>
-                      ) : entry.rank === 3 ? (
-                        <Text style={{ fontSize: 20 }}>🥉</Text>
-                      ) : (
-                        <Text style={{ color: "#9ca3af", fontSize: 14, fontWeight: "600" }}>
-                          {entry.rank}
-                        </Text>
-                      )}
-                    </View>
-
-                    {/* Display Name */}
-                    <View style={{ flex: 1, justifyContent: "center" }}>
-                      <Text
+          ListHeaderComponent={
+            <>
+              {/* Event Info */}
+              {eventInfo && (
+                <LinearGradient
+                  colors={Gradients.glass.medium}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{
+                    borderRadius: BorderRadius['2xl'],
+                    borderWidth: 1,
+                    borderColor: Colors.border.glass,
+                    padding: Spacing.lg,
+                    marginBottom: Spacing.lg,
+                    ...Shadows.md,
+                  }}
+                >
+                  <View style={{ flexDirection: "row", gap: Spacing.md, alignItems: "center" }}>
+                    {eventInfo.cover_image_url ? (
+                      <Image
+                        source={{ uri: eventInfo.cover_image_url }}
                         style={{
-                          color: isFirst ? "#10b981" : "#e5e7eb",
-                          fontSize: 14,
-                          fontWeight: isTop3 ? "700" : "400",
+                          width: 60,
+                          height: 60,
+                          borderRadius: BorderRadius.lg,
+                          borderWidth: 2,
+                          borderColor: Colors.border.glass,
                         }}
-                        numberOfLines={1}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <LinearGradient
+                        colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
+                        style={{
+                          width: 60,
+                          height: 60,
+                          borderRadius: BorderRadius.lg,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
                       >
-                        {entry.display_name}
+                        <Text style={{ fontSize: 28 }}>🎵</Text>
+                      </LinearGradient>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: Colors.text.primary, fontSize: Typography.size.lg, fontWeight: Typography.weight.bold }}>
+                        {eventInfo.name || eventInfo.title || "Event"}
                       </Text>
-                      {entry.last_activity && (
-                        <Text style={{ color: "#6b7280", fontSize: 11, marginTop: 2 }}>
-                          {timeAgo(entry.last_activity)}
+                      {eventInfo.artist_name && (
+                        <Text style={{ color: Colors.text.muted, fontSize: Typography.size.sm, marginTop: 2 }}>
+                          by {eventInfo.artist_name}
                         </Text>
                       )}
                     </View>
+                  </View>
+                </LinearGradient>
+              )}
 
-                    {/* Score */}
-                    <View style={{ width: 80, justifyContent: "center", alignItems: "flex-end" }}>
-                      <Text
-                        style={{
-                          color: isFirst ? "#10b981" : "#e5e7eb",
-                          fontSize: isTop3 ? 16 : 14,
-                          fontWeight: isTop3 ? "700" : "600",
-                        }}
-                      >
-                        {entry.score.toFixed(0)}
+              {/* Current User Stats */}
+              {currentUserRank && (
+                <LinearGradient
+                  colors={['rgba(168, 85, 247, 0.2)', 'rgba(236, 72, 153, 0.2)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{
+                    borderRadius: BorderRadius.xl,
+                    borderWidth: 2,
+                    borderColor: Colors.accent.purple.light,
+                    padding: Spacing.lg,
+                    marginBottom: Spacing.lg,
+                    ...Shadows.lg,
+                  }}
+                >
+                  <Text style={{ color: Colors.text.muted, fontSize: Typography.size.xs, marginBottom: Spacing.xs, textAlign: "center", fontWeight: '600', letterSpacing: 1 }}>
+                    YOUR RANK
+                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: Spacing.md }}>
+                    <Text style={{ fontSize: 48 }}>{getRankEmoji(currentUserRank) || "🏅"}</Text>
+                    <View>
+                      <Text style={{ color: Colors.accent.purple.light, fontSize: Typography.size['3xl'], fontWeight: '700' }}>
+                        #{currentUserRank}
+                      </Text>
+                      <Text style={{ color: Colors.text.muted, fontSize: Typography.size.sm }}>
+                        {normalizeScoreForDisplay(currentUserScore).toLocaleString()} energy
                       </Text>
                     </View>
                   </View>
-                );
-              })}
-            </View>
-          )}
+                </LinearGradient>
+              )}
 
-          {/* Join Button at Bottom */}
-          <Pressable
-            onPress={() => {
-              router.push({ pathname: "/move", params: { event_id } });
-            }}
-            style={({ pressed }) => ({
-              marginTop: 20,
-              paddingVertical: 16,
-              backgroundColor: pressed ? "#0d9488" : "#10b981",
-              borderRadius: 12,
-              alignItems: "center",
-            })}
-          >
-            <Text style={{ color: "#000", fontSize: 16, fontWeight: "700" }}>
-              Join & Start Moving
-            </Text>
-          </Pressable>
-        </ScrollView>
-      )}
+              {/* Leaderboard Title - Centered in 3D iOS 26 Card */}
+              <LinearGradient
+                colors={Gradients.glass.dark}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  borderRadius: BorderRadius.xl,
+                  borderWidth: 1,
+                  borderColor: Colors.border.glass,
+                  padding: Spacing.lg,
+                  marginBottom: Spacing.md,
+                  ...Shadows.lg,
+                }}
+              >
+                <Text style={{
+                  color: Colors.text.primary,
+                  fontSize: Typography.size.lg,
+                  fontWeight: '600',
+                  textAlign: "center",
+                  letterSpacing: 1,
+                }}>
+                  Top Performers
+                </Text>
+                <Text style={{
+                  color: Colors.text.muted,
+                  fontSize: Typography.size.xs,
+                  textAlign: "center",
+                  marginTop: Spacing.xs,
+                }}>
+                  {leaderboard.length} dancers competing
+                </Text>
+              </LinearGradient>
+            </>
+          }
+          ListEmptyComponent={
+            <LinearGradient
+              colors={Gradients.glass.light}
+              style={{
+                borderRadius: BorderRadius.xl,
+                padding: Spacing['2xl'],
+                alignItems: "center",
+                borderWidth: 1,
+                borderColor: Colors.border.glass,
+              }}
+            >
+              <Text style={{ fontSize: 48, marginBottom: Spacing.md }}>🎵</Text>
+              <Text style={{ color: Colors.text.muted, fontSize: Typography.size.base, textAlign: "center" }}>
+                No one's moving yet!{'\n'}Be the first to start dancing 💃
+              </Text>
+            </LinearGradient>
+          }
+        />
+      </LinearGradient>
     </SafeAreaView>
   );
-}
-
-function timeAgo(iso: string) {
-  const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 5_000) return "just now";
-  const s = Math.floor(ms / 1000);
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  return `${d}d ago`;
 }

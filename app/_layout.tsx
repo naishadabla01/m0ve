@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import { Stack, router, useSegments } from "expo-router";
 import React, { useEffect, useState } from "react";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
@@ -42,19 +43,21 @@ export default function RootLayout() {
   }, [session, segments, isReady]);
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: "#0a0a0a" },
-        animation: "fade",
-      }}
-    >
-      <Stack.Screen name="index" options={{ headerShown: false, animation: "fade" }} />
-      <Stack.Screen name="welcome" options={{ headerShown: false, animation: "slide_from_right" }} />
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen name="(home)" options={{ headerShown: false }} />
-      <Stack.Screen name="move" options={{ headerShown: false }} />
-      <Stack.Screen name="scan" options={{ headerShown: false }} />
-    </Stack>
+    <SafeAreaProvider>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: "#0a0a0a" },
+          animation: "fade",
+        }}
+      >
+        <Stack.Screen name="index" options={{ headerShown: false, animation: "fade" }} />
+        <Stack.Screen name="welcome" options={{ headerShown: false, animation: "slide_from_right" }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(home)" options={{ headerShown: false }} />
+        <Stack.Screen name="move" options={{ headerShown: false }} />
+        <Stack.Screen name="scan" options={{ headerShown: false }} />
+      </Stack>
+    </SafeAreaProvider>
   );
 }
