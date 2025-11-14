@@ -3,8 +3,30 @@
 -- Run these queries in Supabase SQL Editor
 -- =====================================================
 
+-- STEP 1: Clean up orphaned data before adding foreign keys
+-- Remove scores for users that don't exist in profiles
+DELETE FROM scores
+WHERE user_id NOT IN (SELECT user_id FROM profiles);
+
+-- Remove scores for events that don't exist
+DELETE FROM scores
+WHERE event_id NOT IN (SELECT event_id FROM events);
+
+-- Remove event_participants for users that don't exist
+DELETE FROM event_participants
+WHERE user_id NOT IN (SELECT user_id FROM profiles);
+
+-- Remove event_participants for events that don't exist
+DELETE FROM event_participants
+WHERE event_id NOT IN (SELECT event_id FROM events);
+
+-- STEP 2: Add foreign keys (now that data is clean)
+
 -- 1. Add foreign key from scores to profiles
 -- This allows proper joins and ensures data integrity
+ALTER TABLE scores
+DROP CONSTRAINT IF EXISTS fk_scores_user_id;
+
 ALTER TABLE scores
 ADD CONSTRAINT fk_scores_user_id
 FOREIGN KEY (user_id)
@@ -14,6 +36,9 @@ ON DELETE CASCADE;
 -- 2. Add foreign key from scores to events
 -- Ensures scores are linked to valid events
 ALTER TABLE scores
+DROP CONSTRAINT IF EXISTS fk_scores_event_id;
+
+ALTER TABLE scores
 ADD CONSTRAINT fk_scores_event_id
 FOREIGN KEY (event_id)
 REFERENCES events(event_id)
@@ -21,12 +46,18 @@ ON DELETE CASCADE;
 
 -- 3. Add foreign key from event_participants to profiles
 ALTER TABLE event_participants
+DROP CONSTRAINT IF EXISTS fk_event_participants_user_id;
+
+ALTER TABLE event_participants
 ADD CONSTRAINT fk_event_participants_user_id
 FOREIGN KEY (user_id)
 REFERENCES profiles(user_id)
 ON DELETE CASCADE;
 
 -- 4. Add foreign key from event_participants to events
+ALTER TABLE event_participants
+DROP CONSTRAINT IF EXISTS fk_event_participants_event_id;
+
 ALTER TABLE event_participants
 ADD CONSTRAINT fk_event_participants_event_id
 FOREIGN KEY (event_id)
