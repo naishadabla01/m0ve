@@ -5,7 +5,6 @@ import React, { useEffect, useState, useRef } from "react";
 import {
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   Text,
   View,
@@ -14,8 +13,8 @@ import {
   TextInput,
   Animated,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import MaskedView from "@react-native-masked-view/masked-view";
 import { Colors, Gradients, BorderRadius, Spacing, Typography, Shadows } from "../../constants/Design";
 
 const { width } = Dimensions.get("window");
@@ -136,7 +135,7 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }} edges={['top', 'left', 'right']}>
       {/* Animated Background Blobs */}
       <View pointerEvents="none" style={{ position: "absolute", inset: 0 }}>
         <View
@@ -205,45 +204,56 @@ export default function HomeScreen() {
             </LinearGradient>
           </View>
 
-          {/* Main logo with flowing gradient inside text */}
-          <MaskedView
-            maskElement={
+          {/* Main logo with flowing gradient background */}
+          <Animated.View
+            style={{
+              borderRadius: BorderRadius.xl,
+              overflow: 'hidden',
+              ...Shadows.lg,
+            }}
+          >
+            <LinearGradient
+              colors={[
+                Colors.accent.purple.DEFAULT,
+                Colors.accent.pink.light,
+                Colors.accent.purple.light,
+                Colors.accent.pink.DEFAULT,
+              ]}
+              start={{
+                x: logoGradientAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 1],
+                }),
+                y: 0
+              }}
+              end={{
+                x: logoGradientAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [1, 0],
+                }),
+                y: 1
+              }}
+              style={{
+                paddingHorizontal: Spacing.xl,
+                paddingVertical: Spacing.md,
+              }}
+            >
               <Text
                 style={{
+                  color: Colors.text.primary,
                   fontSize: Typography.size['5xl'],
                   fontWeight: Typography.weight.extrabold,
                   letterSpacing: 3,
                   textAlign: "center",
+                  textShadowColor: 'rgba(0, 0, 0, 0.3)',
+                  textShadowOffset: { width: 0, height: 2 },
+                  textShadowRadius: 4,
                 }}
               >
                 m0ve
               </Text>
-            }
-          >
-            <Animated.View>
-              <LinearGradient
-                colors={[
-                  Colors.accent.purple.DEFAULT,
-                  Colors.accent.pink.light,
-                  Colors.accent.purple.light,
-                  Colors.accent.pink.DEFAULT,
-                  Colors.accent.purple.DEFAULT,
-                ]}
-                start={{ x: logoGradientAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 1],
-                }), y: 0 }}
-                end={{ x: logoGradientAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [1, 0],
-                }), y: 1 }}
-                style={{
-                  height: Typography.size['5xl'] + 10,
-                  width: 200,
-                }}
-              />
-            </Animated.View>
-          </MaskedView>
+            </LinearGradient>
+          </Animated.View>
         </View>
 
         {/* Welcome Message */}
