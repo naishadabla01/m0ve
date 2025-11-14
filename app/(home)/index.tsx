@@ -2,6 +2,7 @@
 import { supabase } from "@/lib/supabase/client";
 import { router } from "expo-router";
 import React, { useEffect, useState, useRef } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Platform,
   Pressable,
@@ -73,6 +74,50 @@ export default function HomeScreen() {
       if (!session) router.replace("/(auth)/signin");
     });
     return () => sub.subscription.unsubscribe();
+  }, []);
+
+  // Load joined event from AsyncStorage
+  useEffect(() => {
+    let isMounted = true;
+
+    (async () => {
+      try {
+        const savedEventId = await AsyncStorage.getItem("event_id");
+        if (!savedEventId || !isMounted) return;
+
+        // Fetch event details
+        const { data: event } = await supabase
+          .from("events")
+          .select("event_id, artist_id, name, title, short_code, location, cover_image_url, start_at, end_at, ended_at, status")
+          .eq("event_id", savedEventId)
+          .maybeSingle();
+
+        if (!event || !isMounted) {
+          // Event not found, clear storage
+          await AsyncStorage.removeItem("event_id");
+          return;
+        }
+
+        // Check if event has ended
+        if (event.status === 'ended' || event.ended_at) {
+          // Event ended, clear storage
+          await AsyncStorage.removeItem("event_id");
+          setActiveEvent(null);
+          return;
+        }
+
+        // Event is still valid, set as active
+        if (isMounted) {
+          setActiveEvent(event);
+        }
+      } catch (error) {
+        console.error("Error loading joined event:", error);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Load user data and events
@@ -267,61 +312,63 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        {/* Join an Event Button - Redesigned */}
-        <Pressable onPress={() => setShowJoinModal(true)}>
-          {({ pressed }) => (
-            <LinearGradient
-              colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={{
-                paddingVertical: Spacing.xl,
-                paddingHorizontal: Spacing.lg,
-                borderRadius: BorderRadius['2xl'],
-                opacity: pressed ? 0.85 : 1,
-                ...Shadows.xl,
-                transform: [{ scale: pressed ? 0.98 : 1 }],
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: Spacing.md }}>
-                <View
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: BorderRadius.full,
-                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Text style={{ fontSize: 24 }}>✨</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text
+        {/* Join an Event Button - Redesigned (Hidden if already in an event) */}
+        {!activeEvent && (
+          <Pressable onPress={() => setShowJoinModal(true)}>
+            {({ pressed }) => (
+              <LinearGradient
+                colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{
+                  paddingVertical: Spacing.xl,
+                  paddingHorizontal: Spacing.lg,
+                  borderRadius: BorderRadius['2xl'],
+                  opacity: pressed ? 0.85 : 1,
+                  ...Shadows.xl,
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: Spacing.md }}>
+                  <View
                     style={{
-                      color: Colors.text.primary,
-                      fontWeight: Typography.weight.bold,
-                      fontSize: Typography.size.xl,
-                      letterSpacing: 0.5,
+                      width: 48,
+                      height: 48,
+                      borderRadius: BorderRadius.full,
+                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
                   >
-                    Enter the Experience
-                  </Text>
-                  <Text
-                    style={{
-                      color: 'rgba(255, 255, 255, 0.8)',
-                      fontSize: Typography.size.xs,
-                      marginTop: 2,
-                    }}
-                  >
-                    Scan QR or enter code
-                  </Text>
+                    <Text style={{ fontSize: 24 }}>✨</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        color: Colors.text.primary,
+                        fontWeight: Typography.weight.bold,
+                        fontSize: Typography.size.xl,
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      Enter the Experience
+                    </Text>
+                    <Text
+                      style={{
+                        color: 'rgba(255, 255, 255, 0.8)',
+                        fontSize: Typography.size.xs,
+                        marginTop: 2,
+                      }}
+                    >
+                      Scan QR or enter code
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 20, color: Colors.text.primary }}>→</Text>
                 </View>
-                <Text style={{ fontSize: 20, color: Colors.text.primary }}>→</Text>
-              </View>
-            </LinearGradient>
-          )}
-        </Pressable>
+              </LinearGradient>
+            )}
+          </Pressable>
+        )}
 
         {/* Active Event Modal - Conditional */}
         {activeEvent && (
@@ -331,25 +378,35 @@ export default function HomeScreen() {
             end={{ x: 1, y: 1 }}
             style={{
               borderRadius: BorderRadius['2xl'],
-              borderWidth: 1,
-              borderColor: Colors.border.glass,
+              borderWidth: 2,
+              borderColor: Colors.accent.purple.light,
               padding: Spacing.xl,
               ...Shadows.xl,
             }}
           >
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: Spacing.md }}>
               <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    color: Colors.accent.purple.light,
-                    fontSize: Typography.size.xs,
-                    fontWeight: Typography.weight.bold,
-                    letterSpacing: 1.5,
-                    marginBottom: Spacing.xs,
-                  }}
-                >
-                  ACTIVE EVENT
-                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs, marginBottom: Spacing.xs }}>
+                  <View
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: BorderRadius.full,
+                      backgroundColor: Colors.status.live,
+                      ...Shadows.md,
+                    }}
+                  />
+                  <Text
+                    style={{
+                      color: Colors.accent.purple.light,
+                      fontSize: Typography.size.xs,
+                      fontWeight: Typography.weight.bold,
+                      letterSpacing: 1.5,
+                    }}
+                  >
+                    JOINED EVENT
+                  </Text>
+                </View>
                 <Text
                   style={{
                     color: Colors.text.primary,
@@ -366,42 +423,86 @@ export default function HomeScreen() {
                     marginTop: Spacing.xs,
                   }}
                 >
-                  {activeEvent.location || 'Location TBA'}
+                  📍 {activeEvent.location || 'Location TBA'}
                 </Text>
               </View>
-              <View
-                style={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: BorderRadius.full,
-                  backgroundColor: Colors.status.live,
-                  ...Shadows.md,
-                }}
-              />
             </View>
 
-            <LinearGradient
-              colors={[Gradients.purplePink.start, Gradients.purplePink.end] as const}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={{
-                paddingVertical: Spacing.md,
-                borderRadius: BorderRadius.lg,
-                alignItems: "center",
-                marginTop: Spacing.md,
-                ...Shadows.md,
-              }}
-            >
-              <Text
+            {/* Event Cover Image */}
+            {activeEvent.cover_image_url && (
+              <Image
+                source={{ uri: activeEvent.cover_image_url }}
                 style={{
-                  color: Colors.text.primary,
-                  fontWeight: Typography.weight.bold,
-                  fontSize: Typography.size.base,
+                  width: '100%',
+                  height: 120,
+                  borderRadius: BorderRadius.lg,
+                  marginBottom: Spacing.md,
+                }}
+                resizeMode="cover"
+              />
+            )}
+
+            {/* Action Buttons */}
+            <View style={{ gap: Spacing.sm }}>
+              {/* Start Moving Button */}
+              <Pressable onPress={() => router.push(`/move?event_id=${activeEvent.event_id}`)}>
+                {({ pressed }) => (
+                  <LinearGradient
+                    colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{
+                      paddingVertical: Spacing.md,
+                      borderRadius: BorderRadius.lg,
+                      alignItems: "center",
+                      opacity: pressed ? 0.8 : 1,
+                      ...Shadows.md,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: Colors.text.primary,
+                        fontWeight: Typography.weight.bold,
+                        fontSize: Typography.size.base,
+                      }}
+                    >
+                      ⚡ Start Moving
+                    </Text>
+                  </LinearGradient>
+                )}
+              </Pressable>
+
+              {/* Exit Event Button */}
+              <Pressable
+                onPress={async () => {
+                  await AsyncStorage.removeItem("event_id");
+                  setActiveEvent(null);
                 }}
               >
-                View Details
-              </Text>
-            </LinearGradient>
+                {({ pressed }) => (
+                  <View
+                    style={{
+                      paddingVertical: Spacing.sm,
+                      borderRadius: BorderRadius.lg,
+                      alignItems: "center",
+                      borderWidth: 1,
+                      borderColor: Colors.border.glass,
+                      opacity: pressed ? 0.7 : 1,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: Colors.text.muted,
+                        fontWeight: Typography.weight.semibold,
+                        fontSize: Typography.size.sm,
+                      }}
+                    >
+                      Exit Event
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            </View>
           </LinearGradient>
         )}
 
@@ -480,6 +581,8 @@ export default function HomeScreen() {
         eventCode={eventCode}
         setEventCode={setEventCode}
         liveEvents={ongoingEvents.filter(e => e.status === 'live')}
+        activeEvent={activeEvent}
+        setActiveEvent={setActiveEvent}
       />
       {/* Event Details Modal */}
       {selectedEventForDetails && (
@@ -740,6 +843,8 @@ function JoinEventModal({
   eventCode,
   setEventCode,
   liveEvents,
+  activeEvent,
+  setActiveEvent,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -748,11 +853,19 @@ function JoinEventModal({
   eventCode: string;
   setEventCode: (code: string) => void;
   liveEvents: Event[];
+  activeEvent: Event | null;
+  setActiveEvent: (event: Event | null) => void;
 }) {
   const [isJoining, setIsJoining] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
 
   const handleJoinWithCode = async () => {
+    // Check if user is already in an event
+    if (activeEvent) {
+      setErrorMessage(`You're already in "${activeEvent.title || activeEvent.name}". Exit that event first to join a new one.`);
+      return;
+    }
+
     const code = eventCode.trim().toUpperCase();
     if (!code) {
       setErrorMessage("Please enter an event code");
@@ -766,7 +879,7 @@ function JoinEventModal({
       // Look up event by short_code
       const { data: events, error } = await supabase
         .from("events")
-        .select("event_id, name, title, short_code, status")
+        .select("event_id, artist_id, name, title, short_code, location, cover_image_url, start_at, end_at, ended_at, status")
         .eq("short_code", code)
         .limit(1);
 
@@ -784,6 +897,19 @@ function JoinEventModal({
       }
 
       const event = events[0];
+
+      // Check if event has ended
+      if (event.status === 'ended' || event.ended_at) {
+        setErrorMessage("This event has already ended");
+        setIsJoining(false);
+        return;
+      }
+
+      // Save event_id to AsyncStorage
+      await AsyncStorage.setItem("event_id", event.event_id);
+
+      // Set as active event
+      setActiveEvent(event);
 
       // Navigate to movement tracker with event_id
       onClose();
@@ -1009,7 +1135,13 @@ function JoinEventModal({
                   contentContainerStyle={{ gap: Spacing.md }}
                 >
                   {liveEvents.map((event) => (
-                    <LiveEventCard key={event.event_id} event={event} onJoin={onClose} />
+                    <LiveEventCard
+                      key={event.event_id}
+                      event={event}
+                      onJoin={onClose}
+                      activeEvent={activeEvent}
+                      setActiveEvent={setActiveEvent}
+                    />
                   ))}
                 </ScrollView>
               ) : (
@@ -1035,12 +1167,34 @@ function JoinEventModal({
 }
 
 // Live Event Card (Spotify-style for modal)
-function LiveEventCard({ event, onJoin }: { event: Event; onJoin: () => void }) {
+function LiveEventCard({
+  event,
+  onJoin,
+  activeEvent,
+  setActiveEvent,
+}: {
+  event: Event;
+  onJoin: () => void;
+  activeEvent: Event | null;
+  setActiveEvent: (event: Event | null) => void;
+}) {
   const cardWidth = 160;
 
   return (
     <Pressable
-      onPress={() => {
+      onPress={async () => {
+        // Check if user is already in a different event
+        if (activeEvent && activeEvent.event_id !== event.event_id) {
+          // Could show an alert here, but for now just prevent action
+          return;
+        }
+
+        // Save event_id to AsyncStorage
+        await AsyncStorage.setItem("event_id", event.event_id);
+
+        // Set as active event
+        setActiveEvent(event);
+
         // Navigate to movement tracker for this live event
         onJoin();
         router.push(`/move?event_id=${event.event_id}`);
