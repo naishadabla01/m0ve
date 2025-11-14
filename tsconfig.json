@@ -2,11 +2,13 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
       "@components/*": ["components/*"],
-      "@hooks/*": ["hooks/*"],          // <-- add
+      "@hooks/*": ["hooks/*"],
       "@sb/*": ["supabase/*"],
       "@constants/*": ["constants/*"],
       "@assets/*": ["assets/*"],
