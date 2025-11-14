@@ -101,20 +101,6 @@ export default function HomeLayout() {
           ),
         }}
       />
-
-      {/* Hidden screens that don't appear in tabs */}
-      <Tabs.Screen
-        name="events"
-        options={{
-          href: null, // Hide from tab bar
-        }}
-      />
-      <Tabs.Screen
-        name="leaderboard"
-        options={{
-          href: null, // Hide from tab bar
-        }}
-      />
     </Tabs>
   );
 }
