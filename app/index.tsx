@@ -9,15 +9,17 @@ import {
   Text,
   View,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Colors, Gradients, BorderRadius, Spacing, Typography, Shadows } from "../constants/Design";
 
 const EVENT_REF = "c24f989e-3551-49d2-97c0-75bd54e7ac25"; // keep if you use later
 
 export default function Home() {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
       <StatusBar barStyle="light-content" />
 
-      {/* Background drops */}
+      {/* iOS 26 Background Blobs - Purple/Pink */}
       <View pointerEvents="none" style={{ position: "absolute", inset: 0 }}>
         <View
           style={{
@@ -26,8 +28,8 @@ export default function Home() {
             right: -40,
             width: 220,
             height: 220,
-            borderRadius: 9999,
-            backgroundColor: "#10b981", // emerald
+            borderRadius: BorderRadius.full,
+            backgroundColor: Colors.accent.purple.light,
             opacity: 0.15,
             filter: Platform.OS === "web" ? "blur(60px)" : undefined,
           }}
@@ -39,8 +41,8 @@ export default function Home() {
             left: -60,
             width: 260,
             height: 260,
-            borderRadius: 9999,
-            backgroundColor: "#22d3ee", // cyan
+            borderRadius: BorderRadius.full,
+            backgroundColor: Colors.accent.pink.light,
             opacity: 0.10,
             filter: Platform.OS === "web" ? "blur(70px)" : undefined,
           }}
@@ -50,38 +52,40 @@ export default function Home() {
       {/* Header */}
       <View
         style={{
-          paddingHorizontal: 24,
-          paddingTop: 12,
-          paddingBottom: 8,
-          borderBottomColor: "#1f2937",
+          paddingHorizontal: Spacing['2xl'],
+          paddingTop: Spacing.md,
+          paddingBottom: Spacing.sm,
+          borderBottomColor: Colors.border.glass,
           borderBottomWidth: 1,
         }}
       >
         <Text
           accessibilityRole="header"
-          style={{ color: "#a3a3a3", fontSize: 12, letterSpacing: 1.1 }}
+          style={{ color: Colors.text.muted, fontSize: Typography.size.xs, letterSpacing: 1.1 }}
         >
           WELCOME TO
         </Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          {/* Simple text logo */}
-          <View
+        <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
+          {/* Logo with purple/pink gradient */}
+          <LinearGradient
+            colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
             style={{
               width: 28,
               height: 28,
-              borderRadius: 6,
-              backgroundColor: "#10b981",
+              borderRadius: BorderRadius.sm,
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <Text style={{ color: "#0a0a0a", fontWeight: "700" }}>M</Text>
-          </View>
+            <Text style={{ color: Colors.text.primary, fontWeight: Typography.weight.bold }}>M</Text>
+          </LinearGradient>
           <Text
             style={{
-              color: "#fff",
-              fontSize: 28,
-              fontWeight: "700",
+              color: Colors.text.primary,
+              fontSize: Typography.size['3xl'],
+              fontWeight: Typography.weight.bold,
               letterSpacing: 0.5,
             }}
           >
@@ -94,16 +98,16 @@ export default function Home() {
       <View
         style={{
           flex: 1,
-          paddingHorizontal: 24,
-          paddingTop: 36,
+          paddingHorizontal: Spacing['2xl'],
+          paddingTop: Spacing['4xl'],
           justifyContent: "center",
-          gap: 22,
+          gap: Spacing['2xl'],
         }}
       >
         <Text
           style={{
-            color: "#d4d4d4",
-            fontSize: 18,
+            color: Colors.text.secondary,
+            fontSize: Typography.size.lg,
             lineHeight: 26,
             textAlign: "center",
           }}
@@ -111,7 +115,7 @@ export default function Home() {
           Track movement. Power the crowd. Compete on live leaderboards.
         </Text>
 
-        <View style={{ gap: 12 }}>
+        <View style={{ gap: Spacing.md }}>
           <PrimaryButton
             title="Sign in"
             onPress={() => router.push("/(auth)/signin")}
@@ -126,17 +130,17 @@ export default function Home() {
       {/* Footer */}
       <View
         style={{
-          paddingHorizontal: 24,
-          paddingVertical: 16,
-          borderTopColor: "#1f2937",
+          paddingHorizontal: Spacing['2xl'],
+          paddingVertical: Spacing.lg,
+          borderTopColor: Colors.border.glass,
           borderTopWidth: 1,
           opacity: 0.85,
         }}
       >
         <Text
           style={{
-            color: "#9ca3af",
-            fontSize: 12,
+            color: Colors.text.muted,
+            fontSize: Typography.size.xs,
             textAlign: "center",
           }}
         >
@@ -147,7 +151,7 @@ export default function Home() {
   );
 }
 
-/** Buttons (keeps your navigation flow exactly the same) */
+/** iOS 26 Gradient Buttons */
 
 function PrimaryButton({
   title,
@@ -157,23 +161,31 @@ function PrimaryButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({
-        backgroundColor: pressed ? "#0ea371" : "#10b981",
-        paddingVertical: 14,
-        borderRadius: 14,
-        alignItems: "center",
-        shadowColor: "#10b981",
-        shadowOpacity: 0.25,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 6 },
-        elevation: 2,
-      })}
-    >
-      <Text style={{ color: "#051b13", fontWeight: "700", fontSize: 16 }}>
-        {title}
-      </Text>
+    <Pressable onPress={onPress}>
+      {({ pressed }) => (
+        <LinearGradient
+          colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{
+            paddingVertical: Spacing.lg,
+            borderRadius: BorderRadius.lg,
+            alignItems: "center",
+            opacity: pressed ? 0.9 : 1,
+            ...Shadows.lg,
+          }}
+        >
+          <Text
+            style={{
+              color: Colors.text.primary,
+              fontWeight: Typography.weight.bold,
+              fontSize: Typography.size.base
+            }}
+          >
+            {title}
+          </Text>
+        </LinearGradient>
+      )}
     </Pressable>
   );
 }
@@ -186,20 +198,32 @@ function SecondaryButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({
-        backgroundColor: pressed ? "#111827" : "transparent",
-        paddingVertical: 14,
-        borderRadius: 14,
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: "#1f2937",
-      })}
-    >
-      <Text style={{ color: "#e5e7eb", fontWeight: "600", fontSize: 16 }}>
-        {title}
-      </Text>
+    <Pressable onPress={onPress}>
+      {({ pressed }) => (
+        <LinearGradient
+          colors={Gradients.glass.light}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            paddingVertical: Spacing.lg,
+            borderRadius: BorderRadius.lg,
+            alignItems: "center",
+            borderWidth: 1,
+            borderColor: Colors.border.glass,
+            opacity: pressed ? 0.8 : 1,
+          }}
+        >
+          <Text
+            style={{
+              color: Colors.text.secondary,
+              fontWeight: Typography.weight.semibold,
+              fontSize: Typography.size.base
+            }}
+          >
+            {title}
+          </Text>
+        </LinearGradient>
+      )}
     </Pressable>
   );
 }
