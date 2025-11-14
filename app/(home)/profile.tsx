@@ -1,5 +1,6 @@
 // app/(home)/profile.tsx
 import { supabase } from "@/lib/supabase/client";
+import { normalizeScoreForDisplay } from "@/lib/scoreUtils";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Platform } from "react-native";
@@ -59,16 +60,50 @@ export default function ProfileScreen() {
         return;
       }
 
-      // Load profile
+      // Load profile - use maybeSingle() to handle new users without profiles
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("user_id", userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error("Profile load error:", error);
         throw error;
+      }
+
+      // If profile doesn't exist, create a basic one for the user
+      if (!data) {
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: newProfile, error: createError } = await supabase
+          .from("profiles")
+          .insert({
+            user_id: userId,
+            email: user?.email,
+            display_name: user?.user_metadata?.display_name || null,
+            first_name: user?.user_metadata?.first_name || null,
+            last_name: user?.user_metadata?.last_name || null,
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error("Failed to create profile:", createError);
+          throw createError;
+        }
+
+        // Use the newly created profile
+        setProfile({
+          ...newProfile,
+          eventsJoined: 0,
+          totalEnergy: 0,
+        });
+        setDisplayName(newProfile.display_name || "");
+        setFirstName(newProfile.first_name || "");
+        setLastName(newProfile.last_name || "");
+        setBio(newProfile.bio || "");
+        setLoading(false);
+        return;
       }
       
       const { count: eventsJoined } = await supabase
@@ -83,11 +118,10 @@ export default function ProfileScreen() {
 
         const totalEnergy = scoresData?.reduce((sum, row) => sum + (row.score || 0), 0) || 0;
 
-
       setProfile({
       ...data,
-      eventsJoined: eventsJoined || 0,      // ← ADD THIS
-      totalEnergy: Math.round(totalEnergy),  // ← ADD THIS
+      eventsJoined: eventsJoined || 0,
+      totalEnergy: Math.round(totalEnergy),  // Store raw score for internal use
     });
       
       // Initialize edit form
@@ -498,7 +532,7 @@ export default function ProfileScreen() {
   </View>
   <View style={{ alignItems: "center" }}>
     <Text style={{ color: "#22d3ee", fontSize: 24, fontWeight: "700" }}>
-      {profile?.totalEnergy || 0}
+      {normalizeScoreForDisplay(profile?.totalEnergy || 0)}
     </Text>
     <Text style={{ color: "#9ca3af", fontSize: 12 }}>Total Energy</Text>
   </View>
