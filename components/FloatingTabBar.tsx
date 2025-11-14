@@ -51,10 +51,10 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
   const rightTabSpacing = (rightSectionWidth - TAB_WIDTH * 2) / 3;
 
   // Fine-tune offsets based on visual alignment (from user feedback - round 3)
-  const OFFSET_HOME = 10;          // +4px more (was 6, now 10)
-  const OFFSET_NOTIFICATIONS = 2;  // +2px more (was 0, now 2)
-  const OFFSET_SEARCH = -6;        // -2px more (was -4, now -6)
-  const OFFSET_PROFILE = -10;      // -4px more (was -6, now -10)
+  const OFFSET_HOME = 12;          // +4px more (was 6, now 10)
+  const OFFSET_NOTIFICATIONS = 5;  // +2px more (was 0, now 2)
+  const OFFSET_SEARCH = -7.5;        // -2px more (was -4, now -6)
+  const OFFSET_PROFILE = -14;      // -4px more (was -6, now -10)
 
   const tabPositions = [
     leftTabSpacing + OFFSET_HOME, // Home - adjusted right
