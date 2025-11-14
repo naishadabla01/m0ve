@@ -4,7 +4,7 @@ import { View, Pressable, Animated, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, BorderRadius, Shadows } from "../constants/Design";
-import { eventEmitter } from "../lib/events";
+import { eventEmitter } from "../src/lib/events";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
 export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
