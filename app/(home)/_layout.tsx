@@ -72,13 +72,6 @@ export default function HomeLayout() {
           ),
         }}
       />
-      {/* Hide leaderboard from tabs */}
-      <Tabs.Screen
-        name="leaderboard"
-        options={{
-          href: null,
-        }}
-      />
     </Tabs>
   );
 }

@@ -20,6 +20,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { Colors, Gradients, BorderRadius, Spacing, Typography, Shadows } from "../../constants/Design";
 
 const { width } = Dimensions.get("window");
@@ -321,13 +322,13 @@ export default function HomeScreen() {
                     style={{
                       width: 48,
                       height: 48,
-                      borderRadius: BorderRadius.full,
+                      borderRadius: BorderRadius.lg,
                       backgroundColor: 'rgba(255, 255, 255, 0.2)',
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <Text style={{ fontSize: 24 }}>✨</Text>
+                    <Ionicons name="qr-code-outline" size={28} color={Colors.text.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text
