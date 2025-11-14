@@ -918,34 +918,121 @@ export default function MoveScreen() {
             )}
           </Pressable>
 
-          {/* Tips Card */}
-          <LinearGradient
-            colors={['rgba(168, 85, 247, 0.1)', 'rgba(236, 72, 153, 0.1)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={{
-              padding: Spacing.lg,
-              borderRadius: BorderRadius.xl,
-              borderLeftWidth: 3,
-              borderLeftColor: Colors.accent.purple.light,
-              marginBottom: Spacing.xl,
-            }}
-          >
-            <View style={{ flexDirection: "row", gap: Spacing.md, alignItems: "flex-start" }}>
-              <Text style={{ fontSize: 24 }}>💡</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: Colors.text.primary, fontSize: Typography.size.base, fontWeight: Typography.weight.semibold, marginBottom: Spacing.xs }}>
-                  Pro Tips
-                </Text>
-                <Text style={{ color: Colors.text.muted, fontSize: Typography.size.sm, lineHeight: 20 }}>
-                  • Keep your phone in hand while moving{'\n'}
-                  • Dance, jump, or run for maximum energy{'\n'}
-                  • The more you move, the higher you climb{'\n'}
-                  • Stay safe and have fun!
-                </Text>
+          {/* Movement Guide Cards */}
+          <View style={{ gap: Spacing.md, marginBottom: Spacing.xl }}>
+            <Text style={{ color: Colors.text.primary, fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, marginBottom: Spacing.xs }}>
+              💡 How to Move
+            </Text>
+
+            {/* Phone in Hand Guide */}
+            <LinearGradient
+              colors={Gradients.glass.medium}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                borderRadius: BorderRadius.xl,
+                borderWidth: 1,
+                borderColor: Colors.border.glass,
+                padding: Spacing.lg,
+                ...Shadows.sm,
+              }}
+            >
+              <View style={{ flexDirection: "row", gap: Spacing.lg, alignItems: "center" }}>
+                {/* Visual Guide - Phone in Hand */}
+                <View style={{ alignItems: "center", gap: Spacing.xs }}>
+                  <View style={{
+                    width: 70,
+                    height: 70,
+                    borderRadius: BorderRadius.lg,
+                    backgroundColor: 'rgba(168, 85, 247, 0.2)',
+                    borderWidth: 2,
+                    borderColor: Colors.accent.purple.light,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}>
+                    <Text style={{ fontSize: 36 }}>✋</Text>
+                    <Text style={{ fontSize: 20, position: 'absolute', bottom: 8, right: 8 }}>📱</Text>
+                  </View>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: Spacing.xs }}>
+                    <Text style={{ fontSize: 12 }}>⬆️</Text>
+                    <Text style={{ fontSize: 12 }}>⬇️</Text>
+                    <Text style={{ fontSize: 12 }}>↔️</Text>
+                  </View>
+                </View>
+
+                {/* Description */}
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: Colors.accent.purple.light, fontSize: Typography.size.base, fontWeight: Typography.weight.bold, marginBottom: Spacing.xs }}>
+                    Phone in Hand
+                  </Text>
+                  <Text style={{ color: Colors.text.muted, fontSize: Typography.size.sm, lineHeight: 18 }}>
+                    Hold your phone firmly and move in any direction - dance, jump, shake! More movement = more energy ⚡
+                  </Text>
+                </View>
               </View>
+            </LinearGradient>
+
+            {/* Phone in Pocket Guide */}
+            <LinearGradient
+              colors={Gradients.glass.medium}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                borderRadius: BorderRadius.xl,
+                borderWidth: 1,
+                borderColor: Colors.border.glass,
+                padding: Spacing.lg,
+                ...Shadows.sm,
+              }}
+            >
+              <View style={{ flexDirection: "row", gap: Spacing.lg, alignItems: "center" }}>
+                {/* Visual Guide - Phone in Pocket */}
+                <View style={{ alignItems: "center", gap: Spacing.xs }}>
+                  <View style={{
+                    width: 70,
+                    height: 70,
+                    borderRadius: BorderRadius.lg,
+                    backgroundColor: 'rgba(236, 72, 153, 0.2)',
+                    borderWidth: 2,
+                    borderColor: Colors.accent.pink.light,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}>
+                    <Text style={{ fontSize: 36 }}>👖</Text>
+                    <Text style={{ fontSize: 16, position: 'absolute', top: 18, right: 12 }}>📱</Text>
+                  </View>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: Spacing.xs }}>
+                    <Text style={{ fontSize: 14 }}>🏃</Text>
+                    <Text style={{ fontSize: 14 }}>💃</Text>
+                    <Text style={{ fontSize: 14 }}>🕺</Text>
+                  </View>
+                </View>
+
+                {/* Description */}
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: Colors.accent.pink.light, fontSize: Typography.size.base, fontWeight: Typography.weight.bold, marginBottom: Spacing.xs }}>
+                    Phone in Pocket
+                  </Text>
+                  <Text style={{ color: Colors.text.muted, fontSize: Typography.size.sm, lineHeight: 18 }}>
+                    Secure your phone in your pocket and move freely - run, dance, or groove to the beat! 🎵
+                  </Text>
+                </View>
+              </View>
+            </LinearGradient>
+
+            {/* Safety Tip */}
+            <View style={{
+              flexDirection: "row",
+              gap: Spacing.sm,
+              alignItems: "center",
+              paddingVertical: Spacing.sm,
+            }}>
+              <Text style={{ fontSize: 16 }}>💡</Text>
+              <Text style={{ color: Colors.text.muted, fontSize: Typography.size.xs, flex: 1 }}>
+                Tip: The more intense your movement, the faster you earn energy points!
+              </Text>
             </View>
-          </LinearGradient>
+          </View>
           </View>
         </ScrollView>
       </LinearGradient>
