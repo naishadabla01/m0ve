@@ -114,7 +114,9 @@ export default function LeaderboardScreen() {
           user_id,
           score,
           profiles (
-            name,
+            display_name,
+            first_name,
+            last_name,
             profile_picture_url
           )
         `)
@@ -125,13 +127,20 @@ export default function LeaderboardScreen() {
       console.log("Leaderboard query result:", { topScores, error, eventId });
 
       if (topScores && topScores.length > 0) {
-        const formattedLeaderboard: LeaderboardEntry[] = topScores.map((entry, idx) => ({
-          user_id: entry.user_id,
-          name: (entry.profiles as any)?.name || "Anonymous",
-          score: entry.score || 0,
-          rank: idx + 1,
-          profile_picture_url: (entry.profiles as any)?.profile_picture_url,
-        }));
+        const formattedLeaderboard: LeaderboardEntry[] = topScores.map((entry, idx) => {
+          const profile = entry.profiles as any;
+          const displayName = profile?.display_name ||
+            [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
+            "Anonymous";
+
+          return {
+            user_id: entry.user_id,
+            name: displayName,
+            score: entry.score || 0,
+            rank: idx + 1,
+            profile_picture_url: profile?.profile_picture_url,
+          };
+        });
 
         setLeaderboard(formattedLeaderboard);
 

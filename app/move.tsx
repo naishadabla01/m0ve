@@ -771,9 +771,6 @@ export default function MoveScreen() {
                 fontSize: Typography.size.base,
                 fontWeight: Typography.weight.bold,
                 textAlign: "center",
-                textShadowColor: Colors.accent.purple.light,
-                textShadowOffset: { width: 0, height: 0 },
-                textShadowRadius: 6,
               }}
             >
               {getMotivationalText()}

@@ -252,9 +252,6 @@ export default function HomeScreen() {
               letterSpacing: 4,
               textAlign: "center",
               color: Colors.text.primary,
-              textShadowColor: Colors.accent.purple.light,
-              textShadowOffset: { width: 0, height: 0 },
-              textShadowRadius: 20,
             }}
           >
             m0ve
