@@ -518,39 +518,28 @@ export default function MoveScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xl }} showsVerticalScrollIndicator={false}>
-          {/* Header with Glassmorphism */}
-          <LinearGradient
-            colors={Gradients.glass.medium}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+          {/* Header Rectangle */}
+          <View
             style={{
-              marginHorizontal: -Spacing.lg,
-              marginTop: -Spacing.lg,
+              paddingTop: Spacing.md,
+              paddingBottom: Spacing.lg,
               paddingHorizontal: Spacing.lg,
-              paddingVertical: Spacing.lg,
-              marginBottom: Spacing.lg,
               borderBottomWidth: 1,
-              borderBottomColor: Colors.border.glass,
-              ...Shadows.lg,
+              borderBottomColor: Colors.border.subtle,
+              marginBottom: Spacing.lg,
+              backgroundColor: 'rgba(0, 0, 0, 0.3)',
             }}
           >
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-              <View style={{ flex: 1, alignItems: "center" }}>
-                <LinearGradient
-                  colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={{
-                    paddingHorizontal: Spacing.lg,
-                    paddingVertical: Spacing.sm,
-                    borderRadius: BorderRadius.full,
-                  }}
-                >
-                  <Text style={{ color: Colors.text.primary, fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, letterSpacing: 1 }}>
-                    MOVEMENT
-                  </Text>
-                </LinearGradient>
-              </View>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
+              <Text style={{
+                color: Colors.text.primary,
+                fontSize: Typography.size['2xl'],
+                fontWeight: '300',
+                letterSpacing: 2,
+                fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-light',
+              }}>
+                Movement
+              </Text>
               <Pressable onPress={() => router.back()} style={{ position: 'absolute', right: 0 }}>
                 {({ pressed }) => (
                   <LinearGradient
@@ -574,7 +563,7 @@ export default function MoveScreen() {
                 )}
               </Pressable>
             </View>
-          </LinearGradient>
+          </View>
 
           <View style={{ paddingHorizontal: Spacing.lg }}>
 
