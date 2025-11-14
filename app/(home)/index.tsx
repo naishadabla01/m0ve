@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Text as SvgText } from "react-native-svg";
 import { Colors, Gradients, BorderRadius, Spacing, Typography, Shadows } from "../../constants/Design";
 
 const { width } = Dimensions.get("window");
@@ -27,6 +28,7 @@ interface Event {
   short_code?: string | null;
   venue?: string | null;
   location?: string | null;
+  cover_image_url?: string | null;
   start_at: string | null;
   end_at: string | null;
   ended_at: string | null;
@@ -106,7 +108,7 @@ export default function HomeScreen() {
       // Load events from database (created by artists via move-dashboard-deploy)
       const { data: events, error: eventsError } = await supabase
         .from("events")
-        .select("event_id, artist_id, name, title, short_code, start_at, end_at, ended_at, status")
+        .select("event_id, artist_id, name, title, short_code, venue, location, cover_image_url, start_at, end_at, ended_at, status")
         .order("start_at", { ascending: false })
         .limit(20);
 
@@ -194,75 +196,30 @@ export default function HomeScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* App Logo - Top Center */}
-        <View style={{ alignItems: "center", marginBottom: Spacing.lg }}>
-          {/* Small "m" logo above */}
-          <View style={{ marginBottom: Spacing.xs }}>
-            <LinearGradient
-              colors={[Colors.accent.purple.light, Colors.accent.pink.light] as const}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: BorderRadius.md,
-                alignItems: "center",
-                justifyContent: "center",
-                ...Shadows.md,
-              }}
+        {/* App Logo - Top Center with SVG Gradient Text */}
+        <Animated.View style={{ alignItems: "center", marginBottom: Spacing.lg, transform: [{ scale: logoPulseAnim }] }}>
+          <Svg height="80" width="200">
+            <Defs>
+              <SvgLinearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor={Colors.accent.purple.light} stopOpacity="1" />
+                <Stop offset="33%" stopColor={Colors.accent.pink.light} stopOpacity="1" />
+                <Stop offset="66%" stopColor={Colors.accent.purple.DEFAULT} stopOpacity="1" />
+                <Stop offset="100%" stopColor={Colors.accent.pink.DEFAULT} stopOpacity="1" />
+              </SvgLinearGradient>
+            </Defs>
+            <SvgText
+              fill="url(#logoGradient)"
+              fontSize="56"
+              fontWeight="900"
+              x="100"
+              y="60"
+              textAnchor="middle"
+              letterSpacing="2"
             >
-              <Text
-                style={{
-                  color: Colors.text.primary,
-                  fontSize: 18,
-                  fontWeight: Typography.weight.extrabold,
-                }}
-              >
-                m
-              </Text>
-            </LinearGradient>
-          </View>
-
-          {/* Main logo with flowing gradient background */}
-          <Animated.View
-            style={{
-              borderRadius: BorderRadius.xl,
-              overflow: 'hidden',
-              transform: [{ scale: logoPulseAnim }],
-              ...Shadows.lg,
-            }}
-          >
-            <LinearGradient
-              colors={[
-                Colors.accent.purple.DEFAULT,
-                Colors.accent.pink.light,
-                Colors.accent.purple.light,
-                Colors.accent.pink.DEFAULT,
-              ] as const}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{
-                paddingHorizontal: Spacing.xl,
-                paddingVertical: Spacing.md,
-              }}
-            >
-              <Text
-                style={{
-                  color: Colors.text.primary,
-                  fontSize: Typography.size['5xl'],
-                  fontWeight: Typography.weight.extrabold,
-                  letterSpacing: 3,
-                  textAlign: "center",
-                  textShadowColor: 'rgba(0, 0, 0, 0.3)',
-                  textShadowOffset: { width: 0, height: 2 },
-                  textShadowRadius: 4,
-                }}
-              >
-                m0ve
-              </Text>
-            </LinearGradient>
-          </Animated.View>
-        </View>
+              m0ve
+            </SvgText>
+          </Svg>
+        </Animated.View>
 
         {/* Welcome Message */}
         <View>
