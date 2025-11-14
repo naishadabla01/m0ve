@@ -512,61 +512,6 @@ export default function HomeScreen() {
         <PastEventsComponent events={pastEvents} onShowDetails={setSelectedEventForDetails} />
       </ScrollView>
 
-      {/* Floating QR Scan Button */}
-      {/* Floating QR Scan Button - Modern & Visible */}
-      <Pressable
-        onPress={() => router.push("/scan")}
-        style={{
-          position: "absolute",
-          bottom: 100,
-          right: Spacing.xl,
-          ...Shadows.xl,
-        }}
-      >
-        {({ pressed }) => (
-          <LinearGradient
-            colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: BorderRadius.full,
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: pressed ? 0.9 : 1,
-              transform: [{ scale: pressed ? 0.95 : 1 }],
-            }}
-          >
-            <View
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: BorderRadius.full,
-                backgroundColor: Colors.background.primary,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <LinearGradient
-                colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: BorderRadius.full,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text style={{ fontSize: 32 }}>⊞</Text>
-              </LinearGradient>
-            </View>
-          </LinearGradient>
-        )}
-      </Pressable>
-
       {/* Join Event Modal */}
       <JoinEventModal
         visible={showJoinModal}

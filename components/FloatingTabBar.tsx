@@ -32,7 +32,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
   const TAB_HEIGHT = 48;
   const BAR_HEIGHT = 64; // Taller (was 54)
   const BAR_PADDING = 20; // More padding for narrower appearance
-  const QR_BUTTON_SIZE = 68;
+  const QR_BUTTON_SIZE = 72; // Increased from 68
   const QR_SPACING = 12; // Space for QR button
 
   // Calculate total bar width (much narrower - double narrow)
@@ -50,11 +50,17 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
   const rightSectionWidth = leftSectionWidth;
   const rightTabSpacing = (rightSectionWidth - TAB_WIDTH * 2) / 3;
 
+  // Fine-tune offsets based on visual alignment (from user feedback)
+  const OFFSET_HOME = 4;           // Shift right
+  const OFFSET_NOTIFICATIONS = 2;  // Shift slightly right
+  const OFFSET_SEARCH = -2;        // Shift slightly left
+  const OFFSET_PROFILE = -4;       // Shift left
+
   const tabPositions = [
-    leftTabSpacing, // Home - left margin in left section
-    leftTabSpacing + TAB_WIDTH + leftTabSpacing, // Notifications - right side of left section
-    rightSectionStart + rightTabSpacing, // Search - left side of right section
-    rightSectionStart + rightTabSpacing + TAB_WIDTH + rightTabSpacing, // Profile - right side of right section
+    leftTabSpacing + OFFSET_HOME, // Home - adjusted right
+    leftTabSpacing + TAB_WIDTH + leftTabSpacing + OFFSET_NOTIFICATIONS, // Notifications - adjusted right
+    rightSectionStart + rightTabSpacing + OFFSET_SEARCH, // Search - adjusted left
+    rightSectionStart + rightTabSpacing + TAB_WIDTH + rightTabSpacing + OFFSET_PROFILE, // Profile - adjusted left
   ];
 
   // Get animated indicator position
