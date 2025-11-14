@@ -197,60 +197,22 @@ export default function HomeScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* App Logo - Gradient Text with Overlay */}
+        {/* App Logo - Clean and Simple */}
         <Animated.View style={{ alignItems: "center", marginBottom: Spacing.lg, transform: [{ scale: logoPulseAnim }] }}>
-          <View style={{ position: 'relative' }}>
-            <LinearGradient
-              colors={[Colors.accent.purple.light, Colors.accent.pink.light, Colors.accent.purple.DEFAULT, Colors.accent.pink.DEFAULT] as const}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                borderRadius: BorderRadius.md,
-              }}
-            />
-            <Text
-              style={{
-                color: 'transparent',
-                fontSize: 56,
-                fontWeight: '900',
-                letterSpacing: 2,
-                textAlign: "center",
-                paddingHorizontal: 8,
-              }}
-            >
-              m0ve
-            </Text>
-            <LinearGradient
-              colors={[Colors.accent.purple.light, Colors.accent.pink.light, Colors.accent.purple.DEFAULT, Colors.accent.pink.DEFAULT] as const}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 56,
-                  fontWeight: '900',
-                  letterSpacing: 2,
-                  textAlign: "center",
-                  color: 'white',
-                  paddingHorizontal: 8,
-                }}
-              >
-                m0ve
-              </Text>
-            </LinearGradient>
-          </View>
+          <Text
+            style={{
+              fontSize: 64,
+              fontWeight: '900',
+              letterSpacing: 4,
+              textAlign: "center",
+              color: Colors.text.primary,
+              textShadowColor: Colors.accent.purple.light,
+              textShadowOffset: { width: 0, height: 0 },
+              textShadowRadius: 20,
+            }}
+          >
+            m0ve
+          </Text>
         </Animated.View>
 
         {/* Welcome Message */}
@@ -404,25 +366,25 @@ export default function HomeScreen() {
           width: 64,
           height: 64,
           borderRadius: BorderRadius.full,
-          ...Shadows.xl,
+          ...Shadows.md,
         }}
       >
         {({ pressed }) => (
-          <LinearGradient
-            colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+          <View
             style={{
               width: "100%",
               height: "100%",
               borderRadius: BorderRadius.full,
+              backgroundColor: 'rgba(168, 85, 247, 0.2)',
+              borderWidth: 1,
+              borderColor: Colors.accent.purple.light,
               alignItems: "center",
               justifyContent: "center",
-              opacity: pressed ? 0.9 : 1,
+              opacity: pressed ? 0.8 : 1,
             }}
           >
-            <Text style={{ fontSize: 32 }}>📷</Text>
-          </LinearGradient>
+            <Text style={{ fontSize: 28 }}>⊞</Text>
+          </View>
         )}
       </Pressable>
 
@@ -737,14 +699,12 @@ function JoinEventModal({
           style={{ width: "90%", maxWidth: 500 }}
           onPress={(e) => e.stopPropagation()}
         >
-          <LinearGradient
-            colors={Gradients.glass.medium}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+          <View
             style={{
+              backgroundColor: Colors.background.primary,
               borderRadius: BorderRadius['2xl'],
               borderWidth: 1,
-              borderColor: Colors.border.glass,
+              borderColor: Colors.border.strong,
               padding: Spacing.xl,
               ...Shadows.xl,
             }}
@@ -916,7 +876,7 @@ function JoinEventModal({
                 </View>
               )}
             </View>
-          </LinearGradient>
+          </View>
         </Pressable>
       </Pressable>
     </Modal>
@@ -1062,32 +1022,26 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
         // Fetch top 10 scores for this event
         const { data: scores, error: scoresError } = await supabase
           .from("scores")
-          .select("user_id, total_energy, is_live")
+          .select(`
+            user_id,
+            score,
+            is_live,
+            profiles!inner(display_name, first_name, last_name)
+          `)
           .eq("event_id", event.event_id)
-          .order("total_energy", { ascending: false })
+          .order("score", { ascending: false })
           .limit(10);
 
         if (scoresError) {
           console.error("Failed to load scores:", scoresError);
         } else if (isMounted && scores && scores.length > 0) {
-          // Fetch profiles for these users
-          const userIds = scores.map(s => s.user_id);
-          const { data: profiles, error: profilesError } = await supabase
-            .from("profiles")
-            .select("user_id, display_name, first_name, last_name")
-            .in("user_id", userIds);
-
-          if (profilesError) {
-            console.error("Failed to load profiles:", profilesError);
-          }
-
-          // Merge scores with profiles
-          const leaderboardData = scores.map(score => {
-            const profile = profiles?.find(p => p.user_id === score.user_id);
+          // Map scores with profile data
+          const leaderboardData = scores.map(entry => {
+            const profile = entry.profiles;
             return {
-              user_id: score.user_id,
-              total_energy: score.total_energy,
-              is_live: score.is_live,
+              user_id: entry.user_id,
+              score: entry.score,
+              is_live: entry.is_live,
               display_name: profile?.display_name ||
                 [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
                 "Anonymous"
@@ -1097,7 +1051,7 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
           setLeaderboard(leaderboardData);
 
           // Calculate stats
-          const totalEnergy = scores.reduce((sum, s) => sum + (s.total_energy || 0), 0);
+          const totalEnergy = scores.reduce((sum, s) => sum + (s.score || 0), 0);
           const participantCount = scores.length;
           setEventStats({ totalEnergy, participantCount });
         } else if (isMounted) {
@@ -1149,18 +1103,16 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
           style={{ width: "100%", height: "100%" }}
           onPress={(e) => e.stopPropagation()}
         >
-          <LinearGradient
-            colors={Gradients.glass.dark}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+          <View
             style={{
               flex: 1,
+              backgroundColor: Colors.background.primary,
               borderTopLeftRadius: BorderRadius['3xl'],
               borderTopRightRadius: BorderRadius['3xl'],
               borderWidth: 1,
               borderBottomWidth: 0,
-              borderColor: Colors.border.glass,
-              paddingTop: Spacing.md,
+              borderColor: Colors.border.strong,
+              paddingTop: Spacing.xl,
               paddingHorizontal: Spacing.xl,
               paddingBottom: Spacing['3xl'],
               ...Shadows.xl,
@@ -1169,7 +1121,7 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
             {/* Handle Bar - Swipe down to close */}
             <Pressable
               onPress={onClose}
-              style={{ alignItems: "center", paddingVertical: Spacing.md, marginBottom: Spacing.sm }}
+              style={{ alignItems: "center", paddingVertical: Spacing.lg, marginBottom: Spacing.lg }}
             >
               <View
                 style={{
@@ -1463,7 +1415,7 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                                 fontWeight: Typography.weight.bold,
                               }}
                             >
-                              {(entry.total_energy || 0).toLocaleString()}
+                              {(entry.score || 0).toLocaleString()}
                             </Text>
                             <Text
                               style={{
@@ -1494,7 +1446,7 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                 )}
               </LinearGradient>
             </ScrollView>
-          </LinearGradient>
+          </View>
         </Pressable>
       </Pressable>
     </Modal>
