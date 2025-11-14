@@ -101,7 +101,15 @@ REFERENCES events(event_id)
 ON DELETE CASCADE;
 
 -- ========================================
--- STEP 4: Add Performance Indexes
+-- STEP 4: Add Missing Columns
+-- ========================================
+
+-- Add is_live column to scores table (needed for mobile app)
+ALTER TABLE scores
+ADD COLUMN IF NOT EXISTS is_live BOOLEAN DEFAULT false;
+
+-- ========================================
+-- STEP 5: Add Performance Indexes
 -- ========================================
 
 -- Indexes for scores table (for leaderboard queries)
@@ -119,7 +127,7 @@ CREATE INDEX IF NOT EXISTS idx_events_start_at ON events(start_at DESC);
 CREATE INDEX IF NOT EXISTS idx_events_artist_id ON events(artist_id);
 
 -- ========================================
--- STEP 5: Verify Foreign Keys Work
+-- STEP 6: Verify Foreign Keys Work
 -- ========================================
 
 -- Test the foreign key relationship (should return data with user names)
