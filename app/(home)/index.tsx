@@ -22,13 +22,16 @@ const { width } = Dimensions.get("window");
 
 interface Event {
   event_id: string;
-  name: string;
-  title: string;
-  venue: string;
-  location: string;
-  started_at: string | null;
+  artist_id: string;
+  name: string | null;
+  title?: string | null;
+  short_code?: string | null;
+  venue?: string | null;
+  location?: string | null;
+  start_at: string | null;
+  end_at: string | null;
   ended_at: string | null;
-  status: string;
+  status: string | null;
 }
 
 export default function HomeScreen() {
@@ -101,57 +104,29 @@ export default function HomeScreen() {
         );
       }
 
-      // Load events
+      // Load events from database (created by artists via move-dashboard-deploy)
       const { data: events, error: eventsError } = await supabase
         .from("events")
-        .select("*")
-        .order("started_at", { ascending: false })
+        .select("event_id, artist_id, name, title, short_code, venue, location, start_at, end_at, ended_at, status")
+        .order("start_at", { ascending: false })
         .limit(20);
 
-      if (isMounted && events && events.length > 0) {
+      if (isMounted && events) {
         const now = new Date();
-        const ongoing = events.filter(e => e.status === 'live' || e.status === 'upcoming' || (e.started_at && !e.ended_at));
-        const past = events.filter(e => e.status === 'ended' || e.ended_at);
+
+        // Ongoing events: live or upcoming events that haven't ended
+        const ongoing = events.filter(e =>
+          (e.status === 'live' || e.status === 'upcoming' || (!e.status && e.start_at && !e.ended_at)) &&
+          !e.ended_at
+        );
+
+        // Past events: events that have ended
+        const past = events.filter(e =>
+          e.status === 'ended' || e.ended_at
+        );
 
         setOngoingEvents(ongoing);
         setPastEvents(past);
-      } else if (isMounted) {
-        // If no events in database, create sample data for testing
-        const sampleEvents: Event[] = [
-          {
-            event_id: 'sample-1',
-            artist_id: 'sample-artist',
-            name: 'Summer Vibes Festival',
-            title: 'Summer Vibes Festival',
-            venue: 'Central Park',
-            started_at: new Date().toISOString(),
-            ended_at: null,
-            status: 'live',
-          },
-          {
-            event_id: 'sample-2',
-            artist_id: 'sample-artist',
-            name: 'Night Beats',
-            title: 'Night Beats',
-            venue: 'The Underground',
-            started_at: new Date(Date.now() + 86400000).toISOString(),
-            ended_at: null,
-            status: 'upcoming',
-          },
-          {
-            event_id: 'sample-3',
-            artist_id: 'sample-artist',
-            name: 'Acoustic Sessions',
-            title: 'Acoustic Sessions',
-            venue: 'Rooftop Lounge',
-            started_at: new Date(Date.now() - 172800000).toISOString(),
-            ended_at: new Date(Date.now() - 86400000).toISOString(),
-            status: 'ended',
-          },
-        ];
-
-        setOngoingEvents(sampleEvents.filter(e => e.status === 'live' || e.status === 'upcoming'));
-        setPastEvents(sampleEvents.filter(e => e.status === 'ended'));
       }
     })();
 
@@ -650,7 +625,7 @@ function EventCard({ event, isPast = false }: { event: Event; isPast?: boolean }
               marginBottom: Spacing.xs,
             }}
           >
-            {event.title || event.name}
+            {event.name || event.title || event.short_code || 'Untitled Event'}
           </Text>
 
           <Text
@@ -661,7 +636,7 @@ function EventCard({ event, isPast = false }: { event: Event; isPast?: boolean }
               marginBottom: Spacing.sm,
             }}
           >
-            {event.venue}
+            {event.venue || event.location || 'Location TBA'}
           </Text>
 
           {event.status === 'live' && !isPast && (
@@ -1003,7 +978,7 @@ function LiveEventCard({ event, onJoin }: { event: Event; onJoin: () => void }) 
               marginBottom: 4,
             }}
           >
-            {event.title || event.name}
+            {event.name || event.title || event.short_code || 'Untitled Event'}
           </Text>
           <Text
             numberOfLines={1}
@@ -1013,7 +988,7 @@ function LiveEventCard({ event, onJoin }: { event: Event; onJoin: () => void }) 
               marginBottom: Spacing.sm,
             }}
           >
-            {event.venue}
+            {event.venue || event.location || 'Location TBA'}
           </Text>
 
           {/* Join Button */}
