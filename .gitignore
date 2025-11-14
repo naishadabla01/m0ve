@@ -1,35 +1,45 @@
-# OS / editor
-.DS_Store
-.vscode/
-*.log
-npm-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# Env & secrets (root and any subfolder)
-.env
-.env.*
-**/.env
-**/.env.*
-
-# Node / builds (anywhere)
+# dependencies
 node_modules/
-**/node_modules/
-dist/
-build/
-.next/
-.out/
-coverage/
 
 # Expo
 .expo/
-.expo-shared/
+dist/
+web-build/
+expo-env.d.ts
 
-# React Native caches
-**/android/.gradle/
-**/android/app/build/
-**/ios/Pods/
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
 
-# If your Expo app is managed and you do NOT commit native projects, you may also ignore:
-# android/
-# ios/
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+app-example
+
+# generated native folders
+/ios
+/android
+
+.vercel
