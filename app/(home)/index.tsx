@@ -26,7 +26,6 @@ interface Event {
   title?: string | null;
   short_code?: string | null;
   location?: string | null;
-  cover_image_url?: string | null;
   start_at: string | null;
   end_at: string | null;
   ended_at: string | null;
@@ -106,7 +105,7 @@ export default function HomeScreen() {
       // Load events from database (created by artists via move-dashboard-deploy)
       const { data: events, error: eventsError } = await supabase
         .from("events")
-        .select("event_id, artist_id, name, title, short_code, location, cover_image_url, start_at, end_at, ended_at, status")
+        .select("event_id, artist_id, name, title, short_code, location, start_at, end_at, ended_at, status")
         .order("start_at", { ascending: false })
         .limit(20);
 
