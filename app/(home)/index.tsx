@@ -15,9 +15,11 @@ import {
   Image,
   ActivityIndicator,
   PanResponder,
+  ImageBackground,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import { Colors, Gradients, BorderRadius, Spacing, Typography, Shadows } from "../../constants/Design";
 
 const { width } = Dimensions.get("window");
@@ -1239,6 +1241,13 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
   // Swipe down gesture to close modal
   const translateY = useRef(new Animated.Value(0)).current;
 
+  // Backdrop opacity animation - fades as user swipes down
+  const backdropOpacity = translateY.interpolate({
+    inputRange: [0, 300],
+    outputRange: [0.85, 0],
+    extrapolate: 'clamp',
+  });
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -1258,13 +1267,13 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
           Animated.timing(translateY, {
             toValue: 1000,
             duration: 200,
-            useNativeDriver: true,
+            useNativeDriver: false, // Can't use native driver with opacity
           }).start(() => onClose());
         } else {
           // Otherwise, spring back to original position
           Animated.spring(translateY, {
             toValue: 0,
-            useNativeDriver: true,
+            useNativeDriver: false,
             tension: 50,
             friction: 8,
           }).start();
@@ -1280,34 +1289,98 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "rgba(0, 0, 0, 0.85)",
-          justifyContent: "flex-end",
-        }}
+      <Animated.View
+        style={[
+          {
+            flex: 1,
+            justifyContent: "flex-end",
+          },
+          {
+            backgroundColor: backdropOpacity.interpolate({
+              inputRange: [0, 0.85],
+              outputRange: ['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0.85)'],
+            }),
+          },
+        ]}
       >
         <Animated.View
           {...panResponder.panHandlers}
           style={{
             height: "90%",
-            backgroundColor: Colors.background.primary,
             borderTopLeftRadius: BorderRadius['3xl'],
             borderTopRightRadius: BorderRadius['3xl'],
             borderWidth: 1,
             borderBottomWidth: 0,
             borderColor: Colors.border.strong,
-            paddingTop: Spacing.xl,
-            paddingHorizontal: Spacing.xl,
-            paddingBottom: Spacing['3xl'],
             shadowColor: Colors.accent.purple.light,
             shadowOffset: { width: 0, height: -4 },
             shadowOpacity: 0.3,
             shadowRadius: 20,
             elevation: 20,
             transform: [{ translateY }],
+            overflow: 'hidden',
           }}
         >
+          {/* Background Image with Blur Effect */}
+          {event.cover_image_url ? (
+            <ImageBackground
+              source={{ uri: event.cover_image_url }}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                width: '100%',
+                height: '100%',
+              }}
+              resizeMode="cover"
+            >
+              <BlurView
+                intensity={80}
+                tint="dark"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                }}
+              />
+              {/* Dark overlay for text readability */}
+              <View
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                }}
+              />
+            </ImageBackground>
+          ) : (
+            <View
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: Colors.background.primary,
+              }}
+            />
+          )}
+
+          {/* Content Container */}
+          <View
+            style={{
+              flex: 1,
+              paddingTop: Spacing.xl,
+              paddingHorizontal: Spacing.xl,
+              paddingBottom: Spacing['3xl'],
+            }}
+          >
             {/* Handle Bar - Swipe down to close */}
             <Pressable
               onPress={onClose}
@@ -1636,8 +1709,9 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                 )}
               </LinearGradient>
             </ScrollView>
+          </View>
         </Animated.View>
-      </View>
+      </Animated.View>
     </Modal>
   );
 }
