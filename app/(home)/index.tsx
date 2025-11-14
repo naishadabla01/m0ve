@@ -1037,7 +1037,8 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
         } else if (isMounted && scores && scores.length > 0) {
           // Map scores with profile data
           const leaderboardData = scores.map(entry => {
-            const profile = entry.profiles;
+            // Supabase returns profiles as array with foreign key join
+            const profile = Array.isArray(entry.profiles) ? entry.profiles[0] : entry.profiles;
             return {
               user_id: entry.user_id,
               score: entry.score,
