@@ -68,17 +68,17 @@ export const Gradients = {
       'rgba(168, 85, 247, 0.1)',  // purple-500/10
       'rgba(0, 0, 0, 0.4)',        // black/40
       'rgba(236, 72, 153, 0.1)',   // pink-500/10
-    ],
+    ] as const,
     medium: [
       'rgba(168, 85, 247, 0.15)',  // purple-500/15
       'rgba(0, 0, 0, 0.5)',         // black/50
       'rgba(236, 72, 153, 0.15)',   // pink-500/15
-    ],
+    ] as const,
     dark: [
       'rgba(168, 85, 247, 0.05)',   // purple-500/5
       'rgba(0, 0, 0, 0.6)',          // black/60
       'rgba(236, 72, 153, 0.05)',    // pink-500/5
-    ],
+    ] as const,
   },
 
   // Purple to Pink gradient (for buttons, highlights)

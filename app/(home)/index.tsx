@@ -110,19 +110,38 @@ export default function HomeScreen() {
         .order("start_at", { ascending: false })
         .limit(20);
 
+      console.log("📊 Fetched events:", events?.length || 0);
+      if (eventsError) console.error("❌ Events error:", eventsError);
+
       if (isMounted && events) {
         const now = new Date();
 
-        // Ongoing events: live or upcoming events that haven't ended
-        const ongoing = events.filter(e =>
-          (e.status === 'live' || e.status === 'upcoming' || (!e.status && e.start_at && !e.ended_at)) &&
-          !e.ended_at
-        );
+        // Ongoing events: live, scheduled (future), or started but not ended
+        // Status can be: 'scheduled', 'live', 'ended'
+        const ongoing = events.filter(e => {
+          // Already ended - exclude
+          if (e.status === 'ended' || e.ended_at) return false;
+
+          // Live event - include
+          if (e.status === 'live') return true;
+
+          // Scheduled event - include
+          if (e.status === 'scheduled') return true;
+
+          // No status but has start_at and not ended - include
+          if (!e.status && e.start_at && !e.ended_at) return true;
+
+          return false;
+        });
 
         // Past events: events that have ended
         const past = events.filter(e =>
           e.status === 'ended' || e.ended_at
         );
+
+        console.log("✅ Ongoing events:", ongoing.length);
+        console.log("🏁 Past events:", past.length);
+        console.log("Ongoing:", ongoing.map(e => ({ name: e.name, status: e.status, start_at: e.start_at })));
 
         setOngoingEvents(ongoing);
         setPastEvents(past);
@@ -180,7 +199,7 @@ export default function HomeScreen() {
           {/* Small "m" logo above */}
           <View style={{ marginBottom: Spacing.xs }}>
             <LinearGradient
-              colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
+              colors={[Colors.accent.purple.light, Colors.accent.pink.light] as const}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{
@@ -219,7 +238,7 @@ export default function HomeScreen() {
                 Colors.accent.pink.light,
                 Colors.accent.purple.light,
                 Colors.accent.pink.DEFAULT,
-              ]}
+              ] as const}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{
@@ -271,7 +290,7 @@ export default function HomeScreen() {
         <Pressable onPress={() => setShowJoinModal(true)}>
           {({ pressed }) => (
             <LinearGradient
-              colors={['rgba(255, 255, 255, 0.15)', 'rgba(255, 255, 255, 0.05)']}
+              colors={['rgba(255, 255, 255, 0.15)', 'rgba(255, 255, 255, 0.05)'] as const}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{
@@ -355,7 +374,7 @@ export default function HomeScreen() {
             </View>
 
             <LinearGradient
-              colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
+              colors={[Gradients.purplePink.start, Gradients.purplePink.end] as const}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={{
@@ -461,20 +480,7 @@ function OngoingEventsComponent({ events }: { events: Event[] }) {
         >
           Ongoing Events
         </Text>
-        <Pressable onPress={() => router.push("/(home)/events")}>
-          {({ pressed }) => (
-            <Text
-              style={{
-                color: Colors.accent.purple.light,
-                fontSize: Typography.size.sm,
-                fontWeight: Typography.weight.semibold,
-                opacity: pressed ? 0.7 : 1,
-              }}
-            >
-              Show All →
-            </Text>
-          )}
-        </Pressable>
+        {/* Show All button removed - events folder deleted */}
       </View>
 
       {events.length > 0 ? (
@@ -530,20 +536,7 @@ function PastEventsComponent({ events }: { events: Event[] }) {
         >
           Past Events
         </Text>
-        <Pressable onPress={() => router.push("/(home)/events")}>
-          {({ pressed }) => (
-            <Text
-              style={{
-                color: Colors.accent.purple.light,
-                fontSize: Typography.size.sm,
-                fontWeight: Typography.weight.semibold,
-                opacity: pressed ? 0.7 : 1,
-              }}
-            >
-              Show All →
-            </Text>
-          )}
-        </Pressable>
+        {/* Show All button removed - events folder deleted */}
       </View>
 
       {events.length > 0 ? (
@@ -743,7 +736,7 @@ function JoinEventModal({
             <Pressable onPress={() => { onClose(); router.push("/scan"); }}>
               {({ pressed }) => (
                 <LinearGradient
-                  colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
+                  colors={[Gradients.purplePink.start, Gradients.purplePink.end] as const}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={{
@@ -802,7 +795,7 @@ function JoinEventModal({
             ) : (
               <View style={{ marginBottom: Spacing.lg }}>
                 <LinearGradient
-                  colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
+                  colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)'] as const}
                   style={{
                     borderRadius: BorderRadius.md,
                     borderWidth: 1,
@@ -827,7 +820,7 @@ function JoinEventModal({
                 <Pressable onPress={handleJoinWithCode}>
                   {({ pressed }) => (
                     <LinearGradient
-                      colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
+                      colors={[Gradients.purplePink.start, Gradients.purplePink.end] as const}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                       style={{
@@ -992,7 +985,7 @@ function LiveEventCard({ event, onJoin }: { event: Event; onJoin: () => void }) 
 
           {/* Join Button */}
           <LinearGradient
-            colors={['rgba(168, 85, 247, 0.3)', 'rgba(236, 72, 153, 0.3)']}
+            colors={['rgba(168, 85, 247, 0.3)', 'rgba(236, 72, 153, 0.3)'] as const}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={{
