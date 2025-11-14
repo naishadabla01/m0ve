@@ -1214,7 +1214,7 @@ function LiveEventCard({
                 LIVE
               </Text>
             </View>
-          </LinearGradient>
+          </View>
 
           {/* Event Details */}
           <Text
