@@ -345,7 +345,7 @@ export default function HomeScreen() {
                     marginTop: Spacing.xs,
                   }}
                 >
-                  {activeEvent.venue}
+                  {activeEvent.location || 'Location TBA'}
                 </Text>
               </View>
               <View
