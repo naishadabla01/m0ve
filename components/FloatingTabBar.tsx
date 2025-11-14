@@ -27,23 +27,29 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
     router.push("/scan");
   };
 
-  // Tab bar dimensions
-  const TAB_WIDTH = 60;
-  const TAB_HEIGHT = 50;
-  const BAR_HEIGHT = 60;
-  const BAR_PADDING = 12;
-  const QR_BUTTON_SIZE = 64;
-  const QR_SPACING = 16; // Space for QR button
+  // Tab bar dimensions - iOS 26 liquid glass style
+  const TAB_WIDTH = 56;
+  const TAB_HEIGHT = 44;
+  const BAR_HEIGHT = 54;
+  const BAR_PADDING = 8;
+  const QR_BUTTON_SIZE = 68;
+  const QR_SPACING = 12; // Space for QR button
 
-  // Calculate total bar width
-  const barWidth = SCREEN_WIDTH - 32; // 16px margin on each side
+  // Calculate total bar width (wider, less margins)
+  const barWidth = SCREEN_WIDTH - 24; // 12px margin on each side (wider bar)
 
-  // Calculate positions for tabs (evenly distributed)
+  // Calculate positions for tabs - precise alignment
+  // We have 4 tabs: Home, Notifications, [QR Space], Search, Profile
+  const availableWidth = barWidth - (BAR_PADDING * 2);
+  const totalTabsWidth = TAB_WIDTH * 4;
+  const totalSpacing = availableWidth - totalTabsWidth - QR_SPACING;
+  const spacing = totalSpacing / 3; // Spacing between tab groups
+
   const tabPositions = [
-    BAR_PADDING, // Home
-    BAR_PADDING + TAB_WIDTH + 4, // Notifications
-    barWidth - BAR_PADDING - (TAB_WIDTH * 2) - 4, // Search
-    barWidth - BAR_PADDING - TAB_WIDTH, // Profile
+    BAR_PADDING, // Home - far left
+    BAR_PADDING + TAB_WIDTH + spacing, // Notifications - before QR
+    BAR_PADDING + (TAB_WIDTH * 2) + (spacing * 2) + QR_SPACING, // Search - after QR
+    BAR_PADDING + (TAB_WIDTH * 3) + (spacing * 3) + QR_SPACING, // Profile - far right
   ];
 
   // Get animated indicator position
@@ -58,10 +64,10 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
     <View
       style={{
         position: "absolute",
-        bottom: 16,
-        left: 16,
-        right: 16,
-        height: BAR_HEIGHT + 24, // Extra space for floating QR button
+        bottom: 12,
+        left: 12,
+        right: 12,
+        height: BAR_HEIGHT + 36, // Extra space for floating QR button (higher)
         alignItems: "center",
         justifyContent: "flex-end",
       }}
@@ -79,7 +85,11 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
         <Pressable onPress={handleQRPress}>
           {({ pressed }) => (
             <LinearGradient
-              colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
+              colors={[
+                Colors.accent.purple.light,
+                "#c084fc",
+                Colors.accent.pink.light,
+              ]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{
@@ -88,11 +98,15 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
                 borderRadius: QR_BUTTON_SIZE / 2,
                 alignItems: "center",
                 justifyContent: "center",
-                borderWidth: 5,
-                borderColor: "#0a0a0a",
+                borderWidth: 6,
+                borderColor: "rgba(10, 10, 10, 0.95)",
                 opacity: pressed ? 0.85 : 1,
                 transform: [{ scale: pressed ? 0.95 : 1 }],
-                ...Shadows.xl,
+                shadowColor: Colors.accent.purple.light,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.5,
+                shadowRadius: 12,
+                elevation: 8,
               }}
             >
               {/* Better QR Code Icon Design */}
@@ -170,9 +184,13 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
         </Pressable>
       </View>
 
-      {/* Tab Bar Container */}
+      {/* Tab Bar Container - iOS 26 Liquid Glass */}
       <LinearGradient
-        colors={["rgba(0, 0, 0, 0.95)", "rgba(20, 20, 20, 0.9)"]}
+        colors={[
+          "rgba(10, 10, 10, 0.85)",
+          "rgba(25, 25, 30, 0.75)",
+          "rgba(15, 15, 20, 0.8)",
+        ]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{
@@ -183,23 +201,28 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
           width: barWidth,
           borderRadius: BAR_HEIGHT / 2,
           paddingHorizontal: BAR_PADDING,
-          borderWidth: 1,
-          borderColor: "rgba(255, 255, 255, 0.1)",
+          borderWidth: 1.5,
+          borderColor: "rgba(255, 255, 255, 0.15)",
+          backgroundColor: "rgba(0, 0, 0, 0.3)", // Backdrop for glass effect
           ...Shadows.xl,
         }}
       >
-        {/* Active Tab Indicator with Swoosh Animation */}
+        {/* Active Tab Indicator with Swoosh Animation - Liquid Glass */}
         <Animated.View
           style={{
             position: "absolute",
             width: TAB_WIDTH,
             height: TAB_HEIGHT,
             borderRadius: TAB_HEIGHT / 2,
-            backgroundColor: "rgba(168, 85, 247, 0.2)",
-            borderWidth: 1,
-            borderColor: "rgba(168, 85, 247, 0.4)",
+            backgroundColor: "rgba(168, 85, 247, 0.25)",
+            borderWidth: 1.5,
+            borderColor: "rgba(168, 85, 247, 0.5)",
             left: getIndicatorPosition(),
-            ...Shadows.lg,
+            shadowColor: Colors.accent.purple.light,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.4,
+            shadowRadius: 8,
+            elevation: 4,
           }}
         />
 
@@ -239,7 +262,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
           {({ pressed }) => (
             <View style={{ opacity: pressed ? 0.6 : 1 }}>
               <Ionicons
-                name={state.index === 1 ? "heart" : "heart-outline"}
+                name={state.index === 1 ? "notifications" : "notifications-outline"}
                 size={24}
                 color={state.index === 1 ? Colors.accent.purple.light : Colors.text.tertiary}
               />
@@ -264,7 +287,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
           {({ pressed }) => (
             <View style={{ opacity: pressed ? 0.6 : 1 }}>
               <Ionicons
-                name={state.index === 2 ? "settings" : "settings-outline"}
+                name={state.index === 2 ? "search" : "search-outline"}
                 size={24}
                 color={state.index === 2 ? Colors.accent.purple.light : Colors.text.tertiary}
               />
