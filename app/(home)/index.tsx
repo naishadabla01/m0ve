@@ -1,15 +1,37 @@
-// app/(home)/index.tsx
+// app/(home)/index.tsx - iOS 26 Redesigned Home Page
 import { supabase } from "@/lib/supabase/client";
-import JoinEventCard from "@components/home/JoinEventCard";
-import LogoutCard from "@components/home/LogoutCard";
-import MovementCard from "@components/home/MovementCard";
-import OngoingEventsCard from "@components/home/OngoingEventsCard";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Platform, Pressable, SafeAreaView, ScrollView, Text, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  View,
+  Dimensions,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Colors, Gradients, BorderRadius, Spacing, Typography, Shadows } from "../../constants/Design";
+
+const { width } = Dimensions.get("window");
+
+interface Event {
+  event_id: string;
+  name: string;
+  title: string;
+  venue: string;
+  location: string;
+  started_at: string | null;
+  ended_at: string | null;
+  status: string;
+}
 
 export default function HomeScreen() {
   const [displayName, setDisplayName] = useState<string>("");
+  const [activeEvent, setActiveEvent] = useState<Event | null>(null);
+  const [ongoingEvents, setOngoingEvents] = useState<Event[]>([]);
+  const [pastEvents, setPastEvents] = useState<Event[]>([]);
 
   // Auth state monitoring
   useEffect(() => {
@@ -19,7 +41,7 @@ export default function HomeScreen() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  // Load display name
+  // Load user data and events
   useEffect(() => {
     let isMounted = true;
 
@@ -27,6 +49,7 @@ export default function HomeScreen() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
+
       if (!session) {
         router.replace("/(auth)/signin");
         return;
@@ -35,19 +58,36 @@ export default function HomeScreen() {
       const uid = session.user.id;
       if (!uid || !isMounted) return;
 
-      const { data } = await supabase
+      // Load profile
+      const { data: profile } = await supabase
         .from("profiles")
         .select("display_name, first_name, last_name")
-        .eq("id", uid)
+        .eq("user_id", uid)
         .maybeSingle();
 
-      if (!isMounted) return;
+      if (isMounted && profile) {
+        setDisplayName(
+          (profile.display_name ||
+            [profile.first_name, profile.last_name].filter(Boolean).join(" ") ||
+            "Mover") as string
+        );
+      }
 
-      setDisplayName(
-        (data?.display_name ||
-          [data?.first_name, data?.last_name].filter(Boolean).join(" ") ||
-          "Mover") as string
-      );
+      // Load events
+      const { data: events } = await supabase
+        .from("events")
+        .select("*")
+        .order("started_at", { ascending: false })
+        .limit(20);
+
+      if (isMounted && events) {
+        const now = new Date();
+        const ongoing = events.filter(e => e.status === 'live' || (e.started_at && !e.ended_at));
+        const past = events.filter(e => e.status === 'ended' || e.ended_at);
+
+        setOngoingEvents(ongoing);
+        setPastEvents(past);
+      }
     })();
 
     return () => {
@@ -56,8 +96,8 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
-      {/* Background glows */}
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
+      {/* Animated Background Blobs */}
       <View pointerEvents="none" style={{ position: "absolute", inset: 0 }}>
         <View
           style={{
@@ -66,8 +106,8 @@ export default function HomeScreen() {
             right: -50,
             width: 240,
             height: 240,
-            borderRadius: 9999,
-            backgroundColor: "#10b981",
+            borderRadius: BorderRadius.full,
+            backgroundColor: Colors.accent.purple.light,
             opacity: 0.14,
             filter: Platform.OS === "web" ? "blur(60px)" : undefined,
           }}
@@ -79,8 +119,8 @@ export default function HomeScreen() {
             left: -70,
             width: 280,
             height: 280,
-            borderRadius: 9999,
-            backgroundColor: "#22d3ee",
+            borderRadius: BorderRadius.full,
+            backgroundColor: Colors.accent.pink.light,
             opacity: 0.1,
             filter: Platform.OS === "web" ? "blur(70px)" : undefined,
           }}
@@ -88,88 +128,448 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={{ padding: 20, paddingBottom: 36, gap: 16 }}
+        contentContainerStyle={{
+          paddingHorizontal: Spacing['2xl'],
+          paddingTop: Spacing['2xl'],
+          paddingBottom: 120, // Space for tab bar
+          gap: Spacing.xl,
+        }}
+        showsVerticalScrollIndicator={false}
       >
-        {/* Header with Profile Button */}
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <View style={{ gap: 6, flex: 1 }}>
-            <Text style={{ color: "#9ca3af", fontSize: 12, letterSpacing: 1 }}>
-              WELCOME TO
-            </Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <View
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 6,
-                  backgroundColor: "#10b981",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text style={{ color: "#0a0a0a", fontWeight: "800" }}>M</Text>
-              </View>
-              <Text
-                style={{
-                  color: "#fff",
-                  fontSize: 28,
-                  fontWeight: "800",
-                  letterSpacing: 0.3,
-                }}
-              >
-                Move
-              </Text>
-            </View>
-          </View>
-
-          {/* Quick Profile Access Button */}
-          <Pressable
-            onPress={() => router.push("/(home)/profile")}
+        {/* App Logo - Top Center */}
+        <View style={{ alignItems: "center", marginBottom: Spacing.md }}>
+          <LinearGradient
+            colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
             style={{
-              backgroundColor: "#0b1920",
-              borderColor: "#1a2e3a",
-              borderWidth: 1,
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              alignItems: "center",
-              justifyContent: "center",
-              marginTop: 4,
+              paddingHorizontal: Spacing['2xl'],
+              paddingVertical: Spacing.md,
+              borderRadius: BorderRadius.xl,
+              ...Shadows.xl,
             }}
           >
-            <Text style={{ fontSize: 20 }}>👤</Text>
-          </Pressable>
+            <Text
+              style={{
+                color: Colors.text.primary,
+                fontSize: Typography.size['5xl'],
+                fontWeight: Typography.weight.extrabold,
+                letterSpacing: 2,
+                textShadowColor: 'rgba(0, 0, 0, 0.3)',
+                textShadowOffset: { width: 0, height: 2 },
+                textShadowRadius: 4,
+              }}
+            >
+              m0ve
+            </Text>
+          </LinearGradient>
         </View>
 
-        <Text
-          style={{
-            color: "#e5e7eb",
-            fontSize: 20,
-            fontWeight: "700",
-            marginTop: 4,
-            marginBottom: 2,
-          }}
-        >
-          Hey {displayName} 👋
-        </Text>
-        <Text style={{ color: "#9ca3af", marginBottom: 8 }}>
-          Here's what's happening right now.
-        </Text>
+        {/* Welcome Message */}
+        <View>
+          <Text
+            style={{
+              color: Colors.text.secondary,
+              fontSize: Typography.size['2xl'],
+              fontWeight: Typography.weight.bold,
+            }}
+          >
+            Hey {displayName} 👋
+          </Text>
+          <Text
+            style={{
+              color: Colors.text.muted,
+              fontSize: Typography.size.base,
+              marginTop: Spacing.xs,
+            }}
+          >
+            Here's what's happening right now
+          </Text>
+        </View>
 
-        {/* 1. Scan/Join card */}
-        <JoinEventCard />
+        {/* Active Event Modal - Conditional */}
+        {activeEvent && (
+          <LinearGradient
+            colors={Gradients.glass.medium}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              borderRadius: BorderRadius['2xl'],
+              borderWidth: 1,
+              borderColor: Colors.border.glass,
+              padding: Spacing.xl,
+              ...Shadows.xl,
+            }}
+          >
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: Spacing.md }}>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    color: Colors.accent.purple.light,
+                    fontSize: Typography.size.xs,
+                    fontWeight: Typography.weight.bold,
+                    letterSpacing: 1.5,
+                    marginBottom: Spacing.xs,
+                  }}
+                >
+                  ACTIVE EVENT
+                </Text>
+                <Text
+                  style={{
+                    color: Colors.text.primary,
+                    fontSize: Typography.size.xl,
+                    fontWeight: Typography.weight.bold,
+                  }}
+                >
+                  {activeEvent.title || activeEvent.name}
+                </Text>
+                <Text
+                  style={{
+                    color: Colors.text.muted,
+                    fontSize: Typography.size.sm,
+                    marginTop: Spacing.xs,
+                  }}
+                >
+                  {activeEvent.venue}
+                </Text>
+              </View>
+              <View
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: BorderRadius.full,
+                  backgroundColor: Colors.status.live,
+                  ...Shadows.md,
+                }}
+              />
+            </View>
 
-        {/* 2. Ongoing events */}
-        <OngoingEventsCard />
+            <LinearGradient
+              colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{
+                paddingVertical: Spacing.md,
+                borderRadius: BorderRadius.lg,
+                alignItems: "center",
+                marginTop: Spacing.md,
+                ...Shadows.md,
+              }}
+            >
+              <Text
+                style={{
+                  color: Colors.text.primary,
+                  fontWeight: Typography.weight.bold,
+                  fontSize: Typography.size.base,
+                }}
+              >
+                View Details
+              </Text>
+            </LinearGradient>
+          </LinearGradient>
+        )}
 
-        {/* 3. Movement Screen card */}
-        <MovementCard />
+        {/* Ongoing Events Component */}
+        <OngoingEventsComponent events={ongoingEvents} />
 
-        {/* 4. Profile Card (detailed profile link) */}
+        {/* Past Events Component */}
+        <PastEventsComponent events={pastEvents} />
 
-        {/* 5. Logout */}
-        <LogoutCard />
+        {/* Quick Actions */}
+        <QuickActionsComponent />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+// Ongoing Events Carousel Component
+function OngoingEventsComponent({ events }: { events: Event[] }) {
+  return (
+    <LinearGradient
+      colors={Gradients.glass.dark}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={{
+        borderRadius: BorderRadius['2xl'],
+        borderWidth: 1,
+        borderColor: Colors.border.glass,
+        padding: Spacing.xl,
+        ...Shadows.lg,
+      }}
+    >
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
+        <Text
+          style={{
+            color: Colors.text.primary,
+            fontSize: Typography.size.xl,
+            fontWeight: Typography.weight.bold,
+          }}
+        >
+          Ongoing Events
+        </Text>
+        <Pressable onPress={() => router.push("/(home)/events")}>
+          {({ pressed }) => (
+            <Text
+              style={{
+                color: Colors.accent.purple.light,
+                fontSize: Typography.size.sm,
+                fontWeight: Typography.weight.semibold,
+                opacity: pressed ? 0.7 : 1,
+              }}
+            >
+              Show All →
+            </Text>
+          )}
+        </Pressable>
+      </View>
+
+      {events.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: Spacing.md }}
+        >
+          {events.map((event) => (
+            <EventCard key={event.event_id} event={event} />
+          ))}
+        </ScrollView>
+      ) : (
+        <View style={{ alignItems: "center", paddingVertical: Spacing['2xl'] }}>
+          <Text style={{ fontSize: 48, marginBottom: Spacing.md }}>🎉</Text>
+          <Text
+            style={{
+              color: Colors.text.muted,
+              fontSize: Typography.size.base,
+              textAlign: "center",
+            }}
+          >
+            No ongoing events right now
+          </Text>
+        </View>
+      )}
+    </LinearGradient>
+  );
+}
+
+// Past Events Component
+function PastEventsComponent({ events }: { events: Event[] }) {
+  return (
+    <LinearGradient
+      colors={Gradients.glass.dark}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={{
+        borderRadius: BorderRadius['2xl'],
+        borderWidth: 1,
+        borderColor: Colors.border.glass,
+        padding: Spacing.xl,
+        ...Shadows.lg,
+      }}
+    >
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
+        <Text
+          style={{
+            color: Colors.text.primary,
+            fontSize: Typography.size.xl,
+            fontWeight: Typography.weight.bold,
+          }}
+        >
+          Past Events
+        </Text>
+        <Pressable onPress={() => router.push("/(home)/events")}>
+          {({ pressed }) => (
+            <Text
+              style={{
+                color: Colors.accent.purple.light,
+                fontSize: Typography.size.sm,
+                fontWeight: Typography.weight.semibold,
+                opacity: pressed ? 0.7 : 1,
+              }}
+            >
+              Show All →
+            </Text>
+          )}
+        </Pressable>
+      </View>
+
+      {events.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: Spacing.md }}
+        >
+          {events.slice(0, 8).map((event) => (
+            <EventCard key={event.event_id} event={event} isPast />
+          ))}
+        </ScrollView>
+      ) : (
+        <View style={{ alignItems: "center", paddingVertical: Spacing['2xl'] }}>
+          <Text style={{ fontSize: 48, marginBottom: Spacing.md }}>📅</Text>
+          <Text
+            style={{
+              color: Colors.text.muted,
+              fontSize: Typography.size.base,
+              textAlign: "center",
+            }}
+          >
+            No past events yet
+          </Text>
+        </View>
+      )}
+    </LinearGradient>
+  );
+}
+
+// Event Card (Spotify-style)
+function EventCard({ event, isPast = false }: { event: Event; isPast?: boolean }) {
+  return (
+    <Pressable
+      onPress={() => {
+        // Navigate to event details
+      }}
+    >
+      {({ pressed }) => (
+        <LinearGradient
+          colors={Gradients.glass.medium}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            width: width * 0.7,
+            borderRadius: BorderRadius.xl,
+            borderWidth: 1,
+            borderColor: Colors.border.glass,
+            padding: Spacing.lg,
+            opacity: pressed ? 0.8 : isPast ? 0.7 : 1,
+            ...Shadows.md,
+          }}
+        >
+          {/* Event Icon/Image Placeholder */}
+          <LinearGradient
+            colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              width: "100%",
+              height: 120,
+              borderRadius: BorderRadius.lg,
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: Spacing.md,
+              ...Shadows.md,
+            }}
+          >
+            <Text style={{ fontSize: 48 }}>🎵</Text>
+          </LinearGradient>
+
+          <Text
+            numberOfLines={1}
+            style={{
+              color: Colors.text.primary,
+              fontSize: Typography.size.lg,
+              fontWeight: Typography.weight.bold,
+              marginBottom: Spacing.xs,
+            }}
+          >
+            {event.title || event.name}
+          </Text>
+
+          <Text
+            numberOfLines={1}
+            style={{
+              color: Colors.text.muted,
+              fontSize: Typography.size.sm,
+              marginBottom: Spacing.sm,
+            }}
+          >
+            {event.venue}
+          </Text>
+
+          {event.status === 'live' && !isPast && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
+              <View
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: BorderRadius.full,
+                  backgroundColor: Colors.status.live,
+                }}
+              />
+              <Text
+                style={{
+                  color: Colors.status.live,
+                  fontSize: Typography.size.xs,
+                  fontWeight: Typography.weight.semibold,
+                }}
+              >
+                LIVE NOW
+              </Text>
+            </View>
+          )}
+        </LinearGradient>
+      )}
+    </Pressable>
+  );
+}
+
+// Quick Actions Component
+function QuickActionsComponent() {
+  return (
+    <View style={{ gap: Spacing.md }}>
+      <Pressable onPress={() => router.push("/join")}>
+        {({ pressed }) => (
+          <LinearGradient
+            colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{
+              paddingVertical: Spacing.lg,
+              borderRadius: BorderRadius.xl,
+              alignItems: "center",
+              opacity: pressed ? 0.9 : 1,
+              ...Shadows.lg,
+            }}
+          >
+            <Text
+              style={{
+                color: Colors.text.primary,
+                fontWeight: Typography.weight.bold,
+                fontSize: Typography.size.lg,
+              }}
+            >
+              🎫 Join an Event
+            </Text>
+          </LinearGradient>
+        )}
+      </Pressable>
+
+      <Pressable onPress={() => router.push("/scan")}>
+        {({ pressed }) => (
+          <LinearGradient
+            colors={Gradients.glass.light}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              paddingVertical: Spacing.lg,
+              borderRadius: BorderRadius.xl,
+              alignItems: "center",
+              borderWidth: 1,
+              borderColor: Colors.border.glass,
+              opacity: pressed ? 0.8 : 1,
+              ...Shadows.md,
+            }}
+          >
+            <Text
+              style={{
+                color: Colors.text.secondary,
+                fontWeight: Typography.weight.semibold,
+                fontSize: Typography.size.lg,
+              }}
+            >
+              📱 Scan QR Code
+            </Text>
+          </LinearGradient>
+        )}
+      </Pressable>
+    </View>
   );
 }
