@@ -14,6 +14,7 @@ import {
   Animated,
   Image,
   ActivityIndicator,
+  PanResponder,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -215,54 +216,109 @@ export default function HomeScreen() {
           </Text>
         </Animated.View>
 
-        {/* Welcome Message */}
-        <View>
-          <Text
-            style={{
-              color: Colors.text.secondary,
-              fontSize: Typography.size['2xl'],
-              fontWeight: Typography.weight.bold,
-            }}
-          >
-            Hey {displayName} 👋
-          </Text>
-          <Text
-            style={{
-              color: Colors.text.muted,
-              fontSize: Typography.size.sm,
-              marginTop: Spacing.xs,
-            }}
-          >
-            Join an event below by scanning a QR code or entering an event code
-          </Text>
-        </View>
-
-        {/* Join an Event Button */}
-        <Pressable onPress={() => setShowJoinModal(true)}>
-          {({ pressed }) => (
+        {/* Welcome Message - Artistic */}
+        <View style={{ marginBottom: Spacing.sm }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, marginBottom: Spacing.xs }}>
             <LinearGradient
-              colors={['rgba(255, 255, 255, 0.15)', 'rgba(255, 255, 255, 0.05)'] as const}
+              colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
               start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+              end={{ x: 1, y: 0 }}
               style={{
-                paddingVertical: Spacing.lg,
-                borderRadius: BorderRadius.xl,
-                alignItems: "center",
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.3)',
-                opacity: pressed ? 0.8 : 1,
-                ...Shadows.md,
+                paddingHorizontal: Spacing.md,
+                paddingVertical: Spacing.xs,
+                borderRadius: BorderRadius.full,
               }}
             >
               <Text
                 style={{
                   color: Colors.text.primary,
+                  fontSize: Typography.size.sm,
                   fontWeight: Typography.weight.bold,
-                  fontSize: Typography.size.lg,
+                  letterSpacing: 1,
                 }}
               >
-                🎫 Join an Event
+                WELCOME BACK
               </Text>
+            </LinearGradient>
+          </View>
+          <Text
+            style={{
+              color: Colors.text.primary,
+              fontSize: Typography.size['3xl'],
+              fontWeight: Typography.weight.bold,
+              lineHeight: 40,
+            }}
+          >
+            Hey {displayName}
+            <Text style={{ fontSize: Typography.size['4xl'] }}> 👋</Text>
+          </Text>
+          <Text
+            style={{
+              color: Colors.text.muted,
+              fontSize: Typography.size.base,
+              marginTop: Spacing.sm,
+              lineHeight: 22,
+            }}
+          >
+            Ready to feel the energy?{'\n'}
+            <Text style={{ color: Colors.accent.purple.light, fontWeight: Typography.weight.semibold }}>
+              Scan, join, and move.
+            </Text>
+          </Text>
+        </View>
+
+        {/* Join an Event Button - Redesigned */}
+        <Pressable onPress={() => setShowJoinModal(true)}>
+          {({ pressed }) => (
+            <LinearGradient
+              colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{
+                paddingVertical: Spacing.xl,
+                paddingHorizontal: Spacing.lg,
+                borderRadius: BorderRadius['2xl'],
+                opacity: pressed ? 0.85 : 1,
+                ...Shadows.xl,
+                transform: [{ scale: pressed ? 0.98 : 1 }],
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: Spacing.md }}>
+                <View
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: BorderRadius.full,
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text style={{ fontSize: 24 }}>✨</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      color: Colors.text.primary,
+                      fontWeight: Typography.weight.bold,
+                      fontSize: Typography.size.xl,
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    Enter the Experience
+                  </Text>
+                  <Text
+                    style={{
+                      color: 'rgba(255, 255, 255, 0.8)',
+                      fontSize: Typography.size.xs,
+                      marginTop: 2,
+                    }}
+                  >
+                    Scan QR or enter code
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 20, color: Colors.text.primary }}>→</Text>
+              </View>
             </LinearGradient>
           )}
         </Pressable>
@@ -357,34 +413,57 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* Floating QR Scan Button */}
+      {/* Floating QR Scan Button - Modern & Visible */}
       <Pressable
         onPress={() => router.push("/scan")}
         style={{
           position: "absolute",
-          bottom: 100, // Above tab bar
+          bottom: 100,
           right: Spacing.xl,
-          width: 64,
-          height: 64,
-          borderRadius: BorderRadius.full,
-          ...Shadows.md,
+          ...Shadows.xl,
         }}
       >
         {({ pressed }) => (
-          <View
+          <LinearGradient
+            colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
             style={{
-              width: "100%",
-              height: "100%",
+              width: 72,
+              height: 72,
               borderRadius: BorderRadius.full,
-              backgroundColor: 'rgba(168, 85, 247, 0.2)',
-              borderWidth: 1,
-              borderColor: Colors.accent.purple.light,
               alignItems: "center",
               justifyContent: "center",
-              opacity: pressed ? 0.8 : 1,
+              opacity: pressed ? 0.9 : 1,
+              transform: [{ scale: pressed ? 0.95 : 1 }],
             }}
           >
-            <Text style={{ fontSize: 28 }}>⊞</Text>
-          </View>
+            <View
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: BorderRadius.full,
+                backgroundColor: Colors.background.primary,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <LinearGradient
+                colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: BorderRadius.full,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ fontSize: 32 }}>⊞</Text>
+              </LinearGradient>
+            </View>
+          </LinearGradient>
         )}
       </Pressable>
 
@@ -1085,6 +1164,43 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
     });
   };
 
+  // Swipe down gesture to close modal
+  const translateY = useRef(new Animated.Value(0)).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only respond to downward swipes
+        return gestureState.dy > 5;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Only allow downward movement
+        if (gestureState.dy > 0) {
+          translateY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // If swiped down more than 150px, close the modal
+        if (gestureState.dy > 150) {
+          Animated.timing(translateY, {
+            toValue: 1000,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => onClose());
+        } else {
+          // Otherwise, spring back to original position
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 50,
+            friction: 8,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
   return (
     <Modal
       visible={true}
@@ -1104,7 +1220,8 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
           style={{ width: "100%", height: "100%" }}
           onPress={(e) => e.stopPropagation()}
         >
-          <View
+          <Animated.View
+            {...panResponder.panHandlers}
             style={{
               flex: 1,
               backgroundColor: Colors.background.primary,
@@ -1117,6 +1234,7 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
               paddingHorizontal: Spacing.xl,
               paddingBottom: Spacing['3xl'],
               ...Shadows.xl,
+              transform: [{ translateY }],
             }}
           >
             {/* Handle Bar - Swipe down to close */}
@@ -1447,7 +1565,7 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                 )}
               </LinearGradient>
             </ScrollView>
-          </View>
+          </Animated.View>
         </Pressable>
       </Pressable>
     </Modal>
