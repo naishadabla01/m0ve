@@ -30,10 +30,11 @@ export default function RootLayout() {
     if (!isReady) return;
 
     const inAuthGroup = segments[0] === "(auth)";
+    const onWelcomeScreens = segments[0] === "index" || segments[0] === "welcome";
 
-    if (!session && !inAuthGroup) {
-      // Not logged in, redirect to sign in
-      router.replace("/(auth)/signin");
+    if (!session && !inAuthGroup && !onWelcomeScreens) {
+      // Not logged in and not on welcome screens, redirect to home (splash screen)
+      router.replace("/");
     } else if (session && inAuthGroup) {
       // Logged in but on auth screen, redirect to home
       router.replace("/(home)");
@@ -48,6 +49,8 @@ export default function RootLayout() {
         animation: "fade",
       }}
     >
+      <Stack.Screen name="index" options={{ headerShown: false, animation: "fade" }} />
+      <Stack.Screen name="welcome" options={{ headerShown: false, animation: "slide_from_right" }} />
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(home)" options={{ headerShown: false }} />
       <Stack.Screen name="move" options={{ headerShown: false }} />
