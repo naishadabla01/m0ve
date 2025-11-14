@@ -263,29 +263,6 @@ export default function HomeScreen() {
 
         {/* Welcome Message - Artistic */}
         <View style={{ marginBottom: Spacing.sm }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, marginBottom: Spacing.xs }}>
-            <LinearGradient
-              colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={{
-                paddingHorizontal: Spacing.md,
-                paddingVertical: Spacing.xs,
-                borderRadius: BorderRadius.full,
-              }}
-            >
-              <Text
-                style={{
-                  color: Colors.text.primary,
-                  fontSize: Typography.size.sm,
-                  fontWeight: Typography.weight.bold,
-                  letterSpacing: 1,
-                }}
-              >
-                WELCOME BACK
-              </Text>
-            </LinearGradient>
-          </View>
           <Text
             style={{
               color: Colors.text.primary,
@@ -294,8 +271,18 @@ export default function HomeScreen() {
               lineHeight: 40,
             }}
           >
-            Hey {displayName}
-            <Text style={{ fontSize: Typography.size['4xl'] }}> 👋</Text>
+            Welcome Back
+          </Text>
+          <Text
+            style={{
+              color: Colors.accent.purple.light,
+              fontSize: Typography.size['4xl'],
+              fontWeight: Typography.weight.bold,
+              lineHeight: 48,
+              marginTop: Spacing.xs,
+            }}
+          >
+            {displayName} 👋
           </Text>
           <Text
             style={{
@@ -317,7 +304,7 @@ export default function HomeScreen() {
           <Pressable onPress={() => setShowJoinModal(true)}>
             {({ pressed }) => (
               <LinearGradient
-                colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
+                colors={['rgba(168, 85, 247, 0.6)', 'rgba(236, 72, 153, 0.5)']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={{
@@ -327,6 +314,8 @@ export default function HomeScreen() {
                   opacity: pressed ? 0.85 : 1,
                   ...Shadows.xl,
                   transform: [{ scale: pressed ? 0.98 : 1 }],
+                  borderWidth: 1,
+                  borderColor: 'rgba(168, 85, 247, 0.3)',
                 }}
               >
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: Spacing.md }}>
@@ -712,7 +701,7 @@ function EventCard({ event, isPast = false, onShowDetails }: { event: Event; isP
   return (
     <Pressable
       onPress={() => onShowDetails(event)}
-      style={{ width: 180 }}
+      style={{ width: 220 }}
     >
       {({ pressed }) => (
         <LinearGradient
@@ -735,7 +724,7 @@ function EventCard({ event, isPast = false, onShowDetails }: { event: Event; isP
             source={{ uri: event.cover_image_url }}
             style={{
               width: "100%",
-              height: 150,
+              height: 180,
               borderRadius: BorderRadius.lg,
               marginBottom: Spacing.md,
             }}
@@ -748,7 +737,7 @@ function EventCard({ event, isPast = false, onShowDetails }: { event: Event; isP
             end={{ x: 1, y: 1 }}
             style={{
               width: "100%",
-              height: 150,
+              height: 180,
               borderRadius: BorderRadius.lg,
               alignItems: "center",
               justifyContent: "center",
@@ -1487,14 +1476,14 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                   bottom: 0,
                   width: '100%',
                   height: '100%',
-                  opacity: 0.5,
+                  opacity: 0.7,
                 }}
                 resizeMode="cover"
-                blurRadius={20}
+                blurRadius={15}
               />
               {/* Dark gradient overlay for text readability */}
               <LinearGradient
-                colors={['rgba(0, 0, 0, 0.7)', 'rgba(0, 0, 0, 0.6)', 'rgba(0, 0, 0, 0.8)']}
+                colors={['rgba(0, 0, 0, 0.5)', 'rgba(0, 0, 0, 0.4)', 'rgba(0, 0, 0, 0.6)']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
                 style={{

@@ -1,4 +1,4 @@
-// app/(home)/leaderboard.tsx - iOS 26 Glossy Silver Leaderboard
+// app/(home)/leaderboard.tsx - iOS 26 Themed Leaderboard
 import { supabase } from "@/lib/supabase/client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
@@ -15,7 +15,7 @@ import {
   Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Colors, BorderRadius, Spacing, Typography, Shadows } from "../../constants/Design";
+import { Colors, Gradients, BorderRadius, Spacing, Typography, Shadows } from "../../constants/Design";
 
 type LeaderboardEntry = {
   user_id: string;
@@ -38,10 +38,19 @@ export default function LeaderboardScreen() {
   const [eventId, setEventId] = useState<string | null>(null);
   const [eventInfo, setEventInfo] = useState<EventInfo | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserRank, setCurrentUserRank] = useState<number | null>(null);
   const [currentUserScore, setCurrentUserScore] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Get current user ID on mount
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setCurrentUserId(user.id);
+    })();
+  }, []);
 
   // Resolve event_id
   useEffect(() => {
@@ -181,25 +190,29 @@ export default function LeaderboardScreen() {
     if (rank === 1) return "#ffd700"; // Gold
     if (rank === 2) return "#c0c0c0"; // Silver
     if (rank === 3) return "#cd7f32"; // Bronze
-    return "#e5e7eb";
+    return Colors.accent.purple.light;
   };
 
   const renderLeaderboardItem = ({ item, index }: { item: LeaderboardEntry; index: number }) => {
-    const isCurrentUser = item.user_id === supabase.auth.getUser().then(({data}) => data.user?.id);
+    const isCurrentUser = currentUserId && item.user_id === currentUserId;
     const isTop3 = item.rank <= 3;
 
     return (
-      <View
+      <LinearGradient
+        colors={isCurrentUser
+          ? ['rgba(168, 85, 247, 0.15)', 'rgba(236, 72, 153, 0.15)']
+          : Gradients.glass.medium}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={{
           flexDirection: "row",
           alignItems: "center",
-          padding: Spacing.md,
-          paddingVertical: Spacing.lg,
+          padding: Spacing.lg,
           borderRadius: BorderRadius.xl,
           marginBottom: Spacing.sm,
-          backgroundColor: isTop3 ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.03)',
-          borderWidth: 1,
-          borderColor: isTop3 ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.06)',
+          borderWidth: isCurrentUser ? 2 : 1,
+          borderColor: isCurrentUser ? Colors.accent.purple.light : Colors.border.glass,
+          ...Shadows.sm,
         }}
       >
         {/* Rank */}
@@ -210,9 +223,9 @@ export default function LeaderboardScreen() {
             </View>
           ) : (
             <Text style={{
-              color: "#9ca3af",
+              color: isCurrentUser ? Colors.accent.purple.light : Colors.text.muted,
               fontSize: Typography.size.xl,
-              fontWeight: '600',
+              fontWeight: '700',
             }}>
               #{item.rank}
             </Text>
@@ -228,7 +241,7 @@ export default function LeaderboardScreen() {
               height: 48,
               borderRadius: BorderRadius.full,
               borderWidth: 2,
-              borderColor: 'rgba(255, 255, 255, 0.2)',
+              borderColor: isCurrentUser ? Colors.accent.purple.light : Colors.border.glass,
               marginRight: Spacing.md,
             }}
           />
@@ -238,9 +251,9 @@ export default function LeaderboardScreen() {
               width: 48,
               height: 48,
               borderRadius: BorderRadius.full,
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              backgroundColor: isCurrentUser ? 'rgba(168, 85, 247, 0.2)' : Colors.background.elevated,
               borderWidth: 2,
-              borderColor: 'rgba(255, 255, 255, 0.15)',
+              borderColor: isCurrentUser ? Colors.accent.purple.light : Colors.border.glass,
               alignItems: "center",
               justifyContent: "center",
               marginRight: Spacing.md,
@@ -253,22 +266,22 @@ export default function LeaderboardScreen() {
         {/* Name and Score */}
         <View style={{ flex: 1 }}>
           <Text style={{
-            color: "#ffffff",
+            color: isCurrentUser ? Colors.accent.purple.light : Colors.text.primary,
             fontSize: Typography.size.base,
-            fontWeight: '600',
+            fontWeight: '700',
           }}>
-            {item.name}
+            {item.name} {isCurrentUser && "⭐"}
           </Text>
           <Text style={{
-            color: "#9ca3af",
+            color: Colors.text.muted,
             fontSize: Typography.size.sm,
             marginTop: 2,
           }}>
-            {Math.round(item.score).toLocaleString()} pts
+            {Math.round(item.score).toLocaleString()} energy
           </Text>
         </View>
 
-        {/* Trophy for top 3 */}
+        {/* Badge for top 3 */}
         {isTop3 && (
           <View
             style={{
@@ -276,33 +289,41 @@ export default function LeaderboardScreen() {
               paddingVertical: 6,
               borderRadius: BorderRadius.full,
               backgroundColor: `${getRankColor(item.rank)}20`,
+              borderWidth: 1,
+              borderColor: `${getRankColor(item.rank)}40`,
             }}
           >
-            <Text style={{ color: getRankColor(item.rank), fontSize: 12, fontWeight: '700' }}>
+            <Text style={{ color: getRankColor(item.rank), fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>
               TOP {item.rank}
             </Text>
           </View>
         )}
-      </View>
+      </LinearGradient>
     );
   };
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator size="large" color="#ffffff" />
-          <Text style={{ color: "#9ca3af", marginTop: Spacing.md, fontSize: Typography.size.sm }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
+        <LinearGradient
+          colors={[Colors.background.primary, Colors.background.secondary]}
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
+          <ActivityIndicator size="large" color={Colors.accent.purple.light} />
+          <Text style={{ color: Colors.text.muted, marginTop: Spacing.md, fontSize: Typography.size.sm }}>
             Loading leaderboard...
           </Text>
-        </View>
+        </LinearGradient>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
-      <View style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
+      <LinearGradient
+        colors={[Colors.background.primary, Colors.background.secondary]}
+        style={{ flex: 1 }}
+      >
         {/* Header */}
         <View
           style={{
@@ -310,14 +331,14 @@ export default function LeaderboardScreen() {
             paddingBottom: Spacing.lg,
             paddingHorizontal: Spacing.lg,
             borderBottomWidth: 1,
-            borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+            borderBottomColor: Colors.border.subtle,
             marginBottom: Spacing.md,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: 'rgba(0, 0, 0, 0.3)',
           }}
         >
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
             <Text style={{
-              color: "#ffffff",
+              color: Colors.text.primary,
               fontSize: Typography.size['2xl'],
               fontWeight: '600',
               letterSpacing: 2,
@@ -327,7 +348,10 @@ export default function LeaderboardScreen() {
             </Text>
             <Pressable onPress={() => router.back()} style={{ position: 'absolute', right: 0 }}>
               {({ pressed }) => (
-                <View
+                <LinearGradient
+                  colors={Gradients.glass.medium}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
                   style={{
                     width: 40,
                     height: 40,
@@ -335,13 +359,13 @@ export default function LeaderboardScreen() {
                     alignItems: "center",
                     justifyContent: "center",
                     opacity: pressed ? 0.7 : 1,
-                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
                     borderWidth: 1,
-                    borderColor: 'rgba(255, 255, 255, 0.12)',
+                    borderColor: Colors.border.glass,
+                    ...Shadows.md,
                   }}
                 >
-                  <Text style={{ fontSize: 20, color: "#9ca3af" }}>✕</Text>
-                </View>
+                  <Text style={{ fontSize: 20, color: Colors.text.muted }}>✕</Text>
+                </LinearGradient>
               )}
             </Pressable>
           </View>
@@ -356,21 +380,24 @@ export default function LeaderboardScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => fetchLeaderboard(true)}
-              tintColor="#ffffff"
+              tintColor={Colors.accent.purple.light}
             />
           }
           ListHeaderComponent={
             <>
               {/* Event Info */}
               {eventInfo && (
-                <View
+                <LinearGradient
+                  colors={Gradients.glass.medium}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
                   style={{
                     borderRadius: BorderRadius['2xl'],
                     borderWidth: 1,
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderColor: Colors.border.glass,
                     padding: Spacing.lg,
                     marginBottom: Spacing.lg,
-                    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                    ...Shadows.md,
                   }}
                 >
                   <View style={{ flexDirection: "row", gap: Spacing.md, alignItems: "center" }}>
@@ -382,95 +409,123 @@ export default function LeaderboardScreen() {
                           height: 60,
                           borderRadius: BorderRadius.lg,
                           borderWidth: 2,
-                          borderColor: 'rgba(255, 255, 255, 0.15)',
+                          borderColor: Colors.border.glass,
                         }}
                         resizeMode="cover"
                       />
                     ) : (
-                      <View
+                      <LinearGradient
+                        colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
                         style={{
                           width: 60,
                           height: 60,
                           borderRadius: BorderRadius.lg,
-                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
                           alignItems: "center",
                           justifyContent: "center",
                         }}
                       >
                         <Text style={{ fontSize: 28 }}>🎵</Text>
-                      </View>
+                      </LinearGradient>
                     )}
                     <View style={{ flex: 1 }}>
-                      <Text style={{ color: "#ffffff", fontSize: Typography.size.lg, fontWeight: '600' }}>
+                      <Text style={{ color: Colors.text.primary, fontSize: Typography.size.lg, fontWeight: Typography.weight.bold }}>
                         {eventInfo.name || eventInfo.title || "Event"}
                       </Text>
                       {eventInfo.artist_name && (
-                        <Text style={{ color: "#9ca3af", fontSize: Typography.size.sm, marginTop: 2 }}>
+                        <Text style={{ color: Colors.text.muted, fontSize: Typography.size.sm, marginTop: 2 }}>
                           by {eventInfo.artist_name}
                         </Text>
                       )}
                     </View>
                   </View>
-                </View>
+                </LinearGradient>
               )}
 
               {/* Current User Stats */}
               {currentUserRank && (
-                <View
+                <LinearGradient
+                  colors={['rgba(168, 85, 247, 0.2)', 'rgba(236, 72, 153, 0.2)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
                   style={{
                     borderRadius: BorderRadius.xl,
-                    borderWidth: 1,
-                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    borderWidth: 2,
+                    borderColor: Colors.accent.purple.light,
                     padding: Spacing.lg,
                     marginBottom: Spacing.lg,
-                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    ...Shadows.lg,
                   }}
                 >
-                  <Text style={{ color: "#9ca3af", fontSize: Typography.size.xs, marginBottom: Spacing.xs, textAlign: "center", fontWeight: '600' }}>
+                  <Text style={{ color: Colors.text.muted, fontSize: Typography.size.xs, marginBottom: Spacing.xs, textAlign: "center", fontWeight: '600', letterSpacing: 1 }}>
                     YOUR RANK
                   </Text>
                   <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: Spacing.md }}>
                     <Text style={{ fontSize: 48 }}>{getRankEmoji(currentUserRank) || "🏅"}</Text>
                     <View>
-                      <Text style={{ color: "#ffffff", fontSize: Typography.size['3xl'], fontWeight: '700' }}>
+                      <Text style={{ color: Colors.accent.purple.light, fontSize: Typography.size['3xl'], fontWeight: '700' }}>
                         #{currentUserRank}
                       </Text>
-                      <Text style={{ color: "#9ca3af", fontSize: Typography.size.sm }}>
-                        {Math.round(currentUserScore).toLocaleString()} pts
+                      <Text style={{ color: Colors.text.muted, fontSize: Typography.size.sm }}>
+                        {Math.round(currentUserScore).toLocaleString()} energy
                       </Text>
                     </View>
                   </View>
-                </View>
+                </LinearGradient>
               )}
 
-              {/* Leaderboard Title */}
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: Spacing.md, paddingHorizontal: Spacing.xs }}>
-                <Text style={{ color: "#ffffff", fontSize: Typography.size.base, fontWeight: '600' }}>
+              {/* Leaderboard Title - Centered in 3D iOS 26 Card */}
+              <LinearGradient
+                colors={Gradients.glass.dark}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  borderRadius: BorderRadius.xl,
+                  borderWidth: 1,
+                  borderColor: Colors.border.glass,
+                  padding: Spacing.lg,
+                  marginBottom: Spacing.md,
+                  ...Shadows.lg,
+                }}
+              >
+                <Text style={{
+                  color: Colors.text.primary,
+                  fontSize: Typography.size.lg,
+                  fontWeight: '600',
+                  textAlign: "center",
+                  letterSpacing: 1,
+                }}>
                   Top Performers
                 </Text>
-                <Text style={{ color: "#6b7280", fontSize: Typography.size.xs }}>
-                  {leaderboard.length} dancers
+                <Text style={{
+                  color: Colors.text.muted,
+                  fontSize: Typography.size.xs,
+                  textAlign: "center",
+                  marginTop: Spacing.xs,
+                }}>
+                  {leaderboard.length} dancers competing
                 </Text>
-              </View>
+              </LinearGradient>
             </>
           }
           ListEmptyComponent={
-            <View
+            <LinearGradient
+              colors={Gradients.glass.light}
               style={{
                 borderRadius: BorderRadius.xl,
                 padding: Spacing['2xl'],
                 alignItems: "center",
-                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                borderWidth: 1,
+                borderColor: Colors.border.glass,
               }}
             >
               <Text style={{ fontSize: 48, marginBottom: Spacing.md }}>🎵</Text>
-              <Text style={{ color: "#9ca3af", fontSize: Typography.size.base, textAlign: "center" }}>
+              <Text style={{ color: Colors.text.muted, fontSize: Typography.size.base, textAlign: "center" }}>
                 No one's moving yet!{'\n'}Be the first to start dancing 💃
               </Text>
-            </View>
+            </LinearGradient>
           }
         />
-      </View>
+      </LinearGradient>
     </SafeAreaView>
   );
 }
