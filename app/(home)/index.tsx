@@ -12,6 +12,8 @@ import {
   Modal,
   TextInput,
   Animated,
+  Image,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -26,6 +28,7 @@ interface Event {
   title?: string | null;
   short_code?: string | null;
   location?: string | null;
+  cover_image_url?: string | null;
   start_at: string | null;
   end_at: string | null;
   ended_at: string | null;
@@ -40,6 +43,7 @@ export default function HomeScreen() {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showCodeInput, setShowCodeInput] = useState(false);
   const [eventCode, setEventCode] = useState("");
+  const [selectedEventForDetails, setSelectedEventForDetails] = useState<Event | null>(null);
 
   // Animation for logo pulse effect
   const logoPulseAnim = useRef(new Animated.Value(1)).current;
@@ -105,7 +109,7 @@ export default function HomeScreen() {
       // Load events from database (created by artists via move-dashboard-deploy)
       const { data: events, error: eventsError } = await supabase
         .from("events")
-        .select("event_id, artist_id, name, title, short_code, location, start_at, end_at, ended_at, status")
+        .select("event_id, artist_id, name, title, short_code, location, cover_image_url, start_at, end_at, ended_at, status")
         .order("start_at", { ascending: false })
         .limit(20);
 
@@ -384,10 +388,10 @@ export default function HomeScreen() {
         )}
 
         {/* Ongoing Events Component */}
-        <OngoingEventsComponent events={ongoingEvents} />
+        <OngoingEventsComponent events={ongoingEvents} onShowDetails={setSelectedEventForDetails} />
 
         {/* Past Events Component */}
-        <PastEventsComponent events={pastEvents} />
+        <PastEventsComponent events={pastEvents} onShowDetails={setSelectedEventForDetails} />
       </ScrollView>
 
       {/* Floating QR Scan Button */}
@@ -436,12 +440,19 @@ export default function HomeScreen() {
         setEventCode={setEventCode}
         liveEvents={ongoingEvents.filter(e => e.status === 'live')}
       />
+      {/* Event Details Modal */}
+      {selectedEventForDetails && (
+        <EventDetailsModal
+          event={selectedEventForDetails}
+          onClose={() => setSelectedEventForDetails(null)}
+        />
+      )}
     </SafeAreaView>
   );
 }
 
 // Ongoing Events Carousel Component
-function OngoingEventsComponent({ events }: { events: Event[] }) {
+function OngoingEventsComponent({ events, onShowDetails }: { events: Event[]; onShowDetails: (event: Event) => void }) {
   return (
     <LinearGradient
       colors={Gradients.glass.dark}
@@ -475,7 +486,7 @@ function OngoingEventsComponent({ events }: { events: Event[] }) {
           contentContainerStyle={{ gap: Spacing.md }}
         >
           {events.map((event) => (
-            <EventCard key={event.event_id} event={event} />
+            <EventCard key={event.event_id} event={event} onShowDetails={onShowDetails} />
           ))}
         </ScrollView>
       ) : (
@@ -497,7 +508,7 @@ function OngoingEventsComponent({ events }: { events: Event[] }) {
 }
 
 // Past Events Component
-function PastEventsComponent({ events }: { events: Event[] }) {
+function PastEventsComponent({ events, onShowDetails }: { events: Event[]; onShowDetails: (event: Event) => void }) {
   return (
     <LinearGradient
       colors={Gradients.glass.dark}
@@ -531,7 +542,7 @@ function PastEventsComponent({ events }: { events: Event[] }) {
           contentContainerStyle={{ gap: Spacing.md }}
         >
           {events.slice(0, 8).map((event) => (
-            <EventCard key={event.event_id} event={event} isPast />
+            <EventCard key={event.event_id} event={event} isPast onShowDetails={onShowDetails} />
           ))}
         </ScrollView>
       ) : (
@@ -553,29 +564,35 @@ function PastEventsComponent({ events }: { events: Event[] }) {
 }
 
 // Event Card (Spotify-style)
-function EventCard({ event, isPast = false }: { event: Event; isPast?: boolean }) {
+function EventCard({ event, isPast = false, onShowDetails }: { event: Event; isPast?: boolean; onShowDetails: (event: Event) => void }) {
   return (
-    <Pressable
-      onPress={() => {
-        // Navigate to event details
-      }}
-    >
-      {({ pressed }) => (
-        <LinearGradient
-          colors={Gradients.glass.medium}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            width: width * 0.7,
-            borderRadius: BorderRadius.xl,
-            borderWidth: 1,
-            borderColor: Colors.border.glass,
-            padding: Spacing.lg,
-            opacity: pressed ? 0.8 : isPast ? 0.7 : 1,
-            ...Shadows.md,
-          }}
-        >
-          {/* Event Icon/Image Placeholder */}
+    <View style={{ width: width * 0.7 }}>
+      <LinearGradient
+        colors={Gradients.glass.medium}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{
+          borderRadius: BorderRadius.xl,
+          borderWidth: 1,
+          borderColor: Colors.border.glass,
+          padding: Spacing.lg,
+          opacity: isPast ? 0.7 : 1,
+          ...Shadows.md,
+        }}
+      >
+        {/* Cover Image or Gradient Placeholder */}
+        {event.cover_image_url ? (
+          <Image
+            source={{ uri: event.cover_image_url }}
+            style={{
+              width: "100%",
+              height: 120,
+              borderRadius: BorderRadius.lg,
+              marginBottom: Spacing.md,
+            }}
+            resizeMode="cover"
+          />
+        ) : (
           <LinearGradient
             colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
             start={{ x: 0, y: 0 }}
@@ -592,31 +609,34 @@ function EventCard({ event, isPast = false }: { event: Event; isPast?: boolean }
           >
             <Text style={{ fontSize: 48 }}>🎵</Text>
           </LinearGradient>
+        )}
 
-          <Text
-            numberOfLines={1}
-            style={{
-              color: Colors.text.primary,
-              fontSize: Typography.size.lg,
-              fontWeight: Typography.weight.bold,
-              marginBottom: Spacing.xs,
-            }}
-          >
-            {event.name || event.title || event.short_code || 'Untitled Event'}
-          </Text>
+        <Text
+          numberOfLines={1}
+          style={{
+            color: Colors.text.primary,
+            fontSize: Typography.size.lg,
+            fontWeight: Typography.weight.bold,
+            marginBottom: Spacing.xs,
+          }}
+        >
+          {event.name || event.title || event.short_code || 'Untitled Event'}
+        </Text>
 
-          <Text
-            numberOfLines={1}
-            style={{
-              color: Colors.text.muted,
-              fontSize: Typography.size.sm,
-              marginBottom: Spacing.sm,
-            }}
-          >
-            {event.location || (event.short_code ? `Code: ${event.short_code}` : 'Location TBA')}
-          </Text>
+        <Text
+          numberOfLines={1}
+          style={{
+            color: Colors.text.muted,
+            fontSize: Typography.size.sm,
+            marginBottom: Spacing.sm,
+          }}
+        >
+          {event.location || (event.short_code ? `Code: ${event.short_code}` : 'Location TBA')}
+        </Text>
 
-          {event.status === 'live' && !isPast && (
+        {/* Bottom Row: LIVE indicator and Details button */}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          {event.status === 'live' && !isPast ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
               <View
                 style={{
@@ -636,10 +656,38 @@ function EventCard({ event, isPast = false }: { event: Event; isPast?: boolean }
                 LIVE NOW
               </Text>
             </View>
-          )}
-        </LinearGradient>
-      )}
-    </Pressable>
+          ) : <View />}
+
+          {/* Details Button */}
+          <Pressable onPress={() => onShowDetails(event)}>
+            {({ pressed }) => (
+              <LinearGradient
+                colors={[Colors.accent.purple.light, Colors.accent.pink.light] as const}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{
+                  paddingHorizontal: Spacing.md,
+                  paddingVertical: Spacing.sm,
+                  borderRadius: BorderRadius.md,
+                  opacity: pressed ? 0.8 : 1,
+                  ...Shadows.sm,
+                }}
+              >
+                <Text
+                  style={{
+                    color: Colors.text.primary,
+                    fontSize: Typography.size.xs,
+                    fontWeight: Typography.weight.bold,
+                  }}
+                >
+                  Details
+                </Text>
+              </LinearGradient>
+            )}
+          </Pressable>
+        </View>
+      </LinearGradient>
+    </View>
   );
 }
 
@@ -994,5 +1042,440 @@ function LiveEventCard({ event, onJoin }: { event: Event; onJoin: () => void }) 
         </View>
       )}
     </Pressable>
+  );
+}
+
+// Event Details Modal Component
+function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => void }) {
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
+  const [eventStats, setEventStats] = useState<{ totalEnergy: number; participantCount: number } | null>(null);
+
+  // Load leaderboard and stats when modal opens
+  useEffect(() => {
+    let isMounted = true;
+
+    (async () => {
+      setLoadingLeaderboard(true);
+
+      try {
+        // Fetch top 10 leaderboard for this event
+        const { data: scores, error: scoresError } = await supabase
+          .from("scores")
+          .select(`
+            user_id,
+            total_energy,
+            is_live,
+            profiles!inner(display_name, first_name, last_name)
+          `)
+          .eq("event_id", event.event_id)
+          .order("total_energy", { ascending: false })
+          .limit(10);
+
+        if (scoresError) {
+          console.error("Failed to load leaderboard:", scoresError);
+        } else if (isMounted && scores) {
+          setLeaderboard(scores);
+
+          // Calculate stats
+          const totalEnergy = scores.reduce((sum, s) => sum + (s.total_energy || 0), 0);
+          const participantCount = scores.length;
+          setEventStats({ totalEnergy, participantCount });
+        }
+      } catch (err) {
+        console.error("Error loading event details:", err);
+      } finally {
+        if (isMounted) setLoadingLeaderboard(false);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [event.event_id]);
+
+  // Format date/time
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return "TBA";
+    const date = new Date(dateString);
+    return date.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
+  return (
+    <Modal
+      visible={true}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <Pressable
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(0, 0, 0, 0.85)",
+          justifyContent: "flex-end",
+        }}
+        onPress={onClose}
+      >
+        <Pressable
+          style={{ width: "100%", maxHeight: "90%" }}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <LinearGradient
+            colors={Gradients.glass.dark}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              borderTopLeftRadius: BorderRadius['3xl'],
+              borderTopRightRadius: BorderRadius['3xl'],
+              borderWidth: 1,
+              borderBottomWidth: 0,
+              borderColor: Colors.border.glass,
+              paddingTop: Spacing.xl,
+              paddingHorizontal: Spacing.xl,
+              paddingBottom: Spacing['3xl'],
+              ...Shadows.xl,
+            }}
+          >
+            {/* Handle Bar */}
+            <View style={{ alignItems: "center", marginBottom: Spacing.lg }}>
+              <View
+                style={{
+                  width: 40,
+                  height: 5,
+                  borderRadius: BorderRadius.full,
+                  backgroundColor: Colors.text.muted,
+                  opacity: 0.3,
+                }}
+              />
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Header */}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: Spacing.xl }}>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      color: Colors.text.primary,
+                      fontSize: Typography.size['3xl'],
+                      fontWeight: Typography.weight.bold,
+                      marginBottom: Spacing.xs,
+                    }}
+                  >
+                    {event.name || event.title || event.short_code || 'Untitled Event'}
+                  </Text>
+                  {event.status === 'live' && (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
+                      <View
+                        style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: BorderRadius.full,
+                          backgroundColor: Colors.status.live,
+                        }}
+                      />
+                      <Text
+                        style={{
+                          color: Colors.status.live,
+                          fontSize: Typography.size.sm,
+                          fontWeight: Typography.weight.bold,
+                        }}
+                      >
+                        LIVE NOW
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <Pressable onPress={onClose}>
+                  <Text style={{ color: Colors.text.muted, fontSize: 32 }}>×</Text>
+                </Pressable>
+              </View>
+
+              {/* Event Info Card */}
+              <LinearGradient
+                colors={Gradients.glass.medium}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  borderRadius: BorderRadius.xl,
+                  borderWidth: 1,
+                  borderColor: Colors.border.glass,
+                  padding: Spacing.lg,
+                  marginBottom: Spacing.xl,
+                  ...Shadows.md,
+                }}
+              >
+                <Text
+                  style={{
+                    color: Colors.accent.purple.light,
+                    fontSize: Typography.size.xs,
+                    fontWeight: Typography.weight.bold,
+                    letterSpacing: 1.5,
+                    marginBottom: Spacing.md,
+                  }}
+                >
+                  EVENT INFORMATION
+                </Text>
+
+                <View style={{ gap: Spacing.md }}>
+                  {/* Location */}
+                  <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+                    <Text style={{ fontSize: 18, marginRight: Spacing.sm }}>📍</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: Colors.text.muted, fontSize: Typography.size.xs, marginBottom: 2 }}>
+                        Location
+                      </Text>
+                      <Text style={{ color: Colors.text.primary, fontSize: Typography.size.base, fontWeight: Typography.weight.semibold }}>
+                        {event.location || 'Location TBA'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Start Time */}
+                  <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+                    <Text style={{ fontSize: 18, marginRight: Spacing.sm }}>🕐</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: Colors.text.muted, fontSize: Typography.size.xs, marginBottom: 2 }}>
+                        Start Time
+                      </Text>
+                      <Text style={{ color: Colors.text.primary, fontSize: Typography.size.base, fontWeight: Typography.weight.semibold }}>
+                        {formatDateTime(event.start_at)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* End Time */}
+                  {event.end_at && (
+                    <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+                      <Text style={{ fontSize: 18, marginRight: Spacing.sm }}>⏰</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: Colors.text.muted, fontSize: Typography.size.xs, marginBottom: 2 }}>
+                          End Time
+                        </Text>
+                        <Text style={{ color: Colors.text.primary, fontSize: Typography.size.base, fontWeight: Typography.weight.semibold }}>
+                          {formatDateTime(event.end_at)}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Event Code */}
+                  {event.short_code && (
+                    <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+                      <Text style={{ fontSize: 18, marginRight: Spacing.sm }}>🔑</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: Colors.text.muted, fontSize: Typography.size.xs, marginBottom: 2 }}>
+                          Event Code
+                        </Text>
+                        <Text style={{ color: Colors.text.primary, fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, letterSpacing: 2 }}>
+                          {event.short_code}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              </LinearGradient>
+
+              {/* Event Stats */}
+              {eventStats && (
+                <LinearGradient
+                  colors={Gradients.glass.medium}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{
+                    borderRadius: BorderRadius.xl,
+                    borderWidth: 1,
+                    borderColor: Colors.border.glass,
+                    padding: Spacing.lg,
+                    marginBottom: Spacing.xl,
+                    flexDirection: "row",
+                    gap: Spacing.lg,
+                    ...Shadows.md,
+                  }}
+                >
+                  <View style={{ flex: 1, alignItems: "center" }}>
+                    <Text style={{ fontSize: 32, marginBottom: Spacing.xs }}>⚡</Text>
+                    <Text
+                      style={{
+                        color: Colors.accent.purple.light,
+                        fontSize: Typography.size['2xl'],
+                        fontWeight: Typography.weight.bold,
+                      }}
+                    >
+                      {eventStats.totalEnergy.toLocaleString()}
+                    </Text>
+                    <Text style={{ color: Colors.text.muted, fontSize: Typography.size.xs, marginTop: 4 }}>
+                      Total Energy
+                    </Text>
+                  </View>
+                  <View style={{ width: 1, backgroundColor: Colors.border.glass }} />
+                  <View style={{ flex: 1, alignItems: "center" }}>
+                    <Text style={{ fontSize: 32, marginBottom: Spacing.xs }}>👥</Text>
+                    <Text
+                      style={{
+                        color: Colors.accent.pink.light,
+                        fontSize: Typography.size['2xl'],
+                        fontWeight: Typography.weight.bold,
+                      }}
+                    >
+                      {eventStats.participantCount}
+                    </Text>
+                    <Text style={{ color: Colors.text.muted, fontSize: Typography.size.xs, marginTop: 4 }}>
+                      Participants
+                    </Text>
+                  </View>
+                </LinearGradient>
+              )}
+
+              {/* Leaderboard */}
+              <LinearGradient
+                colors={Gradients.glass.medium}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  borderRadius: BorderRadius.xl,
+                  borderWidth: 1,
+                  borderColor: Colors.border.glass,
+                  padding: Spacing.lg,
+                  ...Shadows.md,
+                }}
+              >
+                <Text
+                  style={{
+                    color: Colors.accent.purple.light,
+                    fontSize: Typography.size.xs,
+                    fontWeight: Typography.weight.bold,
+                    letterSpacing: 1.5,
+                    marginBottom: Spacing.md,
+                  }}
+                >
+                  TOP 10 LEADERBOARD
+                </Text>
+
+                {loadingLeaderboard ? (
+                  <View style={{ alignItems: "center", paddingVertical: Spacing['2xl'] }}>
+                    <ActivityIndicator color={Colors.accent.purple.light} size="large" />
+                  </View>
+                ) : leaderboard.length > 0 ? (
+                  <View style={{ gap: Spacing.sm }}>
+                    {leaderboard.map((entry, index) => {
+                      const profile = entry.profiles;
+                      const displayName = profile?.display_name ||
+                        [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
+                        "Anonymous";
+
+                      return (
+                        <LinearGradient
+                          key={entry.user_id}
+                          colors={index < 3 ? Gradients.glass.light : ['rgba(255, 255, 255, 0.03)', 'rgba(255, 255, 255, 0.01)'] as const}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            padding: Spacing.md,
+                            borderRadius: BorderRadius.lg,
+                            borderWidth: index < 3 ? 1 : 0,
+                            borderColor: index < 3 ? Colors.border.glass : 'transparent',
+                          }}
+                        >
+                          {/* Rank */}
+                          <View
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: BorderRadius.full,
+                              backgroundColor: index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : 'rgba(255, 255, 255, 0.1)',
+                              alignItems: "center",
+                              justifyContent: "center",
+                              marginRight: Spacing.md,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: index < 3 ? '#000' : Colors.text.primary,
+                                fontSize: Typography.size.sm,
+                                fontWeight: Typography.weight.bold,
+                              }}
+                            >
+                              {index + 1}
+                            </Text>
+                          </View>
+
+                          {/* User Info */}
+                          <View style={{ flex: 1 }}>
+                            <Text
+                              numberOfLines={1}
+                              style={{
+                                color: Colors.text.primary,
+                                fontSize: Typography.size.base,
+                                fontWeight: Typography.weight.semibold,
+                              }}
+                            >
+                              {displayName}
+                            </Text>
+                            {entry.is_live && (
+                              <Text
+                                style={{
+                                  color: Colors.status.live,
+                                  fontSize: Typography.size.xs,
+                                  marginTop: 2,
+                                }}
+                              >
+                                🔴 Live
+                              </Text>
+                            )}
+                          </View>
+
+                          {/* Energy */}
+                          <View style={{ alignItems: "flex-end" }}>
+                            <Text
+                              style={{
+                                color: Colors.accent.purple.light,
+                                fontSize: Typography.size.lg,
+                                fontWeight: Typography.weight.bold,
+                              }}
+                            >
+                              {(entry.total_energy || 0).toLocaleString()}
+                            </Text>
+                            <Text
+                              style={{
+                                color: Colors.text.muted,
+                                fontSize: Typography.size.xs,
+                              }}
+                            >
+                              energy
+                            </Text>
+                          </View>
+                        </LinearGradient>
+                      );
+                    })}
+                  </View>
+                ) : (
+                  <View style={{ alignItems: "center", paddingVertical: Spacing['2xl'] }}>
+                    <Text style={{ fontSize: 48, marginBottom: Spacing.md }}>🏆</Text>
+                    <Text
+                      style={{
+                        color: Colors.text.muted,
+                        fontSize: Typography.size.base,
+                        textAlign: "center",
+                      }}
+                    >
+                      No participants yet
+                    </Text>
+                  </View>
+                )}
+              </LinearGradient>
+            </ScrollView>
+          </LinearGradient>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
