@@ -338,6 +338,33 @@ export default function MoveScreen() {
     };
   }, []);
 
+  // Poll for energy updates while tracking
+  useEffect(() => {
+    if (!running || !eventId) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: userScore } = await supabase
+          .from("scores")
+          .select("score")
+          .eq("event_id", eventId)
+          .eq("user_id", user?.id)
+          .maybeSingle();
+
+        if (userScore) {
+          setTotalEnergy(userScore.score || 0);
+          const goal = 10000;
+          setPercentComplete(Math.min(100, Math.round(((userScore.score || 0) / goal) * 100)));
+        }
+      } catch (e) {
+        console.error("Failed to poll energy:", e);
+      }
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [running, eventId]);
+
   const start = () => {
     if (running) return;
 
@@ -487,37 +514,57 @@ export default function MoveScreen() {
         colors={[Colors.background.primary, Colors.background.secondary]}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={{ padding: Spacing.lg }} showsVerticalScrollIndicator={false}>
-          {/* Header */}
-          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: Spacing.xl, gap: Spacing.md }}>
-            <Pressable onPress={() => router.back()}>
-              {({ pressed }) => (
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: BorderRadius.full,
-                    backgroundColor: Colors.background.elevated,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    opacity: pressed ? 0.7 : 1,
-                    borderWidth: 1,
-                    borderColor: Colors.border.subtle,
-                  }}
-                >
-                  <Text style={{ fontSize: 20 }}>←</Text>
-                </View>
-              )}
-            </Pressable>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: Colors.text.primary, fontSize: Typography.size['2xl'], fontWeight: Typography.weight.bold }}>
-                Movement
-              </Text>
-              <Text style={{ color: Colors.text.muted, fontSize: Typography.size.sm }}>
-                Track your energy
-              </Text>
+        <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xl }} showsVerticalScrollIndicator={false}>
+          {/* Header with Glassmorphism */}
+          <LinearGradient
+            colors={Gradients.glass.medium}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              marginHorizontal: -Spacing.lg,
+              marginTop: -Spacing.lg,
+              paddingHorizontal: Spacing.lg,
+              paddingVertical: Spacing.xl,
+              marginBottom: Spacing.xl,
+              borderBottomWidth: 1,
+              borderBottomColor: Colors.border.glass,
+              ...Shadows.lg,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.md }}>
+              <Pressable onPress={() => router.back()}>
+                {({ pressed }) => (
+                  <View
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: BorderRadius.full,
+                      backgroundColor: Colors.background.elevated,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      opacity: pressed ? 0.7 : 1,
+                      borderWidth: 1,
+                      borderColor: Colors.border.glass,
+                      ...Shadows.sm,
+                    }}
+                  >
+                    <Text style={{ fontSize: 22 }}>←</Text>
+                  </View>
+                )}
+              </Pressable>
+              <View style={{ flex: 1, alignItems: "center" }}>
+                <Text style={{ color: Colors.text.primary, fontSize: Typography.size['3xl'], fontWeight: Typography.weight.bold, textShadowColor: Colors.accent.purple.light, textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 }}>
+                  Movement
+                </Text>
+                <Text style={{ color: Colors.text.muted, fontSize: Typography.size.sm, marginTop: 2 }}>
+                  Track your energy
+                </Text>
+              </View>
+              <View style={{ width: 44 }} />
             </View>
-          </View>
+          </LinearGradient>
+
+          <View style={{ paddingHorizontal: Spacing.lg }}>
 
           {/* Event Info Card */}
           <LinearGradient
@@ -566,59 +613,91 @@ export default function MoveScreen() {
             </View>
           </LinearGradient>
 
-          {/* Central Energy Orb */}
-          <View style={{ alignItems: "center", marginBottom: Spacing['2xl'], marginTop: Spacing.xl }}>
-            {/* Outer energy rings */}
-            <Animated.View
-              style={{
-                position: 'absolute',
-                width: 280,
-                height: 280,
-                borderRadius: 140,
-                opacity: running ? energyRingOpacity : 0,
-                transform: [{ scale: energyRingScale }],
-              }}
-            >
-              <LinearGradient
-                colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+          {/* Central Energy Container with Glassmorphism */}
+          <LinearGradient
+            colors={Gradients.glass.dark}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              borderRadius: BorderRadius['3xl'],
+              borderWidth: 1,
+              borderColor: Colors.border.glass,
+              padding: Spacing['2xl'],
+              marginBottom: Spacing.xl,
+              alignItems: "center",
+              ...Shadows.xl,
+            }}
+          >
+            {/* Energy Orb Container */}
+            <View style={{ width: 280, height: 280, alignItems: "center", justifyContent: "center", marginBottom: Spacing.lg }}>
+              {/* Outer energy rings */}
+              <Animated.View
                 style={{
-                  width: '100%',
-                  height: '100%',
+                  position: 'absolute',
+                  width: 280,
+                  height: 280,
                   borderRadius: 140,
-                }}
-              />
-            </Animated.View>
-
-            {/* Main energy orb */}
-            <Animated.View
-              style={{
-                width: 240,
-                height: 240,
-                transform: [{ scale: pulseAnim }, { translateX: shakeAnim }],
-              }}
-            >
-              <LinearGradient
-                colors={running
-                  ? [Colors.accent.purple.light, Colors.accent.pink.light]
-                  : ['rgba(168, 85, 247, 0.3)', 'rgba(236, 72, 153, 0.3)']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  borderRadius: 120,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderWidth: 3,
-                  borderColor: running ? Colors.accent.purple.light : Colors.border.glass,
-                  ...Shadows.xl,
+                  opacity: running ? energyRingOpacity : 0,
+                  transform: [{ scale: energyRingScale }],
                 }}
               >
-                <Animated.View
+                <LinearGradient
+                  colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
                   style={{
-                    opacity: running ? glowOpacity : 0.3,
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: 140,
+                  }}
+                />
+              </Animated.View>
+
+              {/* Rotating ring */}
+              <Animated.View
+                style={{
+                  position: 'absolute',
+                  width: 260,
+                  height: 260,
+                  transform: [{ rotate: spin }],
+                }}
+              >
+                <View
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: 130,
+                    borderWidth: 2,
+                    borderColor: 'transparent',
+                    borderTopColor: running ? Colors.accent.purple.light : Colors.border.subtle,
+                    borderRightColor: running ? Colors.accent.pink.light : Colors.border.subtle,
+                  }}
+                />
+              </Animated.View>
+
+              {/* Main energy orb */}
+              <Animated.View
+                style={{
+                  width: 240,
+                  height: 240,
+                  transform: [{ scale: pulseAnim }, { translateX: shakeAnim }],
+                }}
+              >
+                <LinearGradient
+                  colors={running
+                    ? [Colors.accent.purple.light, Colors.accent.pink.light]
+                    : ['rgba(168, 85, 247, 0.3)', 'rgba(236, 72, 153, 0.3)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: 120,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderWidth: 3,
+                    borderColor: running ? Colors.accent.purple.light : Colors.border.glass,
+                    ...Shadows.xl,
                   }}
                 >
                   <View style={{ alignItems: "center" }}>
@@ -628,49 +707,29 @@ export default function MoveScreen() {
                     <Text style={{ color: Colors.text.primary, fontSize: Typography.size['4xl'], fontWeight: Typography.weight.bold }}>
                       {Math.round(totalEnergy)}
                     </Text>
-                    <Text style={{ color: Colors.text.muted, fontSize: Typography.size.sm, marginTop: Spacing.xs }}>
+                    <Text style={{ color: Colors.text.primary, fontSize: Typography.size.base, marginTop: Spacing.xs, fontWeight: Typography.weight.semibold, opacity: 0.8 }}>
                       energy points
                     </Text>
                   </View>
-                </Animated.View>
-              </LinearGradient>
-            </Animated.View>
+                </LinearGradient>
+              </Animated.View>
+            </View>
 
-            {/* Rotating ring */}
-            <Animated.View
+            {/* Motivational Text inside container */}
+            <Text
               style={{
-                position: 'absolute',
-                width: 260,
-                height: 260,
-                transform: [{ rotate: spin }],
+                color: Colors.accent.purple.light,
+                fontSize: Typography.size.xl,
+                fontWeight: Typography.weight.bold,
+                textAlign: "center",
+                textShadowColor: Colors.accent.purple.light,
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 8,
               }}
             >
-              <View
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  borderRadius: 130,
-                  borderWidth: 2,
-                  borderColor: 'transparent',
-                  borderTopColor: running ? Colors.accent.purple.light : Colors.border.subtle,
-                  borderRightColor: running ? Colors.accent.pink.light : Colors.border.subtle,
-                }}
-              />
-            </Animated.View>
-          </View>
-
-          {/* Motivational Text */}
-          <Text
-            style={{
-              color: Colors.accent.purple.light,
-              fontSize: Typography.size['2xl'],
-              fontWeight: Typography.weight.bold,
-              textAlign: "center",
-              marginBottom: Spacing.lg,
-            }}
-          >
-            {getMotivationalText()}
-          </Text>
+              {getMotivationalText()}
+            </Text>
+          </LinearGradient>
 
           {/* Progress Stats Row */}
           <View style={{ flexDirection: "row", gap: Spacing.md, marginBottom: Spacing.xl }}>
@@ -838,6 +897,7 @@ export default function MoveScreen() {
               </View>
             </View>
           </LinearGradient>
+          </View>
         </ScrollView>
       </LinearGradient>
     </SafeAreaView>
