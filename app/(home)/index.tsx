@@ -42,22 +42,22 @@ export default function HomeScreen() {
   const [showCodeInput, setShowCodeInput] = useState(false);
   const [eventCode, setEventCode] = useState("");
 
-  // Animation for flowing gradient in logo
-  const logoGradientAnim = useRef(new Animated.Value(0)).current;
+  // Animation for logo pulse effect
+  const logoPulseAnim = useRef(new Animated.Value(1)).current;
 
-  // Logo gradient animation
+  // Logo pulse animation
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(logoGradientAnim, {
-          toValue: 1,
-          duration: 3000,
-          useNativeDriver: false,
+        Animated.timing(logoPulseAnim, {
+          toValue: 1.05,
+          duration: 2000,
+          useNativeDriver: true,
         }),
-        Animated.timing(logoGradientAnim, {
-          toValue: 0,
-          duration: 3000,
-          useNativeDriver: false,
+        Animated.timing(logoPulseAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
         }),
       ])
     ).start();
@@ -209,6 +209,7 @@ export default function HomeScreen() {
             style={{
               borderRadius: BorderRadius.xl,
               overflow: 'hidden',
+              transform: [{ scale: logoPulseAnim }],
               ...Shadows.lg,
             }}
           >
@@ -219,20 +220,8 @@ export default function HomeScreen() {
                 Colors.accent.purple.light,
                 Colors.accent.pink.DEFAULT,
               ]}
-              start={{
-                x: logoGradientAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 1],
-                }),
-                y: 0
-              }}
-              end={{
-                x: logoGradientAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [1, 0],
-                }),
-                y: 1
-              }}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
               style={{
                 paddingHorizontal: Spacing.xl,
                 paddingVertical: Spacing.md,
