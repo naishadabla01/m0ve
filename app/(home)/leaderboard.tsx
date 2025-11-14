@@ -1,4 +1,4 @@
-// app/(home)/leaderboard.tsx - Dynamic Leaderboard with iOS 26 Aesthetic
+// app/(home)/leaderboard.tsx - iOS 26 Glossy Silver Leaderboard
 import { supabase } from "@/lib/supabase/client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
@@ -9,14 +9,13 @@ import {
   Pressable,
   RefreshControl,
   SafeAreaView,
-  ScrollView,
   Text,
   View,
   Image,
   Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Colors, Gradients, BorderRadius, Spacing, Typography, Shadows } from "../../constants/Design";
+import { Colors, BorderRadius, Spacing, Typography, Shadows } from "../../constants/Design";
 
 type LeaderboardEntry = {
   user_id: string;
@@ -99,13 +98,13 @@ export default function LeaderboardScreen() {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Get top 100 from leaderboard
-      const { data: topScores } = await supabase
+      // Get top 100 from leaderboard with proper join
+      const { data: topScores, error } = await supabase
         .from("scores")
         .select(`
           user_id,
           score,
-          profiles:user_id (
+          profiles (
             name,
             profile_picture_url
           )
@@ -114,10 +113,12 @@ export default function LeaderboardScreen() {
         .order("score", { ascending: false })
         .limit(100);
 
-      if (topScores) {
+      console.log("Leaderboard query result:", { topScores, error, eventId });
+
+      if (topScores && topScores.length > 0) {
         const formattedLeaderboard: LeaderboardEntry[] = topScores.map((entry, idx) => ({
           user_id: entry.user_id,
-          name: (entry.profiles as any)?.name || "Unknown",
+          name: (entry.profiles as any)?.name || "Anonymous",
           score: entry.score || 0,
           rank: idx + 1,
           profile_picture_url: (entry.profiles as any)?.profile_picture_url,
@@ -154,6 +155,8 @@ export default function LeaderboardScreen() {
             }
           }
         }
+      } else {
+        setLeaderboard([]);
       }
     } catch (error) {
       console.error("Failed to fetch leaderboard:", error);
@@ -171,48 +174,49 @@ export default function LeaderboardScreen() {
     if (rank === 1) return "🥇";
     if (rank === 2) return "🥈";
     if (rank === 3) return "🥉";
-    return "🏅";
+    return null;
   };
 
   const getRankColor = (rank: number) => {
-    if (rank === 1) return "#fbbf24"; // Gold
-    if (rank === 2) return "#94a3b8"; // Silver
+    if (rank === 1) return "#ffd700"; // Gold
+    if (rank === 2) return "#c0c0c0"; // Silver
     if (rank === 3) return "#cd7f32"; // Bronze
-    return Colors.text.muted;
+    return "#e5e7eb";
   };
 
-  const renderLeaderboardItem = ({ item }: { item: LeaderboardEntry }) => {
-    const { data: { user } } = supabase.auth.getUser();
-    const isCurrentUser = user && item.user_id === (user as any).id;
+  const renderLeaderboardItem = ({ item, index }: { item: LeaderboardEntry; index: number }) => {
+    const isCurrentUser = item.user_id === supabase.auth.getUser().then(({data}) => data.user?.id);
+    const isTop3 = item.rank <= 3;
 
     return (
-      <LinearGradient
-        colors={isCurrentUser
-          ? ['rgba(168, 85, 247, 0.2)', 'rgba(236, 72, 153, 0.2)']
-          : Gradients.glass.light}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+      <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           padding: Spacing.md,
-          borderRadius: BorderRadius.lg,
-          borderWidth: isCurrentUser ? 2 : 1,
-          borderColor: isCurrentUser ? Colors.accent.purple.light : Colors.border.glass,
+          paddingVertical: Spacing.lg,
+          borderRadius: BorderRadius.xl,
           marginBottom: Spacing.sm,
-          ...Shadows.sm,
+          backgroundColor: isTop3 ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.03)',
+          borderWidth: 1,
+          borderColor: isTop3 ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.06)',
         }}
       >
         {/* Rank */}
-        <View style={{ width: 50, alignItems: "center" }}>
-          <Text style={{ fontSize: 24 }}>{getRankEmoji(item.rank)}</Text>
-          <Text style={{
-            color: getRankColor(item.rank),
-            fontSize: Typography.size.sm,
-            fontWeight: Typography.weight.bold,
-          }}>
-            #{item.rank}
-          </Text>
+        <View style={{ width: 60, alignItems: "center" }}>
+          {getRankEmoji(item.rank) ? (
+            <View style={{ alignItems: "center" }}>
+              <Text style={{ fontSize: 32 }}>{getRankEmoji(item.rank)}</Text>
+            </View>
+          ) : (
+            <Text style={{
+              color: "#9ca3af",
+              fontSize: Typography.size.xl,
+              fontWeight: '600',
+            }}>
+              #{item.rank}
+            </Text>
+          )}
         </View>
 
         {/* Profile Picture */}
@@ -220,23 +224,23 @@ export default function LeaderboardScreen() {
           <Image
             source={{ uri: item.profile_picture_url }}
             style={{
-              width: 44,
-              height: 44,
+              width: 48,
+              height: 48,
               borderRadius: BorderRadius.full,
               borderWidth: 2,
-              borderColor: isCurrentUser ? Colors.accent.purple.light : Colors.border.glass,
+              borderColor: 'rgba(255, 255, 255, 0.2)',
               marginRight: Spacing.md,
             }}
           />
         ) : (
           <View
             style={{
-              width: 44,
-              height: 44,
+              width: 48,
+              height: 48,
               borderRadius: BorderRadius.full,
-              backgroundColor: isCurrentUser ? Colors.accent.purple.light : Colors.background.elevated,
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
               borderWidth: 2,
-              borderColor: isCurrentUser ? Colors.accent.pink.light : Colors.border.glass,
+              borderColor: 'rgba(255, 255, 255, 0.15)',
               alignItems: "center",
               justifyContent: "center",
               marginRight: Spacing.md,
@@ -249,61 +253,56 @@ export default function LeaderboardScreen() {
         {/* Name and Score */}
         <View style={{ flex: 1 }}>
           <Text style={{
-            color: isCurrentUser ? Colors.accent.purple.light : Colors.text.primary,
+            color: "#ffffff",
             fontSize: Typography.size.base,
-            fontWeight: Typography.weight.bold,
+            fontWeight: '600',
           }}>
-            {item.name} {isCurrentUser && "⭐"}
+            {item.name}
           </Text>
           <Text style={{
-            color: Colors.text.muted,
+            color: "#9ca3af",
             fontSize: Typography.size.sm,
+            marginTop: 2,
           }}>
-            {Math.round(item.score).toLocaleString()} energy
+            {Math.round(item.score).toLocaleString()} pts
           </Text>
         </View>
 
         {/* Trophy for top 3 */}
-        {item.rank <= 3 && (
+        {isTop3 && (
           <View
             style={{
-              width: 36,
-              height: 36,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
               borderRadius: BorderRadius.full,
               backgroundColor: `${getRankColor(item.rank)}20`,
-              alignItems: "center",
-              justifyContent: "center",
             }}
           >
-            <Text style={{ fontSize: 20 }}>🏆</Text>
+            <Text style={{ color: getRankColor(item.rank), fontSize: 12, fontWeight: '700' }}>
+              TOP {item.rank}
+            </Text>
           </View>
         )}
-      </LinearGradient>
+      </View>
     );
   };
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
-        <LinearGradient
-          colors={[Colors.background.primary, Colors.background.secondary]}
-          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-        >
-          <ActivityIndicator size="large" color={Colors.accent.purple.light} />
-          <Text style={{ color: Colors.text.muted, marginTop: Spacing.md }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator size="large" color="#ffffff" />
+          <Text style={{ color: "#9ca3af", marginTop: Spacing.md, fontSize: Typography.size.sm }}>
             Loading leaderboard...
           </Text>
-        </LinearGradient>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
-      <LinearGradient
-        colors={[Colors.background.primary, Colors.background.secondary]}
-        style={{ flex: 1 }}
-      >
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
+      <View style={{ flex: 1 }}>
         {/* Header */}
         <View
           style={{
@@ -311,27 +310,24 @@ export default function LeaderboardScreen() {
             paddingBottom: Spacing.lg,
             paddingHorizontal: Spacing.lg,
             borderBottomWidth: 1,
-            borderBottomColor: Colors.border.subtle,
+            borderBottomColor: 'rgba(255, 255, 255, 0.08)',
             marginBottom: Spacing.md,
-            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
           }}
         >
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
             <Text style={{
-              color: Colors.text.primary,
+              color: "#ffffff",
               fontSize: Typography.size['2xl'],
-              fontWeight: '300',
+              fontWeight: '600',
               letterSpacing: 2,
-              fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-light',
+              fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
             }}>
-              Leaderboard
+              LEADERBOARD
             </Text>
             <Pressable onPress={() => router.back()} style={{ position: 'absolute', right: 0 }}>
               {({ pressed }) => (
-                <LinearGradient
-                  colors={Gradients.glass.medium}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
+                <View
                   style={{
                     width: 40,
                     height: 40,
@@ -339,152 +335,142 @@ export default function LeaderboardScreen() {
                     alignItems: "center",
                     justifyContent: "center",
                     opacity: pressed ? 0.7 : 1,
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
                     borderWidth: 1,
-                    borderColor: Colors.border.glass,
-                    ...Shadows.md,
+                    borderColor: 'rgba(255, 255, 255, 0.12)',
                   }}
                 >
-                  <Text style={{ fontSize: 20, color: Colors.text.muted }}>✕</Text>
-                </LinearGradient>
+                  <Text style={{ fontSize: 20, color: "#9ca3af" }}>✕</Text>
+                </View>
               )}
             </Pressable>
           </View>
         </View>
 
-        <ScrollView
-          contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl }}
+        <FlatList
+          data={leaderboard}
+          renderItem={renderLeaderboardItem}
+          keyExtractor={(item) => item.user_id}
+          contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingBottom: 100 }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => fetchLeaderboard(true)}
-              tintColor={Colors.accent.purple.light}
+              tintColor="#ffffff"
             />
           }
-        >
-          {/* Event Info */}
-          {eventInfo && (
-            <LinearGradient
-              colors={Gradients.glass.medium}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{
-                borderRadius: BorderRadius['2xl'],
-                borderWidth: 1,
-                borderColor: Colors.border.glass,
-                padding: Spacing.lg,
-                marginBottom: Spacing.lg,
-                ...Shadows.md,
-              }}
-            >
-              <View style={{ flexDirection: "row", gap: Spacing.md, alignItems: "center" }}>
-                {eventInfo.cover_image_url ? (
-                  <Image
-                    source={{ uri: eventInfo.cover_image_url }}
-                    style={{
-                      width: 60,
-                      height: 60,
-                      borderRadius: BorderRadius.lg,
-                      borderWidth: 2,
-                      borderColor: Colors.border.glass,
-                    }}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <LinearGradient
-                    colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
-                    style={{
-                      width: 60,
-                      height: 60,
-                      borderRadius: BorderRadius.lg,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Text style={{ fontSize: 28 }}>🎵</Text>
-                  </LinearGradient>
-                )}
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: Colors.text.primary, fontSize: Typography.size.lg, fontWeight: Typography.weight.bold }}>
-                    {eventInfo.name || eventInfo.title || "Event"}
-                  </Text>
-                  {eventInfo.artist_name && (
-                    <Text style={{ color: Colors.text.muted, fontSize: Typography.size.sm }}>
-                      by {eventInfo.artist_name}
-                    </Text>
-                  )}
+          ListHeaderComponent={
+            <>
+              {/* Event Info */}
+              {eventInfo && (
+                <View
+                  style={{
+                    borderRadius: BorderRadius['2xl'],
+                    borderWidth: 1,
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    padding: Spacing.lg,
+                    marginBottom: Spacing.lg,
+                    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                  }}
+                >
+                  <View style={{ flexDirection: "row", gap: Spacing.md, alignItems: "center" }}>
+                    {eventInfo.cover_image_url ? (
+                      <Image
+                        source={{ uri: eventInfo.cover_image_url }}
+                        style={{
+                          width: 60,
+                          height: 60,
+                          borderRadius: BorderRadius.lg,
+                          borderWidth: 2,
+                          borderColor: 'rgba(255, 255, 255, 0.15)',
+                        }}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View
+                        style={{
+                          width: 60,
+                          height: 60,
+                          borderRadius: BorderRadius.lg,
+                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Text style={{ fontSize: 28 }}>🎵</Text>
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: "#ffffff", fontSize: Typography.size.lg, fontWeight: '600' }}>
+                        {eventInfo.name || eventInfo.title || "Event"}
+                      </Text>
+                      {eventInfo.artist_name && (
+                        <Text style={{ color: "#9ca3af", fontSize: Typography.size.sm, marginTop: 2 }}>
+                          by {eventInfo.artist_name}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
                 </View>
-              </View>
-            </LinearGradient>
-          )}
+              )}
 
-          {/* Current User Stats */}
-          {currentUserRank && (
-            <LinearGradient
-              colors={['rgba(168, 85, 247, 0.3)', 'rgba(236, 72, 153, 0.3)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
+              {/* Current User Stats */}
+              {currentUserRank && (
+                <View
+                  style={{
+                    borderRadius: BorderRadius.xl,
+                    borderWidth: 1,
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    padding: Spacing.lg,
+                    marginBottom: Spacing.lg,
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  }}
+                >
+                  <Text style={{ color: "#9ca3af", fontSize: Typography.size.xs, marginBottom: Spacing.xs, textAlign: "center", fontWeight: '600' }}>
+                    YOUR RANK
+                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: Spacing.md }}>
+                    <Text style={{ fontSize: 48 }}>{getRankEmoji(currentUserRank) || "🏅"}</Text>
+                    <View>
+                      <Text style={{ color: "#ffffff", fontSize: Typography.size['3xl'], fontWeight: '700' }}>
+                        #{currentUserRank}
+                      </Text>
+                      <Text style={{ color: "#9ca3af", fontSize: Typography.size.sm }}>
+                        {Math.round(currentUserScore).toLocaleString()} pts
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {/* Leaderboard Title */}
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: Spacing.md, paddingHorizontal: Spacing.xs }}>
+                <Text style={{ color: "#ffffff", fontSize: Typography.size.base, fontWeight: '600' }}>
+                  Top Performers
+                </Text>
+                <Text style={{ color: "#6b7280", fontSize: Typography.size.xs }}>
+                  {leaderboard.length} dancers
+                </Text>
+              </View>
+            </>
+          }
+          ListEmptyComponent={
+            <View
               style={{
                 borderRadius: BorderRadius.xl,
-                borderWidth: 2,
-                borderColor: Colors.accent.purple.light,
-                padding: Spacing.lg,
-                marginBottom: Spacing.lg,
-                ...Shadows.lg,
-              }}
-            >
-              <Text style={{ color: Colors.text.muted, fontSize: Typography.size.xs, marginBottom: Spacing.xs, textAlign: "center" }}>
-                YOUR RANK
-              </Text>
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: Spacing.md }}>
-                <Text style={{ fontSize: 48 }}>{getRankEmoji(currentUserRank)}</Text>
-                <View>
-                  <Text style={{ color: Colors.accent.purple.light, fontSize: Typography.size['3xl'], fontWeight: Typography.weight.bold }}>
-                    #{currentUserRank}
-                  </Text>
-                  <Text style={{ color: Colors.text.muted, fontSize: Typography.size.sm }}>
-                    {Math.round(currentUserScore).toLocaleString()} energy
-                  </Text>
-                </View>
-              </View>
-            </LinearGradient>
-          )}
-
-          {/* Leaderboard Title */}
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: Spacing.md }}>
-            <Text style={{ color: Colors.text.primary, fontSize: Typography.size.lg, fontWeight: Typography.weight.bold }}>
-              🏆 Top Movers
-            </Text>
-            <Text style={{ color: Colors.text.muted, fontSize: Typography.size.xs }}>
-              {leaderboard.length} dancers
-            </Text>
-          </View>
-
-          {/* Leaderboard List */}
-          {leaderboard.length > 0 ? (
-            <View>
-              {leaderboard.map((item) => (
-                <View key={item.user_id}>
-                  {renderLeaderboardItem({ item })}
-                </View>
-              ))}
-            </View>
-          ) : (
-            <LinearGradient
-              colors={Gradients.glass.light}
-              style={{
-                borderRadius: BorderRadius.xl,
-                padding: Spacing.xl,
+                padding: Spacing['2xl'],
                 alignItems: "center",
+                backgroundColor: 'rgba(255, 255, 255, 0.03)',
               }}
             >
               <Text style={{ fontSize: 48, marginBottom: Spacing.md }}>🎵</Text>
-              <Text style={{ color: Colors.text.muted, fontSize: Typography.size.base, textAlign: "center" }}>
+              <Text style={{ color: "#9ca3af", fontSize: Typography.size.base, textAlign: "center" }}>
                 No one's moving yet!{'\n'}Be the first to start dancing 💃
               </Text>
-            </LinearGradient>
-          )}
-        </ScrollView>
-      </LinearGradient>
+            </View>
+          }
+        />
+      </View>
     </SafeAreaView>
   );
 }

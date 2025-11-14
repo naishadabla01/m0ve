@@ -712,7 +712,7 @@ function EventCard({ event, isPast = false, onShowDetails }: { event: Event; isP
   return (
     <Pressable
       onPress={() => onShowDetails(event)}
-      style={{ width: width * 0.7 }}
+      style={{ width: 180 }}
     >
       {({ pressed }) => (
         <LinearGradient
@@ -735,7 +735,7 @@ function EventCard({ event, isPast = false, onShowDetails }: { event: Event; isP
             source={{ uri: event.cover_image_url }}
             style={{
               width: "100%",
-              height: 120,
+              height: 150,
               borderRadius: BorderRadius.lg,
               marginBottom: Spacing.md,
             }}
@@ -748,7 +748,7 @@ function EventCard({ event, isPast = false, onShowDetails }: { event: Event; isP
             end={{ x: 1, y: 1 }}
             style={{
               width: "100%",
-              height: 120,
+              height: 150,
               borderRadius: BorderRadius.lg,
               alignItems: "center",
               justifyContent: "center",
