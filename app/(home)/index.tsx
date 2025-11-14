@@ -607,20 +607,25 @@ function PastEventsComponent({ events, onShowDetails }: { events: Event[]; onSho
 // Event Card (Spotify-style)
 function EventCard({ event, isPast = false, onShowDetails }: { event: Event; isPast?: boolean; onShowDetails: (event: Event) => void }) {
   return (
-    <View style={{ width: width * 0.7 }}>
-      <LinearGradient
-        colors={Gradients.glass.medium}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{
-          borderRadius: BorderRadius.xl,
-          borderWidth: 1,
-          borderColor: Colors.border.glass,
-          padding: Spacing.lg,
-          opacity: isPast ? 0.7 : 1,
-          ...Shadows.md,
-        }}
-      >
+    <Pressable
+      onPress={() => onShowDetails(event)}
+      style={{ width: width * 0.7 }}
+    >
+      {({ pressed }) => (
+        <LinearGradient
+          colors={Gradients.glass.medium}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            borderRadius: BorderRadius.xl,
+            borderWidth: 1,
+            borderColor: Colors.border.glass,
+            padding: Spacing.lg,
+            opacity: isPast ? 0.7 : pressed ? 0.85 : 1,
+            ...Shadows.md,
+            transform: [{ scale: pressed ? 0.98 : 1 }],
+          }}
+        >
         {/* Cover Image or Gradient Placeholder */}
         {event.cover_image_url ? (
           <Image
@@ -675,7 +680,7 @@ function EventCard({ event, isPast = false, onShowDetails }: { event: Event; isP
           {event.location || (event.short_code ? `Code: ${event.short_code}` : 'Location TBA')}
         </Text>
 
-        {/* Bottom Row: LIVE indicator and Details button */}
+        {/* Bottom Row: LIVE indicator and tap indicator */}
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
           {event.status === 'live' && !isPast ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
@@ -699,36 +704,30 @@ function EventCard({ event, isPast = false, onShowDetails }: { event: Event; isP
             </View>
           ) : <View />}
 
-          {/* Details Button */}
-          <Pressable onPress={() => onShowDetails(event)}>
-            {({ pressed }) => (
-              <LinearGradient
-                colors={[Colors.accent.purple.light, Colors.accent.pink.light] as const}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{
-                  paddingHorizontal: Spacing.md,
-                  paddingVertical: Spacing.sm,
-                  borderRadius: BorderRadius.md,
-                  opacity: pressed ? 0.8 : 1,
-                  ...Shadows.sm,
-                }}
-              >
-                <Text
-                  style={{
-                    color: Colors.text.primary,
-                    fontSize: Typography.size.xs,
-                    fontWeight: Typography.weight.bold,
-                  }}
-                >
-                  Details
-                </Text>
-              </LinearGradient>
-            )}
-          </Pressable>
+          {/* Tap to view indicator */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: Spacing.xs,
+              paddingHorizontal: Spacing.sm,
+            }}
+          >
+            <Text
+              style={{
+                color: Colors.text.muted,
+                fontSize: Typography.size.xs,
+                fontStyle: "italic",
+              }}
+            >
+              Tap to view
+            </Text>
+            <Text style={{ color: Colors.accent.purple.light, fontSize: 14 }}>→</Text>
+          </View>
         </View>
       </LinearGradient>
-    </View>
+      )}
+    </Pressable>
   );
 }
 
@@ -750,11 +749,49 @@ function JoinEventModal({
   setEventCode: (code: string) => void;
   liveEvents: Event[];
 }) {
-  const handleJoinWithCode = () => {
-    if (eventCode.trim()) {
-      // TODO: Implement join event logic
-      console.log("Joining event with code:", eventCode);
+  const [isJoining, setIsJoining] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
+
+  const handleJoinWithCode = async () => {
+    const code = eventCode.trim().toUpperCase();
+    if (!code) {
+      setErrorMessage("Please enter an event code");
+      return;
+    }
+
+    setIsJoining(true);
+    setErrorMessage("");
+
+    try {
+      // Look up event by short_code
+      const { data: events, error } = await supabase
+        .from("events")
+        .select("event_id, name, title, short_code, status")
+        .eq("short_code", code)
+        .limit(1);
+
+      if (error) {
+        console.error("Error finding event:", error);
+        setErrorMessage("Failed to find event. Please try again.");
+        setIsJoining(false);
+        return;
+      }
+
+      if (!events || events.length === 0) {
+        setErrorMessage(`Event with code "${code}" not found`);
+        setIsJoining(false);
+        return;
+      }
+
+      const event = events[0];
+
+      // Navigate to movement tracker with event_id
       onClose();
+      router.push(`/move?event_id=${event.event_id}`);
+    } catch (err) {
+      console.error("Error joining event:", err);
+      setErrorMessage("An unexpected error occurred");
+      setIsJoining(false);
     }
   };
 
@@ -877,8 +914,11 @@ function JoinEventModal({
                 >
                   <TextInput
                     value={eventCode}
-                    onChangeText={setEventCode}
-                    placeholder="Enter event code"
+                    onChangeText={(text) => {
+                      setEventCode(text);
+                      setErrorMessage(""); // Clear error on input
+                    }}
+                    placeholder="Enter event code (e.g., JRYBJB)"
                     placeholderTextColor={Colors.text.muted}
                     style={{
                       paddingVertical: Spacing.md,
@@ -887,9 +927,35 @@ function JoinEventModal({
                       fontSize: Typography.size.base,
                     }}
                     autoCapitalize="characters"
+                    editable={!isJoining}
                   />
                 </LinearGradient>
-                <Pressable onPress={handleJoinWithCode}>
+
+                {/* Error Message */}
+                {errorMessage && (
+                  <View
+                    style={{
+                      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                      borderLeftWidth: 3,
+                      borderLeftColor: '#ef4444',
+                      paddingHorizontal: Spacing.md,
+                      paddingVertical: Spacing.sm,
+                      borderRadius: BorderRadius.sm,
+                      marginBottom: Spacing.sm,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: '#ef4444',
+                        fontSize: Typography.size.sm,
+                      }}
+                    >
+                      {errorMessage}
+                    </Text>
+                  </View>
+                )}
+
+                <Pressable onPress={handleJoinWithCode} disabled={isJoining}>
                   {({ pressed }) => (
                     <LinearGradient
                       colors={[Gradients.purplePink.start, Gradients.purplePink.end] as const}
@@ -899,19 +965,25 @@ function JoinEventModal({
                         paddingVertical: Spacing.md,
                         borderRadius: BorderRadius.lg,
                         alignItems: "center",
-                        opacity: pressed ? 0.9 : 1,
+                        justifyContent: "center",
+                        opacity: isJoining ? 0.6 : pressed ? 0.9 : 1,
                         ...Shadows.md,
+                        minHeight: 48,
                       }}
                     >
-                      <Text
-                        style={{
-                          color: Colors.text.primary,
-                          fontWeight: Typography.weight.bold,
-                          fontSize: Typography.size.sm,
-                        }}
-                      >
-                        Join Event
-                      </Text>
+                      {isJoining ? (
+                        <ActivityIndicator color={Colors.text.primary} />
+                      ) : (
+                        <Text
+                          style={{
+                            color: Colors.text.primary,
+                            fontWeight: Typography.weight.bold,
+                            fontSize: Typography.size.sm,
+                          }}
+                        >
+                          Join Event
+                        </Text>
+                      )}
                     </LinearGradient>
                   )}
                 </Pressable>
@@ -969,9 +1041,9 @@ function LiveEventCard({ event, onJoin }: { event: Event; onJoin: () => void }) 
   return (
     <Pressable
       onPress={() => {
-        // TODO: Implement join event logic
-        console.log("Joining event:", event.event_id);
+        // Navigate to movement tracker for this live event
         onJoin();
+        router.push(`/move?event_id=${event.event_id}`);
       }}
     >
       {({ pressed }) => (
@@ -1208,35 +1280,34 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
       animationType="slide"
       onRequestClose={onClose}
     >
-      <Pressable
+      <View
         style={{
           flex: 1,
           backgroundColor: "rgba(0, 0, 0, 0.85)",
           justifyContent: "flex-end",
         }}
-        onPress={onClose}
       >
-        <Pressable
-          style={{ width: "100%", height: "100%" }}
-          onPress={(e) => e.stopPropagation()}
+        <Animated.View
+          {...panResponder.panHandlers}
+          style={{
+            height: "90%",
+            backgroundColor: Colors.background.primary,
+            borderTopLeftRadius: BorderRadius['3xl'],
+            borderTopRightRadius: BorderRadius['3xl'],
+            borderWidth: 1,
+            borderBottomWidth: 0,
+            borderColor: Colors.border.strong,
+            paddingTop: Spacing.xl,
+            paddingHorizontal: Spacing.xl,
+            paddingBottom: Spacing['3xl'],
+            shadowColor: Colors.accent.purple.light,
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 20,
+            elevation: 20,
+            transform: [{ translateY }],
+          }}
         >
-          <Animated.View
-            {...panResponder.panHandlers}
-            style={{
-              flex: 1,
-              backgroundColor: Colors.background.primary,
-              borderTopLeftRadius: BorderRadius['3xl'],
-              borderTopRightRadius: BorderRadius['3xl'],
-              borderWidth: 1,
-              borderBottomWidth: 0,
-              borderColor: Colors.border.strong,
-              paddingTop: Spacing.xl,
-              paddingHorizontal: Spacing.xl,
-              paddingBottom: Spacing['3xl'],
-              ...Shadows.xl,
-              transform: [{ translateY }],
-            }}
-          >
             {/* Handle Bar - Swipe down to close */}
             <Pressable
               onPress={onClose}
@@ -1565,9 +1636,8 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                 )}
               </LinearGradient>
             </ScrollView>
-          </Animated.View>
-        </Pressable>
-      </Pressable>
+        </Animated.View>
+      </View>
     </Modal>
   );
 }
