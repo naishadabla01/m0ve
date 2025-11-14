@@ -25,7 +25,6 @@ interface Event {
   name: string | null;
   title?: string | null;
   short_code?: string | null;
-  venue?: string | null;
   location?: string | null;
   cover_image_url?: string | null;
   start_at: string | null;
@@ -107,7 +106,7 @@ export default function HomeScreen() {
       // Load events from database (created by artists via move-dashboard-deploy)
       const { data: events, error: eventsError } = await supabase
         .from("events")
-        .select("event_id, artist_id, name, title, short_code, venue, location, cover_image_url, start_at, end_at, ended_at, status")
+        .select("event_id, artist_id, name, title, short_code, location, cover_image_url, start_at, end_at, ended_at, status")
         .order("start_at", { ascending: false })
         .limit(20);
 
@@ -615,7 +614,7 @@ function EventCard({ event, isPast = false }: { event: Event; isPast?: boolean }
               marginBottom: Spacing.sm,
             }}
           >
-            {event.short_code ? `Code: ${event.short_code}` : 'Event'}
+            {event.location || (event.short_code ? `Code: ${event.short_code}` : 'Location TBA')}
           </Text>
 
           {event.status === 'live' && !isPast && (
@@ -967,7 +966,7 @@ function LiveEventCard({ event, onJoin }: { event: Event; onJoin: () => void }) 
               marginBottom: Spacing.sm,
             }}
           >
-            {event.short_code ? `Code: ${event.short_code}` : 'Tap to join'}
+            {event.location || (event.short_code ? `Code: ${event.short_code}` : 'Tap to join')}
           </Text>
 
           {/* Join Button */}
