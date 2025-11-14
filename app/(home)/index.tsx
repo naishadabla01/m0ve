@@ -911,64 +911,71 @@ function JoinEventModal({
               </Pressable>
             </View>
 
-            {/* Scan QR Code Button */}
+            {/* Scan QR Code Button - iOS 26 Style */}
             <Pressable onPress={() => { onClose(); router.push("/scan"); }}>
               {({ pressed }) => (
                 <LinearGradient
-                  colors={[Gradients.purplePink.start, Gradients.purplePink.end] as const}
+                  colors={["#007AFF", "#0051D5"]} // iOS blue
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={{
                     paddingVertical: Spacing.lg,
+                    paddingHorizontal: Spacing.lg,
                     borderRadius: BorderRadius.lg,
                     alignItems: "center",
+                    flexDirection: "row",
+                    justifyContent: "center",
+                    gap: Spacing.sm,
                     marginBottom: Spacing.md,
-                    opacity: pressed ? 0.9 : 1,
+                    opacity: pressed ? 0.85 : 1,
                     ...Shadows.md,
                   }}
                 >
+                  <Ionicons name="qr-code-outline" size={22} color="#ffffff" />
                   <Text
                     style={{
-                      color: Colors.text.primary,
+                      color: "#ffffff",
                       fontWeight: Typography.weight.bold,
                       fontSize: Typography.size.base,
                     }}
                   >
-                    📷 Scan QR Code
+                    Scan QR Code
                   </Text>
                 </LinearGradient>
               )}
             </Pressable>
 
-            {/* Enter Code Button */}
+            {/* Enter Code Button - iOS 26 Style */}
             {!showCodeInput ? (
               <Pressable onPress={() => setShowCodeInput(true)}>
                 {({ pressed }) => (
-                  <LinearGradient
-                    colors={Gradients.glass.light}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
+                  <View
                     style={{
                       paddingVertical: Spacing.lg,
+                      paddingHorizontal: Spacing.lg,
                       borderRadius: BorderRadius.lg,
                       alignItems: "center",
+                      flexDirection: "row",
+                      justifyContent: "center",
+                      gap: Spacing.sm,
+                      backgroundColor: "rgba(120, 120, 128, 0.16)", // iOS gray background
                       borderWidth: 1,
-                      borderColor: Colors.border.glass,
+                      borderColor: "rgba(255, 255, 255, 0.1)",
                       marginBottom: Spacing.lg,
-                      opacity: pressed ? 0.8 : 1,
-                      ...Shadows.sm,
+                      opacity: pressed ? 0.7 : 1,
                     }}
                   >
+                    <Ionicons name="key-outline" size={20} color="#8E8E93" />
                     <Text
                       style={{
-                        color: Colors.text.secondary,
+                        color: "#ffffff",
                         fontWeight: Typography.weight.semibold,
                         fontSize: Typography.size.base,
                       }}
                     >
-                      🔑 Enter Event Code
+                      Enter Event Code
                     </Text>
-                  </LinearGradient>
+                  </View>
                 )}
               </Pressable>
             ) : (
@@ -1126,22 +1133,10 @@ function LiveEventCard({
 
   return (
     <Pressable
-      onPress={async () => {
-        // Check if user is already in a different event
-        if (activeEvent && activeEvent.event_id !== event.event_id) {
-          // Could show an alert here, but for now just prevent action
-          return;
-        }
-
-        // Save event_id to AsyncStorage
-        await AsyncStorage.setItem("event_id", event.event_id);
-
-        // Set as active event
-        setActiveEvent(event);
-
-        // Navigate to movement tracker for this live event
-        onJoin();
-        router.push(`/move?event_id=${event.event_id}`);
+      onPress={() => {
+        // Navigate to event details page
+        onJoin(); // Close modal
+        router.push(`/event-details?event_id=${event.event_id}`);
       }}
     >
       {({ pressed }) => (
@@ -1152,21 +1147,40 @@ function LiveEventCard({
           }}
         >
           {/* Event Image/Icon */}
-          <LinearGradient
-            colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+          <View
             style={{
               width: cardWidth,
               height: cardWidth,
               borderRadius: BorderRadius.lg,
-              alignItems: "center",
-              justifyContent: "center",
               marginBottom: Spacing.sm,
               ...Shadows.md,
+              overflow: 'hidden',
             }}
           >
-            <Text style={{ fontSize: 48 }}>🎵</Text>
+            {event.cover_image_url ? (
+              <Image
+                source={{ uri: event.cover_image_url }}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                }}
+                resizeMode="cover"
+              />
+            ) : (
+              <LinearGradient
+                colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ fontSize: 48 }}>🎵</Text>
+              </LinearGradient>
+            )}
             {/* Live Indicator */}
             <View
               style={{
