@@ -117,7 +117,7 @@ export default function LeaderboardScreen() {
             display_name,
             first_name,
             last_name,
-            profile_picture_url
+            avatar_url
           )
         `)
         .eq("event_id", eventId)
@@ -138,7 +138,7 @@ export default function LeaderboardScreen() {
             name: displayName,
             score: entry.score || 0,
             rank: idx + 1,
-            profile_picture_url: profile?.profile_picture_url,
+            profile_picture_url: profile?.avatar_url,
           };
         });
 
