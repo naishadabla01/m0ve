@@ -30,6 +30,7 @@ type EventInfo = {
   artist_name?: string;
   artist_id?: string;
   short_code?: string;
+  cover_image_url?: string;
 };
 
 export default function MoveScreen() {
@@ -188,7 +189,7 @@ export default function MoveScreen() {
         // Get event details
         const { data: event } = await supabase
           .from("events")
-          .select("event_id, name, title, short_code, artist_id")
+          .select("event_id, name, title, short_code, artist_id, cover_image_url")
           .eq("event_id", eventId)
           .maybeSingle();
 
@@ -220,6 +221,7 @@ export default function MoveScreen() {
           artist_name: artistName,
           artist_id: event?.artist_id,
           short_code: event?.short_code,
+          cover_image_url: event?.cover_image_url,
         });
 
         // Fetch current energy and rank
@@ -524,49 +526,58 @@ export default function MoveScreen() {
               marginHorizontal: -Spacing.lg,
               marginTop: -Spacing.lg,
               paddingHorizontal: Spacing.lg,
-              paddingVertical: Spacing.xl,
-              marginBottom: Spacing.xl,
+              paddingVertical: Spacing.lg,
+              marginBottom: Spacing.lg,
               borderBottomWidth: 1,
               borderBottomColor: Colors.border.glass,
               ...Shadows.lg,
             }}
           >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.md }}>
-              <Pressable onPress={() => router.back()}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <View style={{ flex: 1, alignItems: "center" }}>
+                <LinearGradient
+                  colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{
+                    paddingHorizontal: Spacing.lg,
+                    paddingVertical: Spacing.sm,
+                    borderRadius: BorderRadius.full,
+                  }}
+                >
+                  <Text style={{ color: Colors.text.primary, fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, letterSpacing: 1 }}>
+                    MOVEMENT
+                  </Text>
+                </LinearGradient>
+              </View>
+              <Pressable onPress={() => router.back()} style={{ position: 'absolute', right: 0 }}>
                 {({ pressed }) => (
-                  <View
+                  <LinearGradient
+                    colors={Gradients.glass.medium}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
                     style={{
-                      width: 44,
-                      height: 44,
+                      width: 40,
+                      height: 40,
                       borderRadius: BorderRadius.full,
-                      backgroundColor: Colors.background.elevated,
                       alignItems: "center",
                       justifyContent: "center",
                       opacity: pressed ? 0.7 : 1,
                       borderWidth: 1,
                       borderColor: Colors.border.glass,
-                      ...Shadows.sm,
+                      ...Shadows.md,
                     }}
                   >
-                    <Text style={{ fontSize: 22 }}>←</Text>
-                  </View>
+                    <Text style={{ fontSize: 20, color: Colors.text.muted }}>✕</Text>
+                  </LinearGradient>
                 )}
               </Pressable>
-              <View style={{ flex: 1, alignItems: "center" }}>
-                <Text style={{ color: Colors.text.primary, fontSize: Typography.size['3xl'], fontWeight: Typography.weight.bold, textShadowColor: Colors.accent.purple.light, textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 }}>
-                  Movement
-                </Text>
-                <Text style={{ color: Colors.text.muted, fontSize: Typography.size.sm, marginTop: 2 }}>
-                  Track your energy
-                </Text>
-              </View>
-              <View style={{ width: 44 }} />
             </View>
           </LinearGradient>
 
           <View style={{ paddingHorizontal: Spacing.lg }}>
 
-          {/* Event Info Card */}
+          {/* Event Info Card with Cover Photo */}
           <LinearGradient
             colors={Gradients.glass.medium}
             start={{ x: 0, y: 0 }}
@@ -576,40 +587,88 @@ export default function MoveScreen() {
               borderWidth: 1,
               borderColor: Colors.border.glass,
               padding: Spacing.lg,
-              marginBottom: Spacing.xl,
+              marginBottom: Spacing.lg,
               ...Shadows.md,
             }}
           >
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.md }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: Colors.text.muted, fontSize: Typography.size.xs, fontWeight: Typography.weight.semibold, letterSpacing: 1, marginBottom: Spacing.xs }}>
-                  EVENT
-                </Text>
-                <Text style={{ color: Colors.text.primary, fontSize: Typography.size.lg, fontWeight: Typography.weight.bold }} numberOfLines={1}>
-                  {eventName}
-                </Text>
-              </View>
-              {currentRank && (
+            <View style={{ flexDirection: "row", gap: Spacing.md, alignItems: "center" }}>
+              {/* Event Cover Photo */}
+              {eventInfo?.cover_image_url ? (
                 <View
                   style={{
-                    backgroundColor: 'rgba(168, 85, 247, 0.2)',
-                    paddingHorizontal: Spacing.md,
-                    paddingVertical: Spacing.sm,
-                    borderRadius: BorderRadius.full,
-                    borderWidth: 1,
-                    borderColor: Colors.accent.purple.light,
+                    width: 80,
+                    height: 80,
+                    borderRadius: BorderRadius.lg,
+                    borderWidth: 2,
+                    borderColor: Colors.border.glass,
+                    padding: 4,
+                    backgroundColor: Colors.background.elevated,
+                    ...Shadows.sm,
                   }}
                 >
-                  <Text style={{ color: Colors.accent.purple.light, fontSize: Typography.size.xs, fontWeight: Typography.weight.bold }}>
-                    #{currentRank}
-                  </Text>
+                  <Image
+                    source={{ uri: eventInfo.cover_image_url }}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      borderRadius: BorderRadius.md,
+                    }}
+                    resizeMode="cover"
+                  />
                 </View>
+              ) : (
+                <LinearGradient
+                  colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: BorderRadius.lg,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderWidth: 2,
+                    borderColor: Colors.border.glass,
+                    ...Shadows.sm,
+                  }}
+                >
+                  <Text style={{ fontSize: 36 }}>🎵</Text>
+                </LinearGradient>
               )}
-            </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
-              <Text style={{ color: Colors.accent.pink.light, fontSize: Typography.size.base, fontWeight: Typography.weight.semibold }}>
-                {artistName}
-              </Text>
+
+              {/* Event Details */}
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.xs }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: Colors.text.muted, fontSize: Typography.size.xs, fontWeight: Typography.weight.semibold, letterSpacing: 1, marginBottom: 4 }}>
+                      EVENT
+                    </Text>
+                    <Text style={{ color: Colors.text.primary, fontSize: Typography.size.base, fontWeight: Typography.weight.bold }} numberOfLines={1}>
+                      {eventName}
+                    </Text>
+                  </View>
+                  {currentRank && (
+                    <View
+                      style={{
+                        backgroundColor: 'rgba(168, 85, 247, 0.2)',
+                        paddingHorizontal: Spacing.sm,
+                        paddingVertical: 4,
+                        borderRadius: BorderRadius.full,
+                        borderWidth: 1,
+                        borderColor: Colors.accent.purple.light,
+                        marginLeft: Spacing.xs,
+                      }}
+                    >
+                      <Text style={{ color: Colors.accent.purple.light, fontSize: Typography.size.xs, fontWeight: Typography.weight.bold }}>
+                        #{currentRank}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={{ color: Colors.accent.pink.light, fontSize: Typography.size.sm, fontWeight: Typography.weight.semibold }} numberOfLines={1}>
+                  {artistName}
+                </Text>
+              </View>
             </View>
           </LinearGradient>
 
@@ -619,24 +678,24 @@ export default function MoveScreen() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{
-              borderRadius: BorderRadius['3xl'],
+              borderRadius: BorderRadius['2xl'],
               borderWidth: 1,
               borderColor: Colors.border.glass,
-              padding: Spacing['2xl'],
-              marginBottom: Spacing.xl,
+              padding: Spacing.lg,
+              marginBottom: Spacing.lg,
               alignItems: "center",
               ...Shadows.xl,
             }}
           >
-            {/* Energy Orb Container */}
-            <View style={{ width: 280, height: 280, alignItems: "center", justifyContent: "center", marginBottom: Spacing.lg }}>
+            {/* Energy Orb Container - Smaller size */}
+            <View style={{ width: 200, height: 200, alignItems: "center", justifyContent: "center", marginBottom: Spacing.md }}>
               {/* Outer energy rings */}
               <Animated.View
                 style={{
                   position: 'absolute',
-                  width: 280,
-                  height: 280,
-                  borderRadius: 140,
+                  width: 200,
+                  height: 200,
+                  borderRadius: 100,
                   opacity: running ? energyRingOpacity : 0,
                   transform: [{ scale: energyRingScale }],
                 }}
@@ -648,7 +707,7 @@ export default function MoveScreen() {
                   style={{
                     width: '100%',
                     height: '100%',
-                    borderRadius: 140,
+                    borderRadius: 100,
                   }}
                 />
               </Animated.View>
@@ -657,8 +716,8 @@ export default function MoveScreen() {
               <Animated.View
                 style={{
                   position: 'absolute',
-                  width: 260,
-                  height: 260,
+                  width: 190,
+                  height: 190,
                   transform: [{ rotate: spin }],
                 }}
               >
@@ -666,7 +725,7 @@ export default function MoveScreen() {
                   style={{
                     width: '100%',
                     height: '100%',
-                    borderRadius: 130,
+                    borderRadius: 95,
                     borderWidth: 2,
                     borderColor: 'transparent',
                     borderTopColor: running ? Colors.accent.purple.light : Colors.border.subtle,
@@ -678,8 +737,8 @@ export default function MoveScreen() {
               {/* Main energy orb */}
               <Animated.View
                 style={{
-                  width: 240,
-                  height: 240,
+                  width: 180,
+                  height: 180,
                   transform: [{ scale: pulseAnim }, { translateX: shakeAnim }],
                 }}
               >
@@ -692,22 +751,22 @@ export default function MoveScreen() {
                   style={{
                     width: '100%',
                     height: '100%',
-                    borderRadius: 120,
+                    borderRadius: 90,
                     alignItems: "center",
                     justifyContent: "center",
                     borderWidth: 3,
                     borderColor: running ? Colors.accent.purple.light : Colors.border.glass,
-                    ...Shadows.xl,
+                    ...Shadows.lg,
                   }}
                 >
                   <View style={{ alignItems: "center" }}>
-                    <Text style={{ fontSize: 64, marginBottom: Spacing.sm }}>
+                    <Text style={{ fontSize: 48, marginBottom: Spacing.xs }}>
                       {running ? '⚡' : '💤'}
                     </Text>
-                    <Text style={{ color: Colors.text.primary, fontSize: Typography.size['4xl'], fontWeight: Typography.weight.bold }}>
+                    <Text style={{ color: Colors.text.primary, fontSize: Typography.size['3xl'], fontWeight: Typography.weight.bold }}>
                       {Math.round(totalEnergy)}
                     </Text>
-                    <Text style={{ color: Colors.text.primary, fontSize: Typography.size.base, marginTop: Spacing.xs, fontWeight: Typography.weight.semibold, opacity: 0.8 }}>
+                    <Text style={{ color: Colors.text.primary, fontSize: Typography.size.sm, marginTop: 4, fontWeight: Typography.weight.semibold, opacity: 0.8 }}>
                       energy points
                     </Text>
                   </View>
@@ -719,12 +778,12 @@ export default function MoveScreen() {
             <Text
               style={{
                 color: Colors.accent.purple.light,
-                fontSize: Typography.size.xl,
+                fontSize: Typography.size.base,
                 fontWeight: Typography.weight.bold,
                 textAlign: "center",
                 textShadowColor: Colors.accent.purple.light,
                 textShadowOffset: { width: 0, height: 0 },
-                textShadowRadius: 8,
+                textShadowRadius: 6,
               }}
             >
               {getMotivationalText()}
