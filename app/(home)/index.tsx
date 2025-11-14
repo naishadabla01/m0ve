@@ -10,6 +10,8 @@ import {
   Text,
   View,
   Dimensions,
+  Modal,
+  TextInput,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Gradients, BorderRadius, Spacing, Typography, Shadows } from "../../constants/Design";
@@ -32,6 +34,9 @@ export default function HomeScreen() {
   const [activeEvent, setActiveEvent] = useState<Event | null>(null);
   const [ongoingEvents, setOngoingEvents] = useState<Event[]>([]);
   const [pastEvents, setPastEvents] = useState<Event[]>([]);
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [showCodeInput, setShowCodeInput] = useState(false);
+  const [eventCode, setEventCode] = useState("");
 
   // Auth state monitoring
   useEffect(() => {
@@ -137,32 +142,17 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* App Logo - Top Center */}
-        <View style={{ alignItems: "center", marginBottom: Spacing.md }}>
-          <LinearGradient
-            colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+        <View style={{ alignItems: "center", marginBottom: Spacing.sm }}>
+          <Text
             style={{
-              paddingHorizontal: Spacing['2xl'],
-              paddingVertical: Spacing.md,
-              borderRadius: BorderRadius.xl,
-              ...Shadows.xl,
+              color: Colors.text.primary,
+              fontSize: Typography.size['3xl'],
+              fontWeight: Typography.weight.extrabold,
+              letterSpacing: 2,
             }}
           >
-            <Text
-              style={{
-                color: Colors.text.primary,
-                fontSize: Typography.size['5xl'],
-                fontWeight: Typography.weight.extrabold,
-                letterSpacing: 2,
-                textShadowColor: 'rgba(0, 0, 0, 0.3)',
-                textShadowOffset: { width: 0, height: 2 },
-                textShadowRadius: 4,
-              }}
-            >
-              m0ve
-            </Text>
-          </LinearGradient>
+            m0ve
+          </Text>
         </View>
 
         {/* Welcome Message */}
@@ -179,13 +169,43 @@ export default function HomeScreen() {
           <Text
             style={{
               color: Colors.text.muted,
-              fontSize: Typography.size.base,
+              fontSize: Typography.size.sm,
               marginTop: Spacing.xs,
             }}
           >
-            Here's what's happening right now
+            Join an event below by scanning a QR code or entering an event code
           </Text>
         </View>
+
+        {/* Join an Event Button */}
+        <Pressable onPress={() => setShowJoinModal(true)}>
+          {({ pressed }) => (
+            <LinearGradient
+              colors={['rgba(255, 255, 255, 0.15)', 'rgba(255, 255, 255, 0.05)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                paddingVertical: Spacing.lg,
+                borderRadius: BorderRadius.xl,
+                alignItems: "center",
+                borderWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.3)',
+                opacity: pressed ? 0.8 : 1,
+                ...Shadows.md,
+              }}
+            >
+              <Text
+                style={{
+                  color: Colors.text.primary,
+                  fontWeight: Typography.weight.bold,
+                  fontSize: Typography.size.lg,
+                }}
+              >
+                🎫 Join an Event
+              </Text>
+            </LinearGradient>
+          )}
+        </Pressable>
 
         {/* Active Event Modal - Conditional */}
         {activeEvent && (
@@ -274,10 +294,54 @@ export default function HomeScreen() {
 
         {/* Past Events Component */}
         <PastEventsComponent events={pastEvents} />
-
-        {/* Quick Actions */}
-        <QuickActionsComponent />
       </ScrollView>
+
+      {/* Floating QR Scan Button */}
+      <Pressable
+        onPress={() => router.push("/scan")}
+        style={{
+          position: "absolute",
+          bottom: 100, // Above tab bar
+          right: Spacing.xl,
+          width: 64,
+          height: 64,
+          borderRadius: BorderRadius.full,
+          ...Shadows.xl,
+        }}
+      >
+        {({ pressed }) => (
+          <LinearGradient
+            colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              width: "100%",
+              height: "100%",
+              borderRadius: BorderRadius.full,
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: pressed ? 0.9 : 1,
+            }}
+          >
+            <Text style={{ fontSize: 32 }}>📷</Text>
+          </LinearGradient>
+        )}
+      </Pressable>
+
+      {/* Join Event Modal */}
+      <JoinEventModal
+        visible={showJoinModal}
+        onClose={() => {
+          setShowJoinModal(false);
+          setShowCodeInput(false);
+          setEventCode("");
+        }}
+        showCodeInput={showCodeInput}
+        setShowCodeInput={setShowCodeInput}
+        eventCode={eventCode}
+        setEventCode={setEventCode}
+        liveEvents={ongoingEvents.filter(e => e.status === 'live')}
+      />
     </SafeAreaView>
   );
 }
@@ -511,65 +575,356 @@ function EventCard({ event, isPast = false }: { event: Event; isPast?: boolean }
   );
 }
 
-// Quick Actions Component
-function QuickActionsComponent() {
+// Join Event Modal Component
+function JoinEventModal({
+  visible,
+  onClose,
+  showCodeInput,
+  setShowCodeInput,
+  eventCode,
+  setEventCode,
+  liveEvents,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  showCodeInput: boolean;
+  setShowCodeInput: (show: boolean) => void;
+  eventCode: string;
+  setEventCode: (code: string) => void;
+  liveEvents: Event[];
+}) {
+  const handleJoinWithCode = () => {
+    if (eventCode.trim()) {
+      // TODO: Implement join event logic
+      console.log("Joining event with code:", eventCode);
+      onClose();
+    }
+  };
+
   return (
-    <View style={{ gap: Spacing.md }}>
-      <Pressable onPress={() => router.push("/join")}>
-        {({ pressed }) => (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <Pressable
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(0, 0, 0, 0.8)",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+        onPress={onClose}
+      >
+        <Pressable
+          style={{ width: "90%", maxWidth: 500 }}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <LinearGradient
+            colors={Gradients.glass.medium}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              borderRadius: BorderRadius['2xl'],
+              borderWidth: 1,
+              borderColor: Colors.border.glass,
+              padding: Spacing.xl,
+              ...Shadows.xl,
+            }}
+          >
+            {/* Header */}
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.xl }}>
+              <Text
+                style={{
+                  color: Colors.text.primary,
+                  fontSize: Typography.size['2xl'],
+                  fontWeight: Typography.weight.bold,
+                }}
+              >
+                Join an Event
+              </Text>
+              <Pressable onPress={onClose}>
+                <Text style={{ color: Colors.text.muted, fontSize: 28 }}>×</Text>
+              </Pressable>
+            </View>
+
+            {/* Scan QR Code Button */}
+            <Pressable onPress={() => { onClose(); router.push("/scan"); }}>
+              {({ pressed }) => (
+                <LinearGradient
+                  colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{
+                    paddingVertical: Spacing.lg,
+                    borderRadius: BorderRadius.lg,
+                    alignItems: "center",
+                    marginBottom: Spacing.md,
+                    opacity: pressed ? 0.9 : 1,
+                    ...Shadows.md,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: Colors.text.primary,
+                      fontWeight: Typography.weight.bold,
+                      fontSize: Typography.size.base,
+                    }}
+                  >
+                    📷 Scan QR Code
+                  </Text>
+                </LinearGradient>
+              )}
+            </Pressable>
+
+            {/* Enter Code Button */}
+            {!showCodeInput ? (
+              <Pressable onPress={() => setShowCodeInput(true)}>
+                {({ pressed }) => (
+                  <LinearGradient
+                    colors={Gradients.glass.light}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{
+                      paddingVertical: Spacing.lg,
+                      borderRadius: BorderRadius.lg,
+                      alignItems: "center",
+                      borderWidth: 1,
+                      borderColor: Colors.border.glass,
+                      marginBottom: Spacing.lg,
+                      opacity: pressed ? 0.8 : 1,
+                      ...Shadows.sm,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: Colors.text.secondary,
+                        fontWeight: Typography.weight.semibold,
+                        fontSize: Typography.size.base,
+                      }}
+                    >
+                      🔑 Enter Event Code
+                    </Text>
+                  </LinearGradient>
+                )}
+              </Pressable>
+            ) : (
+              <View style={{ marginBottom: Spacing.lg }}>
+                <LinearGradient
+                  colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
+                  style={{
+                    borderRadius: BorderRadius.md,
+                    borderWidth: 1,
+                    borderColor: Colors.border.glass,
+                    marginBottom: Spacing.sm,
+                  }}
+                >
+                  <TextInput
+                    value={eventCode}
+                    onChangeText={setEventCode}
+                    placeholder="Enter event code"
+                    placeholderTextColor={Colors.text.muted}
+                    style={{
+                      paddingVertical: Spacing.md,
+                      paddingHorizontal: Spacing.lg,
+                      color: Colors.text.primary,
+                      fontSize: Typography.size.base,
+                    }}
+                    autoCapitalize="characters"
+                  />
+                </LinearGradient>
+                <Pressable onPress={handleJoinWithCode}>
+                  {({ pressed }) => (
+                    <LinearGradient
+                      colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={{
+                        paddingVertical: Spacing.md,
+                        borderRadius: BorderRadius.lg,
+                        alignItems: "center",
+                        opacity: pressed ? 0.9 : 1,
+                        ...Shadows.md,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: Colors.text.primary,
+                          fontWeight: Typography.weight.bold,
+                          fontSize: Typography.size.sm,
+                        }}
+                      >
+                        Join Event
+                      </Text>
+                    </LinearGradient>
+                  )}
+                </Pressable>
+              </View>
+            )}
+
+            {/* Live Events Carousel */}
+            <View>
+              <Text
+                style={{
+                  color: Colors.text.primary,
+                  fontSize: Typography.size.lg,
+                  fontWeight: Typography.weight.bold,
+                  marginBottom: Spacing.md,
+                }}
+              >
+                Live Events
+              </Text>
+              {liveEvents.length > 0 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: Spacing.md }}
+                >
+                  {liveEvents.map((event) => (
+                    <LiveEventCard key={event.event_id} event={event} onJoin={onClose} />
+                  ))}
+                </ScrollView>
+              ) : (
+                <View style={{ alignItems: "center", paddingVertical: Spacing.xl }}>
+                  <Text style={{ fontSize: 32, marginBottom: Spacing.sm }}>🎵</Text>
+                  <Text
+                    style={{
+                      color: Colors.text.muted,
+                      fontSize: Typography.size.sm,
+                      textAlign: "center",
+                    }}
+                  >
+                    No live events right now
+                  </Text>
+                </View>
+              )}
+            </View>
+          </LinearGradient>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+// Live Event Card (Spotify-style for modal)
+function LiveEventCard({ event, onJoin }: { event: Event; onJoin: () => void }) {
+  const cardWidth = 160;
+
+  return (
+    <Pressable
+      onPress={() => {
+        // TODO: Implement join event logic
+        console.log("Joining event:", event.event_id);
+        onJoin();
+      }}
+    >
+      {({ pressed }) => (
+        <View
+          style={{
+            width: cardWidth,
+            opacity: pressed ? 0.8 : 1,
+          }}
+        >
+          {/* Event Image/Icon */}
           <LinearGradient
             colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
             start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              width: cardWidth,
+              height: cardWidth,
+              borderRadius: BorderRadius.lg,
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: Spacing.sm,
+              ...Shadows.md,
+            }}
+          >
+            <Text style={{ fontSize: 48 }}>🎵</Text>
+            {/* Live Indicator */}
+            <View
+              style={{
+                position: "absolute",
+                top: Spacing.sm,
+                right: Spacing.sm,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: Spacing.xs,
+                backgroundColor: "rgba(0, 0, 0, 0.6)",
+                paddingHorizontal: Spacing.sm,
+                paddingVertical: 4,
+                borderRadius: BorderRadius.md,
+              }}
+            >
+              <View
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: BorderRadius.full,
+                  backgroundColor: Colors.status.live,
+                }}
+              />
+              <Text
+                style={{
+                  color: Colors.status.live,
+                  fontSize: Typography.size.xs,
+                  fontWeight: Typography.weight.bold,
+                }}
+              >
+                LIVE
+              </Text>
+            </View>
+          </LinearGradient>
+
+          {/* Event Details */}
+          <Text
+            numberOfLines={1}
+            style={{
+              color: Colors.text.primary,
+              fontSize: Typography.size.sm,
+              fontWeight: Typography.weight.bold,
+              marginBottom: 4,
+            }}
+          >
+            {event.title || event.name}
+          </Text>
+          <Text
+            numberOfLines={1}
+            style={{
+              color: Colors.text.muted,
+              fontSize: Typography.size.xs,
+              marginBottom: Spacing.sm,
+            }}
+          >
+            {event.venue}
+          </Text>
+
+          {/* Join Button */}
+          <LinearGradient
+            colors={['rgba(168, 85, 247, 0.3)', 'rgba(236, 72, 153, 0.3)']}
+            start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={{
-              paddingVertical: Spacing.lg,
-              borderRadius: BorderRadius.xl,
+              paddingVertical: Spacing.sm,
+              borderRadius: BorderRadius.md,
               alignItems: "center",
-              opacity: pressed ? 0.9 : 1,
-              ...Shadows.lg,
+              borderWidth: 1,
+              borderColor: Colors.border.glass,
             }}
           >
             <Text
               style={{
                 color: Colors.text.primary,
-                fontWeight: Typography.weight.bold,
-                fontSize: Typography.size.lg,
-              }}
-            >
-              🎫 Join an Event
-            </Text>
-          </LinearGradient>
-        )}
-      </Pressable>
-
-      <Pressable onPress={() => router.push("/scan")}>
-        {({ pressed }) => (
-          <LinearGradient
-            colors={Gradients.glass.light}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
-              paddingVertical: Spacing.lg,
-              borderRadius: BorderRadius.xl,
-              alignItems: "center",
-              borderWidth: 1,
-              borderColor: Colors.border.glass,
-              opacity: pressed ? 0.8 : 1,
-              ...Shadows.md,
-            }}
-          >
-            <Text
-              style={{
-                color: Colors.text.secondary,
                 fontWeight: Typography.weight.semibold,
-                fontSize: Typography.size.lg,
+                fontSize: Typography.size.xs,
               }}
             >
-              📱 Scan QR Code
+              Join
             </Text>
           </LinearGradient>
-        )}
-      </Pressable>
-    </View>
+        </View>
+      )}
+    </Pressable>
   );
 }
