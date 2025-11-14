@@ -15,11 +15,9 @@ import {
   Image,
   ActivityIndicator,
   PanResponder,
-  ImageBackground,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 import { Colors, Gradients, BorderRadius, Spacing, Typography, Shadows } from "../../constants/Design";
 
 const { width } = Dimensions.get("window");
@@ -1323,22 +1321,28 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
         >
           {/* Background Image with Blur Effect */}
           {event.cover_image_url ? (
-            <ImageBackground
-              source={{ uri: event.cover_image_url }}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                width: '100%',
-                height: '100%',
-              }}
-              resizeMode="cover"
-            >
-              <BlurView
-                intensity={80}
-                tint="dark"
+            <>
+              {/* Blurred background layer using native blurRadius */}
+              <Image
+                source={{ uri: event.cover_image_url }}
+                style={{
+                  position: 'absolute',
+                  top: -20,
+                  left: -20,
+                  right: -20,
+                  bottom: -20,
+                  width: undefined,
+                  height: undefined,
+                  opacity: 0.3,
+                }}
+                resizeMode="cover"
+                blurRadius={25}
+              />
+              {/* Dark gradient overlay for better text readability */}
+              <LinearGradient
+                colors={['rgba(0, 0, 0, 0.85)', 'rgba(0, 0, 0, 0.75)', 'rgba(0, 0, 0, 0.9)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
                 style={{
                   position: 'absolute',
                   top: 0,
@@ -1347,18 +1351,7 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                   bottom: 0,
                 }}
               />
-              {/* Dark overlay for text readability */}
-              <View
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                }}
-              />
-            </ImageBackground>
+            </>
           ) : (
             <View
               style={{
