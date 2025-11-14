@@ -1,25 +1,46 @@
-// app/(auth)/signin.tsx
-const [error, setError] = useState<string | null>(null);
+// app/(auth)/signin.tsx - iOS 26 Glassmorphism
 import { supabase } from "@/lib/supabase/client";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Alert,
+  Animated,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   SafeAreaView,
+  ScrollView,
   StatusBar,
   Text,
   TextInput,
   View,
 } from "react-native";
-
-
+import { LinearGradient } from "expo-linear-gradient";
+import { Colors, Gradients, BorderRadius, Spacing, Typography, Shadows } from "../../constants/Design";
 
 export default function SigninScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const fadeIn = useRef(new Animated.Value(0)).current;
+  const scaleIn = useRef(new Animated.Value(0.95)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeIn, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleIn, {
+        toValue: 1,
+        tension: 60,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   async function doSignin() {
     try {
@@ -44,165 +65,208 @@ export default function SigninScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
       <StatusBar barStyle="light-content" />
 
-      {/* Background drops */}
+      {/* Animated Background */}
       <View pointerEvents="none" style={{ position: "absolute", inset: 0 }}>
         <View
           style={{
             position: "absolute",
-            top: -60,
-            right: -40,
-            width: 220,
-            height: 220,
-            borderRadius: 9999,
-            backgroundColor: "#10b981",
+            top: -100,
+            right: -60,
+            width: 280,
+            height: 280,
+            borderRadius: BorderRadius.full,
+            backgroundColor: Colors.accent.purple.light,
             opacity: 0.15,
-            filter: Platform.OS === "web" ? "blur(60px)" : undefined,
+            filter: Platform.OS === 'web' ? 'blur(70px)' : undefined,
           }}
         />
         <View
           style={{
             position: "absolute",
-            bottom: -80,
-            left: -60,
-            width: 260,
-            height: 260,
-            borderRadius: 9999,
-            backgroundColor: "#22d3ee",
-            opacity: 0.10,
-            filter: Platform.OS === "web" ? "blur(70px)" : undefined,
+            bottom: -120,
+            left: -80,
+            width: 320,
+            height: 320,
+            borderRadius: BorderRadius.full,
+            backgroundColor: Colors.accent.pink.light,
+            opacity: 0.12,
+            filter: Platform.OS === 'web' ? 'blur(80px)' : undefined,
+          }}
+        />
+        <View
+          style={{
+            position: "absolute",
+            top: "40%",
+            right: -40,
+            width: 200,
+            height: 200,
+            borderRadius: BorderRadius.full,
+            backgroundColor: Colors.accent.purple.DEFAULT,
+            opacity: 0.1,
+            filter: Platform.OS === 'web' ? 'blur(60px)' : undefined,
           }}
         />
       </View>
 
-      {/* Header */}
-      <View
-        style={{
-          paddingHorizontal: 24,
-          paddingTop: 12,
-          paddingBottom: 8,
-          borderBottomColor: "#1f2937",
-          borderBottomWidth: 1,
-        }}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
       >
-        <Text style={{ color: "#a3a3a3", fontSize: 12, letterSpacing: 1.1 }}>
-          SIGN IN TO
-        </Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <View
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 6,
-              backgroundColor: "#10b981",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text style={{ color: "#0a0a0a", fontWeight: "700" }}>M</Text>
-          </View>
-          <Text
-            style={{
-              color: "#fff",
-              fontSize: 28,
-              fontWeight: "700",
-              letterSpacing: 0.5,
-            }}
-          >
-            Move
-          </Text>
-        </View>
-      </View>
-
-      {/* Body */}
-      <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 36 }}>
-        <Text
-          style={{
-            color: "#d4d4d4",
-            fontSize: 22,
-            fontWeight: "700",
-            marginBottom: 18,
+        <ScrollView
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: "center",
+            paddingHorizontal: Spacing['2xl'],
+            paddingVertical: Spacing['4xl'],
           }}
+          keyboardShouldPersistTaps="handled"
         >
-          Welcome back 👋
-        </Text>
+          {/* Sign In Modal */}
+          <Animated.View
+            style={{
+              opacity: fadeIn,
+              transform: [{ scale: scaleIn }],
+            }}
+          >
+            <LinearGradient
+              colors={Gradients.glass.medium}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                borderRadius: BorderRadius['2xl'],
+                borderWidth: 1,
+                borderColor: Colors.border.glass,
+                padding: Spacing['3xl'],
+                ...Shadows.xl,
+              }}
+            >
+              {/* Logo */}
+              <View style={{ alignItems: "center", marginBottom: Spacing.xl }}>
+                <LinearGradient
+                  colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: BorderRadius.lg,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: Spacing.md,
+                    ...Shadows.lg,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: Colors.text.primary,
+                      fontSize: Typography.size['3xl'],
+                      fontWeight: Typography.weight.extrabold,
+                    }}
+                  >
+                    M
+                  </Text>
+                </LinearGradient>
+                <Text
+                  style={{
+                    color: Colors.text.primary,
+                    fontSize: Typography.size['2xl'],
+                    fontWeight: Typography.weight.bold,
+                  }}
+                >
+                  Welcome Back
+                </Text>
+                <Text
+                  style={{
+                    color: Colors.text.muted,
+                    fontSize: Typography.size.sm,
+                    marginTop: Spacing.xs,
+                  }}
+                >
+                  Sign in to continue
+                </Text>
+              </View>
 
-        <View style={{ gap: 14 }}>
-          <LabeledInput
-            label="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            placeholder="you@example.com"
-          />
+              {/* Form */}
+              <View style={{ gap: Spacing.lg }}>
+                <GlassInput
+                  label="Email"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  placeholder="you@example.com"
+                />
 
-          <LabeledInput
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            placeholder="Your password"
-          />
+                <GlassInput
+                  label="Password"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  placeholder="Your password"
+                />
 
-          <PrimaryButton
-            title={busy ? "Signing in…" : "Sign in"}
-            onPress={doSignin}
-            disabled={busy}
-          />
+                <GradientButton
+                  title={busy ? "Signing in..." : "Sign In"}
+                  onPress={doSignin}
+                  disabled={busy}
+                />
 
-          <SecondaryButton
-            title="Create account"
-            onPress={() => router.replace("/(auth)/signup")}
-          />
-        </View>
-      </View>
-
-      {/* Footer */}
-      <View
-        style={{
-          paddingHorizontal: 24,
-          paddingVertical: 16,
-          borderTopColor: "#1f2937",
-          borderTopWidth: 1,
-          opacity: 0.85,
-        }}
-      >
-        <Text style={{ color: "#9ca3af", fontSize: 12, textAlign: "center" }}>
-          Trouble signing in? Check your email & password and try again.
-        </Text>
-      </View>
+                <SecondaryButton
+                  title="Create Account"
+                  onPress={() => router.push("/(auth)/signup")}
+                />
+              </View>
+            </LinearGradient>
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-/* ——— Reusable bits to match landing page ——— */
-
-function LabeledInput(props: any) {
+/* Glassmorphism Input */
+function GlassInput(props: any) {
   const { label, ...inputProps } = props;
   return (
-    <View style={{ gap: 6 }}>
-      <Text style={{ color: "#9ca3af", fontSize: 13 }}>{label}</Text>
-      <TextInput
-        {...inputProps}
-        placeholderTextColor="#6b7280"
+    <View style={{ gap: Spacing.sm }}>
+      <Text
         style={{
-          backgroundColor: "#0f172a",
-          borderColor: "#1f2937",
-          borderWidth: 1,
-          borderRadius: 14,
-          paddingVertical: 14,
-          paddingHorizontal: 14,
-          color: "#e5e7eb",
+          color: Colors.text.muted,
+          fontSize: Typography.size.sm,
+          fontWeight: Typography.weight.medium,
         }}
-      />
+      >
+        {label}
+      </Text>
+      <LinearGradient
+        colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
+        style={{
+          borderRadius: BorderRadius.md,
+          borderWidth: 1,
+          borderColor: Colors.border.glass,
+          ...Shadows.sm,
+        }}
+      >
+        <TextInput
+          {...inputProps}
+          placeholderTextColor={Colors.text.muted}
+          style={{
+            paddingVertical: Spacing.lg,
+            paddingHorizontal: Spacing.lg,
+            color: Colors.text.primary,
+            fontSize: Typography.size.base,
+          }}
+        />
+      </LinearGradient>
     </View>
   );
 }
 
-function PrimaryButton({
+/* Gradient Button */
+function GradientButton({
   title,
   onPress,
   disabled,
@@ -215,26 +279,37 @@ function PrimaryButton({
     <Pressable
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => ({
-        backgroundColor: pressed ? "#0ea371" : "#10b981",
-        paddingVertical: 14,
-        borderRadius: 14,
-        alignItems: "center",
-        opacity: disabled ? 0.7 : 1,
-        shadowColor: "#10b981",
-        shadowOpacity: 0.25,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 6 },
-        elevation: 2,
-      })}
+      style={{ marginTop: Spacing.md }}
     >
-      <Text style={{ color: "#051b13", fontWeight: "700", fontSize: 16 }}>
-        {title}
-      </Text>
+      {({ pressed }) => (
+        <LinearGradient
+          colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{
+            paddingVertical: Spacing.lg,
+            borderRadius: BorderRadius.lg,
+            alignItems: "center",
+            opacity: disabled ? 0.7 : pressed ? 0.9 : 1,
+            ...Shadows.lg,
+          }}
+        >
+          <Text
+            style={{
+              color: Colors.text.primary,
+              fontWeight: Typography.weight.bold,
+              fontSize: Typography.size.base,
+            }}
+          >
+            {title}
+          </Text>
+        </LinearGradient>
+      )}
     </Pressable>
   );
 }
 
+/* Secondary Glass Button */
 function SecondaryButton({
   title,
   onPress,
@@ -243,20 +318,33 @@ function SecondaryButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({
-        backgroundColor: pressed ? "#111827" : "transparent",
-        paddingVertical: 14,
-        borderRadius: 14,
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: "#1f2937",
-      })}
-    >
-      <Text style={{ color: "#e5e7eb", fontWeight: "600", fontSize: 16 }}>
-        {title}
-      </Text>
+    <Pressable onPress={onPress}>
+      {({ pressed }) => (
+        <LinearGradient
+          colors={Gradients.glass.light}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            paddingVertical: Spacing.lg,
+            borderRadius: BorderRadius.lg,
+            alignItems: "center",
+            borderWidth: 1,
+            borderColor: Colors.border.glass,
+            opacity: pressed ? 0.8 : 1,
+            ...Shadows.sm,
+          }}
+        >
+          <Text
+            style={{
+              color: Colors.text.secondary,
+              fontWeight: Typography.weight.semibold,
+              fontSize: Typography.size.base,
+            }}
+          >
+            {title}
+          </Text>
+        </LinearGradient>
+      )}
     </Pressable>
   );
 }

@@ -21,6 +21,9 @@ export default function SplashWelcome() {
   const flowAnim1 = useRef(new Animated.Value(0)).current;
   const flowAnim2 = useRef(new Animated.Value(0)).current;
   const flowAnim3 = useRef(new Animated.Value(0)).current;
+  const flowAnim4 = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
   const fadeIn = useRef(new Animated.Value(0)).current;
   const scaleIn = useRef(new Animated.Value(0.9)).current;
 
@@ -71,6 +74,46 @@ export default function SplashWelcome() {
       ])
     ).start();
 
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(flowAnim4, {
+          toValue: 1,
+          duration: 15000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(flowAnim4, {
+          toValue: 0,
+          duration: 15000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Pulsing animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.15,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Shimmer effect
+    Animated.loop(
+      Animated.timing(shimmerAnim, {
+        toValue: 1,
+        duration: 3000,
+        useNativeDriver: true,
+      })
+    ).start();
+
     // Fade in modal
     Animated.parallel([
       Animated.timing(fadeIn, {
@@ -118,6 +161,21 @@ export default function SplashWelcome() {
   const rotate3 = flowAnim3.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
+  });
+
+  const translateY4 = flowAnim4.interpolate({
+    inputRange: [0, 1],
+    outputRange: [height * 0.5, -height * 0.3],
+  });
+
+  const translateX4 = flowAnim4.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-width * 0.4, width * 0.4],
+  });
+
+  const shimmerTranslate = shimmerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-width * 2, width * 2],
   });
 
   return (
@@ -207,7 +265,76 @@ export default function SplashWelcome() {
           />
         </Animated.View>
 
-        {/* Static ambient blobs */}
+        {/* Flow Line 4 - Horizontal wave */}
+        <Animated.View
+          style={{
+            position: "absolute",
+            top: "30%",
+            left: "-40%",
+            width: width * 1.8,
+            height: 120,
+            transform: [
+              { translateY: translateY4 },
+              { translateX: translateX4 },
+            ],
+          }}
+        >
+          <LinearGradient
+            colors={[
+              'rgba(168, 85, 247, 0.0)',
+              'rgba(219, 39, 119, 0.2)',
+              'rgba(168, 85, 247, 0.0)',
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ flex: 1, filter: Platform.OS === 'web' ? 'blur(30px)' : undefined }}
+          />
+        </Animated.View>
+
+        {/* Pulsing Orbs */}
+        <Animated.View
+          style={{
+            position: "absolute",
+            top: "15%",
+            left: "20%",
+            width: 150,
+            height: 150,
+            borderRadius: BorderRadius.full,
+            transform: [{ scale: pulseAnim }],
+          }}
+        >
+          <LinearGradient
+            colors={['rgba(168, 85, 247, 0.25)', 'rgba(168, 85, 247, 0.0)']}
+            style={{
+              flex: 1,
+              borderRadius: BorderRadius.full,
+              filter: Platform.OS === 'web' ? 'blur(40px)' : undefined,
+            }}
+          />
+        </Animated.View>
+
+        <Animated.View
+          style={{
+            position: "absolute",
+            bottom: "20%",
+            right: "25%",
+            width: 120,
+            height: 120,
+            borderRadius: BorderRadius.full,
+            transform: [{ scale: pulseAnim }],
+          }}
+        >
+          <LinearGradient
+            colors={['rgba(236, 72, 153, 0.25)', 'rgba(236, 72, 153, 0.0)']}
+            style={{
+              flex: 1,
+              borderRadius: BorderRadius.full,
+              filter: Platform.OS === 'web' ? 'blur(35px)' : undefined,
+            }}
+          />
+        </Animated.View>
+
+        {/* Static ambient blobs - enhanced */}
         <View
           style={{
             position: "absolute",
@@ -234,6 +361,34 @@ export default function SplashWelcome() {
             filter: Platform.OS === 'web' ? 'blur(90px)' : undefined,
           }}
         />
+
+        {/* Additional corner blobs */}
+        <View
+          style={{
+            position: "absolute",
+            top: "50%",
+            right: -40,
+            width: 180,
+            height: 180,
+            borderRadius: BorderRadius.full,
+            backgroundColor: Colors.accent.purple.DEFAULT,
+            opacity: 0.12,
+            filter: Platform.OS === 'web' ? 'blur(60px)' : undefined,
+          }}
+        />
+        <View
+          style={{
+            position: "absolute",
+            top: "30%",
+            left: -50,
+            width: 200,
+            height: 200,
+            borderRadius: BorderRadius.full,
+            backgroundColor: Colors.accent.pink.DEFAULT,
+            opacity: 0.1,
+            filter: Platform.OS === 'web' ? 'blur(70px)' : undefined,
+          }}
+        />
       </View>
 
       {/* Center Modal - Glassmorphism Card */}
@@ -247,22 +402,52 @@ export default function SplashWelcome() {
           transform: [{ scale: scaleIn }],
         }}
       >
-        <LinearGradient
-          colors={Gradients.glass.medium}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            width: "100%",
-            maxWidth: 400,
-            borderRadius: BorderRadius['2xl'],
-            borderWidth: 1,
-            borderColor: Colors.border.glass,
-            padding: Spacing['4xl'],
-            alignItems: "center",
-            gap: Spacing['2xl'],
-            ...Shadows.xl,
-          }}
-        >
+        <View style={{ width: "100%", maxWidth: 400, position: "relative" }}>
+          {/* Shimmer overlay */}
+          <Animated.View
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderRadius: BorderRadius['2xl'],
+              overflow: "hidden",
+              opacity: 0.3,
+            }}
+            pointerEvents="none"
+          >
+            <Animated.View
+              style={{
+                width: "50%",
+                height: "100%",
+                transform: [{ translateX: shimmerTranslate }],
+              }}
+            >
+              <LinearGradient
+                colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.1)', 'rgba(255,255,255,0)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{ flex: 1 }}
+              />
+            </Animated.View>
+          </Animated.View>
+
+          <LinearGradient
+            colors={Gradients.glass.medium}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              width: "100%",
+              borderRadius: BorderRadius['2xl'],
+              borderWidth: 1,
+              borderColor: Colors.border.glass,
+              padding: Spacing['4xl'],
+              alignItems: "center",
+              gap: Spacing['2xl'],
+              ...Shadows.xl,
+            }}
+          >
           {/* Logo */}
           <LinearGradient
             colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
@@ -359,6 +544,7 @@ export default function SplashWelcome() {
             Are you ready to move?
           </Text>
         </LinearGradient>
+        </View>
       </Animated.View>
 
       {/* Footer */}
