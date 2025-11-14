@@ -29,27 +29,32 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
 
   // Tab bar dimensions - iOS 26 liquid glass style
   const TAB_WIDTH = 56;
-  const TAB_HEIGHT = 44;
-  const BAR_HEIGHT = 54;
-  const BAR_PADDING = 8;
+  const TAB_HEIGHT = 48;
+  const BAR_HEIGHT = 64; // Taller (was 54)
+  const BAR_PADDING = 20; // More padding for narrower appearance
   const QR_BUTTON_SIZE = 68;
   const QR_SPACING = 12; // Space for QR button
 
-  // Calculate total bar width (wider, less margins)
-  const barWidth = SCREEN_WIDTH - 24; // 12px margin on each side (wider bar)
+  // Calculate total bar width (much narrower - double narrow)
+  const barWidth = SCREEN_WIDTH - 80; // 40px margin on each side (much narrower bar)
 
-  // Calculate positions for tabs - precise alignment
-  // We have 4 tabs: Home, Notifications, [QR Space], Search, Profile
-  const availableWidth = barWidth - (BAR_PADDING * 2);
-  const totalTabsWidth = TAB_WIDTH * 4;
-  const totalSpacing = availableWidth - totalTabsWidth - QR_SPACING;
-  const spacing = totalSpacing / 3; // Spacing between tab groups
+  // Calculate positions for tabs - CORRECTED alignment
+  // The bar uses space-between, so tabs are at edges and we need to find their centers
+  const leftSectionWidth = (barWidth - QR_SPACING - QR_BUTTON_SIZE) / 2;
+  const rightSectionStart = leftSectionWidth + QR_BUTTON_SIZE + QR_SPACING;
+
+  // For left section (Home, Notifications): distribute in left half
+  const leftTabSpacing = (leftSectionWidth - TAB_WIDTH * 2) / 3; // space before, between, after
+
+  // For right section (Search, Profile): distribute in right half
+  const rightSectionWidth = leftSectionWidth;
+  const rightTabSpacing = (rightSectionWidth - TAB_WIDTH * 2) / 3;
 
   const tabPositions = [
-    BAR_PADDING, // Home - far left
-    BAR_PADDING + TAB_WIDTH + spacing, // Notifications - before QR
-    BAR_PADDING + (TAB_WIDTH * 2) + (spacing * 2) + QR_SPACING, // Search - after QR
-    BAR_PADDING + (TAB_WIDTH * 3) + (spacing * 3) + QR_SPACING, // Profile - far right
+    leftTabSpacing, // Home - left margin in left section
+    leftTabSpacing + TAB_WIDTH + leftTabSpacing, // Notifications - right side of left section
+    rightSectionStart + rightTabSpacing, // Search - left side of right section
+    rightSectionStart + rightTabSpacing + TAB_WIDTH + rightTabSpacing, // Profile - right side of right section
   ];
 
   // Get animated indicator position
@@ -65,8 +70,8 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
       style={{
         position: "absolute",
         bottom: 12,
-        left: 12,
-        right: 12,
+        left: 40, // Match narrower bar margins
+        right: 40, // Match narrower bar margins
         height: BAR_HEIGHT + 36, // Extra space for floating QR button (higher)
         alignItems: "center",
         justifyContent: "flex-end",
@@ -109,76 +114,8 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
                 elevation: 8,
               }}
             >
-              {/* Better QR Code Icon Design */}
-              <View
-                style={{
-                  width: 36,
-                  height: 36,
-                  backgroundColor: "rgba(255, 255, 255, 0.2)",
-                  borderRadius: 6,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <View style={{ position: "relative" }}>
-                  {/* QR Corner squares */}
-                  <View style={{ width: 28, height: 28 }}>
-                    {/* Top-left square */}
-                    <View
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        width: 10,
-                        height: 10,
-                        borderWidth: 2,
-                        borderColor: "#ffffff",
-                        borderRadius: 2,
-                      }}
-                    />
-                    {/* Top-right square */}
-                    <View
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        right: 0,
-                        width: 10,
-                        height: 10,
-                        borderWidth: 2,
-                        borderColor: "#ffffff",
-                        borderRadius: 2,
-                      }}
-                    />
-                    {/* Bottom-left square */}
-                    <View
-                      style={{
-                        position: "absolute",
-                        bottom: 0,
-                        left: 0,
-                        width: 10,
-                        height: 10,
-                        borderWidth: 2,
-                        borderColor: "#ffffff",
-                        borderRadius: 2,
-                      }}
-                    />
-                    {/* Center dots pattern */}
-                    <View
-                      style={{
-                        position: "absolute",
-                        top: "50%",
-                        left: "50%",
-                        marginTop: -2,
-                        marginLeft: -2,
-                        width: 4,
-                        height: 4,
-                        backgroundColor: "#ffffff",
-                        borderRadius: 1,
-                      }}
-                    />
-                  </View>
-                </View>
-              </View>
+              {/* QR Code Icon - Same as Enter the Experience */}
+              <Ionicons name="qr-code-outline" size={36} color="#ffffff" />
             </LinearGradient>
           )}
         </Pressable>
