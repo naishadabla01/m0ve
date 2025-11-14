@@ -362,7 +362,7 @@ export default function MoveScreen() {
       } catch (e) {
         console.error("Failed to poll energy:", e);
       }
-    }, 3000); // Poll every 3 seconds
+    }, 5000); // Poll every 5 seconds (reduced from 3s to lower database read load)
 
     return () => clearInterval(pollInterval);
   }, [running, eventId]);
@@ -383,7 +383,9 @@ export default function MoveScreen() {
       return;
     }
 
-    streamRef.current = startMotionStream(eventId!, 1000);
+    // Batch motion data every 3 seconds instead of 1 second
+    // This reduces database writes by 66% while maintaining data accuracy
+    streamRef.current = startMotionStream(eventId!, 3000);
     setRunning(true);
 
     console.log("✅ Motion tracking started for event:", eventId);
