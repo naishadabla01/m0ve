@@ -1327,20 +1327,20 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                 source={{ uri: event.cover_image_url }}
                 style={{
                   position: 'absolute',
-                  top: -20,
-                  left: -20,
-                  right: -20,
-                  bottom: -20,
-                  width: undefined,
-                  height: undefined,
-                  opacity: 0.3,
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  width: '100%',
+                  height: '100%',
+                  opacity: 0.5,
                 }}
                 resizeMode="cover"
-                blurRadius={25}
+                blurRadius={20}
               />
-              {/* Dark gradient overlay for better text readability */}
+              {/* Dark gradient overlay for text readability */}
               <LinearGradient
-                colors={['rgba(0, 0, 0, 0.85)', 'rgba(0, 0, 0, 0.75)', 'rgba(0, 0, 0, 0.9)']}
+                colors={['rgba(0, 0, 0, 0.7)', 'rgba(0, 0, 0, 0.6)', 'rgba(0, 0, 0, 0.8)']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
                 style={{
