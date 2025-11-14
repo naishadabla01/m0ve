@@ -15,7 +15,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Text as SvgText } from "react-native-svg";
 import { Colors, Gradients, BorderRadius, Spacing, Typography, Shadows } from "../../constants/Design";
 
 const { width } = Dimensions.get("window");
@@ -196,29 +195,60 @@ export default function HomeScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* App Logo - Top Center with SVG Gradient Text */}
+        {/* App Logo - Gradient Text with Overlay */}
         <Animated.View style={{ alignItems: "center", marginBottom: Spacing.lg, transform: [{ scale: logoPulseAnim }] }}>
-          <Svg height="80" width="200">
-            <Defs>
-              <SvgLinearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <Stop offset="0%" stopColor={Colors.accent.purple.light} stopOpacity="1" />
-                <Stop offset="33%" stopColor={Colors.accent.pink.light} stopOpacity="1" />
-                <Stop offset="66%" stopColor={Colors.accent.purple.DEFAULT} stopOpacity="1" />
-                <Stop offset="100%" stopColor={Colors.accent.pink.DEFAULT} stopOpacity="1" />
-              </SvgLinearGradient>
-            </Defs>
-            <SvgText
-              fill="url(#logoGradient)"
-              fontSize="56"
-              fontWeight="900"
-              x="100"
-              y="60"
-              textAnchor="middle"
-              letterSpacing="2"
+          <View style={{ position: 'relative' }}>
+            <LinearGradient
+              colors={[Colors.accent.purple.light, Colors.accent.pink.light, Colors.accent.purple.DEFAULT, Colors.accent.pink.DEFAULT] as const}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                borderRadius: BorderRadius.md,
+              }}
+            />
+            <Text
+              style={{
+                color: 'transparent',
+                fontSize: 56,
+                fontWeight: '900',
+                letterSpacing: 2,
+                textAlign: "center",
+                paddingHorizontal: 8,
+              }}
             >
               m0ve
-            </SvgText>
-          </Svg>
+            </Text>
+            <LinearGradient
+              colors={[Colors.accent.purple.light, Colors.accent.pink.light, Colors.accent.purple.DEFAULT, Colors.accent.pink.DEFAULT] as const}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 56,
+                  fontWeight: '900',
+                  letterSpacing: 2,
+                  textAlign: "center",
+                  color: 'white',
+                  paddingHorizontal: 8,
+                }}
+              >
+                m0ve
+              </Text>
+            </LinearGradient>
+          </View>
         </Animated.View>
 
         {/* Welcome Message */}
