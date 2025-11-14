@@ -2,6 +2,7 @@
 import { apiBase } from "@/lib/apiBase";
 import { startMotionStream, StreamHandle } from "@/lib/motionStream";
 import { supabase } from "@/lib/supabase/client";
+import { normalizeScoreForDisplay, calculateProgress } from "@/lib/scoreUtils";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
 import { Accelerometer } from "expo-sensors";
@@ -253,9 +254,8 @@ export default function MoveScreen() {
             if (rank > 0) setCurrentRank(rank);
           }
 
-          // Calculate percentage (goal: 10000)
-          const goal = 10000;
-          setPercentComplete(Math.min(100, Math.round(((userScore?.score || 0) / goal) * 100)));
+          // Calculate percentage using normalized score (goal: 100 normalized points)
+          setPercentComplete(calculateProgress(userScore?.score || 0));
         } catch (e) {
           console.error("Failed to fetch energy:", e);
         }
@@ -357,8 +357,7 @@ export default function MoveScreen() {
 
         if (userScore) {
           setTotalEnergy(userScore.score || 0);
-          const goal = 10000;
-          setPercentComplete(Math.min(100, Math.round(((userScore.score || 0) / goal) * 100)));
+          setPercentComplete(calculateProgress(userScore.score || 0));
         }
       } catch (e) {
         console.error("Failed to poll energy:", e);
@@ -754,7 +753,7 @@ export default function MoveScreen() {
                       {running ? '⚡' : '💤'}
                     </Text>
                     <Text style={{ color: Colors.text.primary, fontSize: Typography.size['3xl'], fontWeight: Typography.weight.bold }}>
-                      {Math.round(totalEnergy)}
+                      {normalizeScoreForDisplay(totalEnergy)}
                     </Text>
                     <Text style={{ color: Colors.text.primary, fontSize: Typography.size.sm, marginTop: 4, fontWeight: Typography.weight.semibold, opacity: 0.8 }}>
                       energy points
@@ -832,9 +831,39 @@ export default function MoveScreen() {
               <Text style={{ color: getIntensityColor(), fontSize: Typography.size.lg, fontWeight: Typography.weight.bold }}>
                 {getIntensityText()}
               </Text>
-              <Text style={{ color: Colors.text.muted, fontSize: Typography.size['2xl'], fontWeight: Typography.weight.bold, marginTop: Spacing.xs }}>
-                {mag.toFixed(2)}
-              </Text>
+
+              {/* Visual Intensity Indicator */}
+              <View style={{ flexDirection: 'row', gap: 6, marginTop: Spacing.sm, alignItems: 'center' }}>
+                {['idle', 'low', 'medium', 'high', 'extreme'].map((level, index) => {
+                  const intensityLevels = ['idle', 'low', 'medium', 'high', 'extreme'];
+                  const currentLevel = intensityLevels.indexOf(movementIntensity);
+                  const isActive = index <= currentLevel;
+
+                  const getLevelColor = (lvl: string) => {
+                    switch (lvl) {
+                      case 'extreme': return '#ef4444';
+                      case 'high': return '#f59e0b';
+                      case 'medium': return '#eab308';
+                      case 'low': return '#84cc16';
+                      default: return Colors.text.muted;
+                    }
+                  };
+
+                  return (
+                    <View
+                      key={level}
+                      style={{
+                        width: 12,
+                        height: 12,
+                        borderRadius: 6,
+                        backgroundColor: isActive ? getLevelColor(level) : 'rgba(255, 255, 255, 0.1)',
+                        borderWidth: 1,
+                        borderColor: isActive ? getLevelColor(level) : 'rgba(255, 255, 255, 0.2)',
+                      }}
+                    />
+                  );
+                })}
+              </View>
             </LinearGradient>
           </View>
 

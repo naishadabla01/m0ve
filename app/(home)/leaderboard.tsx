@@ -1,5 +1,6 @@
 // app/(home)/leaderboard.tsx - iOS 26 Themed Leaderboard
 import { supabase } from "@/lib/supabase/client";
+import { normalizeScoreForDisplay } from "@/lib/scoreUtils";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
@@ -286,7 +287,7 @@ export default function LeaderboardScreen() {
             fontSize: Typography.size.sm,
             marginTop: 2,
           }}>
-            {Math.round(item.score).toLocaleString()} energy
+            {normalizeScoreForDisplay(item.score).toLocaleString()} energy
           </Text>
         </View>
 
@@ -475,7 +476,7 @@ export default function LeaderboardScreen() {
                         #{currentUserRank}
                       </Text>
                       <Text style={{ color: Colors.text.muted, fontSize: Typography.size.sm }}>
-                        {Math.round(currentUserScore).toLocaleString()} energy
+                        {normalizeScoreForDisplay(currentUserScore).toLocaleString()} energy
                       </Text>
                     </View>
                   </View>

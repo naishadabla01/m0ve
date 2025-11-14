@@ -1,5 +1,6 @@
 // app/(home)/index.tsx - iOS 26 Redesigned Home Page
 import { supabase } from "@/lib/supabase/client";
+import { normalizeScoreForDisplay } from "@/lib/scoreUtils";
 import { router } from "expo-router";
 import React, { useEffect, useState, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -366,17 +367,17 @@ export default function HomeScreen() {
               borderRadius: BorderRadius['2xl'],
               borderWidth: 2,
               borderColor: Colors.accent.purple.light,
-              padding: Spacing.xl,
+              padding: Spacing.lg,
               ...Shadows.xl,
             }}
           >
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: Spacing.md }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: Spacing.sm }}>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs, marginBottom: Spacing.xs }}>
                   <View
                     style={{
-                      width: 10,
-                      height: 10,
+                      width: 8,
+                      height: 8,
                       borderRadius: BorderRadius.full,
                       backgroundColor: Colors.status.live,
                       ...Shadows.md,
@@ -396,7 +397,7 @@ export default function HomeScreen() {
                 <Text
                   style={{
                     color: Colors.text.primary,
-                    fontSize: Typography.size.xl,
+                    fontSize: Typography.size.lg,
                     fontWeight: Typography.weight.bold,
                   }}
                 >
@@ -405,7 +406,7 @@ export default function HomeScreen() {
                 <Text
                   style={{
                     color: Colors.text.muted,
-                    fontSize: Typography.size.sm,
+                    fontSize: Typography.size.xs,
                     marginTop: Spacing.xs,
                   }}
                 >
@@ -420,16 +421,16 @@ export default function HomeScreen() {
                 source={{ uri: activeEvent.cover_image_url }}
                 style={{
                   width: '100%',
-                  height: 120,
+                  height: 80,
                   borderRadius: BorderRadius.lg,
-                  marginBottom: Spacing.md,
+                  marginBottom: Spacing.sm,
                 }}
                 resizeMode="cover"
               />
             )}
 
             {/* Action Buttons */}
-            <View style={{ gap: Spacing.sm }}>
+            <View style={{ gap: Spacing.xs }}>
               {/* Start Moving Button */}
               <Pressable onPress={() => router.push(`/move?event_id=${activeEvent.event_id}`)}>
                 {({ pressed }) => (
@@ -438,7 +439,7 @@ export default function HomeScreen() {
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={{
-                      paddingVertical: Spacing.md,
+                      paddingVertical: Spacing.sm,
                       borderRadius: BorderRadius.lg,
                       alignItems: "center",
                       opacity: pressed ? 0.8 : 1,
@@ -449,7 +450,7 @@ export default function HomeScreen() {
                       style={{
                         color: Colors.text.primary,
                         fontWeight: Typography.weight.bold,
-                        fontSize: Typography.size.base,
+                        fontSize: Typography.size.sm,
                       }}
                     >
                       ⚡ Start Moving
@@ -1682,7 +1683,7 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                         fontWeight: Typography.weight.bold,
                       }}
                     >
-                      {eventStats.totalEnergy.toLocaleString()}
+                      {normalizeScoreForDisplay(eventStats.totalEnergy).toLocaleString()}
                     </Text>
                     <Text style={{ color: Colors.text.muted, fontSize: Typography.size.xs, marginTop: 4 }}>
                       Total Energy
@@ -1811,7 +1812,7 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                                 fontWeight: Typography.weight.bold,
                               }}
                             >
-                              {(entry.score || 0).toLocaleString()}
+                              {normalizeScoreForDisplay(entry.score || 0).toLocaleString()}
                             </Text>
                             <Text
                               style={{
