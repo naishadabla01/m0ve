@@ -1059,28 +1059,50 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
       setLoadingLeaderboard(true);
 
       try {
-        // Fetch top 10 leaderboard for this event
+        // Fetch top 10 scores for this event
         const { data: scores, error: scoresError } = await supabase
           .from("scores")
-          .select(`
-            user_id,
-            total_energy,
-            is_live,
-            profiles!inner(display_name, first_name, last_name)
-          `)
+          .select("user_id, total_energy, is_live")
           .eq("event_id", event.event_id)
           .order("total_energy", { ascending: false })
           .limit(10);
 
         if (scoresError) {
-          console.error("Failed to load leaderboard:", scoresError);
-        } else if (isMounted && scores) {
-          setLeaderboard(scores);
+          console.error("Failed to load scores:", scoresError);
+        } else if (isMounted && scores && scores.length > 0) {
+          // Fetch profiles for these users
+          const userIds = scores.map(s => s.user_id);
+          const { data: profiles, error: profilesError } = await supabase
+            .from("profiles")
+            .select("user_id, display_name, first_name, last_name")
+            .in("user_id", userIds);
+
+          if (profilesError) {
+            console.error("Failed to load profiles:", profilesError);
+          }
+
+          // Merge scores with profiles
+          const leaderboardData = scores.map(score => {
+            const profile = profiles?.find(p => p.user_id === score.user_id);
+            return {
+              user_id: score.user_id,
+              total_energy: score.total_energy,
+              is_live: score.is_live,
+              display_name: profile?.display_name ||
+                [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
+                "Anonymous"
+            };
+          });
+
+          setLeaderboard(leaderboardData);
 
           // Calculate stats
           const totalEnergy = scores.reduce((sum, s) => sum + (s.total_energy || 0), 0);
           const participantCount = scores.length;
           setEventStats({ totalEnergy, participantCount });
+        } else if (isMounted) {
+          setLeaderboard([]);
+          setEventStats({ totalEnergy: 0, participantCount: 0 });
         }
       } catch (err) {
         console.error("Error loading event details:", err);
@@ -1124,7 +1146,7 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
         onPress={onClose}
       >
         <Pressable
-          style={{ width: "100%", maxHeight: "90%" }}
+          style={{ width: "100%", height: "100%" }}
           onPress={(e) => e.stopPropagation()}
         >
           <LinearGradient
@@ -1132,29 +1154,33 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{
+              flex: 1,
               borderTopLeftRadius: BorderRadius['3xl'],
               borderTopRightRadius: BorderRadius['3xl'],
               borderWidth: 1,
               borderBottomWidth: 0,
               borderColor: Colors.border.glass,
-              paddingTop: Spacing.xl,
+              paddingTop: Spacing.md,
               paddingHorizontal: Spacing.xl,
               paddingBottom: Spacing['3xl'],
               ...Shadows.xl,
             }}
           >
-            {/* Handle Bar */}
-            <View style={{ alignItems: "center", marginBottom: Spacing.lg }}>
+            {/* Handle Bar - Swipe down to close */}
+            <Pressable
+              onPress={onClose}
+              style={{ alignItems: "center", paddingVertical: Spacing.md, marginBottom: Spacing.sm }}
+            >
               <View
                 style={{
-                  width: 40,
-                  height: 5,
+                  width: 60,
+                  height: 6,
                   borderRadius: BorderRadius.full,
                   backgroundColor: Colors.text.muted,
-                  opacity: 0.3,
+                  opacity: 0.5,
                 }}
               />
-            </View>
+            </Pressable>
 
             <ScrollView showsVerticalScrollIndicator={false}>
               {/* Header */}
@@ -1365,11 +1391,6 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                 ) : leaderboard.length > 0 ? (
                   <View style={{ gap: Spacing.sm }}>
                     {leaderboard.map((entry, index) => {
-                      const profile = entry.profiles;
-                      const displayName = profile?.display_name ||
-                        [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
-                        "Anonymous";
-
                       return (
                         <LinearGradient
                           key={entry.user_id}
@@ -1418,7 +1439,7 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                                 fontWeight: Typography.weight.semibold,
                               }}
                             >
-                              {displayName}
+                              {entry.display_name}
                             </Text>
                             {entry.is_live && (
                               <Text
