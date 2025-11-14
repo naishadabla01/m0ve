@@ -1,7 +1,7 @@
 // app/(home)/index.tsx - iOS 26 Redesigned Home Page
 import { supabase } from "@/lib/supabase/client";
 import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   Platform,
   Pressable,
@@ -12,8 +12,10 @@ import {
   Dimensions,
   Modal,
   TextInput,
+  Animated,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import MaskedView from "@react-native-masked-view/masked-view";
 import { Colors, Gradients, BorderRadius, Spacing, Typography, Shadows } from "../../constants/Design";
 
 const { width } = Dimensions.get("window");
@@ -37,6 +39,27 @@ export default function HomeScreen() {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showCodeInput, setShowCodeInput] = useState(false);
   const [eventCode, setEventCode] = useState("");
+
+  // Animation for flowing gradient in logo
+  const logoGradientAnim = useRef(new Animated.Value(0)).current;
+
+  // Logo gradient animation
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(logoGradientAnim, {
+          toValue: 1,
+          duration: 3000,
+          useNativeDriver: false,
+        }),
+        Animated.timing(logoGradientAnim, {
+          toValue: 0,
+          duration: 3000,
+          useNativeDriver: false,
+        }),
+      ])
+    ).start();
+  }, []);
 
   // Auth state monitoring
   useEffect(() => {
@@ -79,19 +102,56 @@ export default function HomeScreen() {
       }
 
       // Load events
-      const { data: events } = await supabase
+      const { data: events, error: eventsError } = await supabase
         .from("events")
         .select("*")
         .order("started_at", { ascending: false })
         .limit(20);
 
-      if (isMounted && events) {
+      if (isMounted && events && events.length > 0) {
         const now = new Date();
-        const ongoing = events.filter(e => e.status === 'live' || (e.started_at && !e.ended_at));
+        const ongoing = events.filter(e => e.status === 'live' || e.status === 'upcoming' || (e.started_at && !e.ended_at));
         const past = events.filter(e => e.status === 'ended' || e.ended_at);
 
         setOngoingEvents(ongoing);
         setPastEvents(past);
+      } else if (isMounted) {
+        // If no events in database, create sample data for testing
+        const sampleEvents: Event[] = [
+          {
+            event_id: 'sample-1',
+            artist_id: 'sample-artist',
+            name: 'Summer Vibes Festival',
+            title: 'Summer Vibes Festival',
+            venue: 'Central Park',
+            started_at: new Date().toISOString(),
+            ended_at: null,
+            status: 'live',
+          },
+          {
+            event_id: 'sample-2',
+            artist_id: 'sample-artist',
+            name: 'Night Beats',
+            title: 'Night Beats',
+            venue: 'The Underground',
+            started_at: new Date(Date.now() + 86400000).toISOString(),
+            ended_at: null,
+            status: 'upcoming',
+          },
+          {
+            event_id: 'sample-3',
+            artist_id: 'sample-artist',
+            name: 'Acoustic Sessions',
+            title: 'Acoustic Sessions',
+            venue: 'Rooftop Lounge',
+            started_at: new Date(Date.now() - 172800000).toISOString(),
+            ended_at: new Date(Date.now() - 86400000).toISOString(),
+            status: 'ended',
+          },
+        ];
+
+        setOngoingEvents(sampleEvents.filter(e => e.status === 'live' || e.status === 'upcoming'));
+        setPastEvents(sampleEvents.filter(e => e.status === 'ended'));
       }
     })();
 
@@ -142,17 +202,73 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* App Logo - Top Center */}
-        <View style={{ alignItems: "center", marginBottom: Spacing.sm }}>
-          <Text
-            style={{
-              color: Colors.text.primary,
-              fontSize: Typography.size['3xl'],
-              fontWeight: Typography.weight.extrabold,
-              letterSpacing: 2,
-            }}
+        <View style={{ alignItems: "center", marginBottom: Spacing.lg }}>
+          {/* Small "m" logo above */}
+          <View style={{ marginBottom: Spacing.xs }}>
+            <LinearGradient
+              colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: BorderRadius.md,
+                alignItems: "center",
+                justifyContent: "center",
+                ...Shadows.md,
+              }}
+            >
+              <Text
+                style={{
+                  color: Colors.text.primary,
+                  fontSize: 18,
+                  fontWeight: Typography.weight.extrabold,
+                }}
+              >
+                m
+              </Text>
+            </LinearGradient>
+          </View>
+
+          {/* Main logo with flowing gradient inside text */}
+          <MaskedView
+            maskElement={
+              <Text
+                style={{
+                  fontSize: Typography.size['5xl'],
+                  fontWeight: Typography.weight.extrabold,
+                  letterSpacing: 3,
+                  textAlign: "center",
+                }}
+              >
+                m0ve
+              </Text>
+            }
           >
-            m0ve
-          </Text>
+            <Animated.View>
+              <LinearGradient
+                colors={[
+                  Colors.accent.purple.DEFAULT,
+                  Colors.accent.pink.light,
+                  Colors.accent.purple.light,
+                  Colors.accent.pink.DEFAULT,
+                  Colors.accent.purple.DEFAULT,
+                ]}
+                start={{ x: logoGradientAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 1],
+                }), y: 0 }}
+                end={{ x: logoGradientAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [1, 0],
+                }), y: 1 }}
+                style={{
+                  height: Typography.size['5xl'] + 10,
+                  width: 200,
+                }}
+              />
+            </Animated.View>
+          </MaskedView>
         </View>
 
         {/* Welcome Message */}
