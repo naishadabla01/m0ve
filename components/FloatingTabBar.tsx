@@ -1,11 +1,13 @@
 // components/FloatingTabBar.tsx - iOS 26 Floating Tab Bar with Center QR Button
 import React, { useEffect, useRef } from "react";
-import { View, Pressable, Animated, Platform } from "react-native";
+import { View, Pressable, Animated, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, BorderRadius, Shadows } from "../constants/Design";
-import { eventEmitter } from "../src/lib/events";
+import { router } from "expo-router";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   // Animation for active tab indicator swoosh
@@ -21,28 +23,34 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
   }, [state.index]);
 
   const handleQRPress = () => {
-    // Navigate to home if not already there
-    if (state.index !== 0) {
-      navigation.navigate("index");
-    }
-    // Emit event to open join modal
-    eventEmitter.emit("openJoinModal");
+    // Navigate directly to QR scanner
+    router.push("/scan");
   };
 
-  // Calculate indicator position (excluding center QR button)
+  // Tab bar dimensions
+  const TAB_WIDTH = 60;
+  const TAB_HEIGHT = 50;
+  const BAR_HEIGHT = 60;
+  const BAR_PADDING = 12;
+  const QR_BUTTON_SIZE = 64;
+  const QR_SPACING = 16; // Space for QR button
+
+  // Calculate total bar width
+  const barWidth = SCREEN_WIDTH - 32; // 16px margin on each side
+
+  // Calculate positions for tabs (evenly distributed)
+  const tabPositions = [
+    BAR_PADDING, // Home
+    BAR_PADDING + TAB_WIDTH + 4, // Notifications
+    barWidth - BAR_PADDING - (TAB_WIDTH * 2) - 4, // Search
+    barWidth - BAR_PADDING - TAB_WIDTH, // Profile
+  ];
+
+  // Get animated indicator position
   const getIndicatorPosition = () => {
-    const tabWidth = 70; // Width of each tab
-    const spacing = 8; // Spacing between tabs
-
-    let position;
-    if (state.index === 0) position = 16; // Home
-    else if (state.index === 1) position = 16 + tabWidth + spacing; // Notifications
-    else if (state.index === 2) position = 16 + (tabWidth + spacing) * 2 + 80; // Search (after QR)
-    else position = 16 + (tabWidth + spacing) * 3 + 80; // Profile
-
     return activeIndexAnim.interpolate({
       inputRange: [0, 1, 2, 3],
-      outputRange: [16, 16 + tabWidth + spacing, 16 + (tabWidth + spacing) * 2 + 80, 16 + (tabWidth + spacing) * 3 + 80],
+      outputRange: tabPositions,
     });
   };
 
@@ -50,15 +58,119 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
     <View
       style={{
         position: "absolute",
-        bottom: 20,
+        bottom: 16,
         left: 16,
         right: 16,
-        height: 70,
+        height: BAR_HEIGHT + 24, // Extra space for floating QR button
         alignItems: "center",
-        justifyContent: "center",
+        justifyContent: "flex-end",
       }}
     >
-      {/* Floating Tab Bar Container */}
+      {/* Floating QR Button - Above the bar */}
+      <View
+        style={{
+          position: "absolute",
+          top: 0,
+          left: "50%",
+          marginLeft: -QR_BUTTON_SIZE / 2,
+          zIndex: 10,
+        }}
+      >
+        <Pressable onPress={handleQRPress}>
+          {({ pressed }) => (
+            <LinearGradient
+              colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                width: QR_BUTTON_SIZE,
+                height: QR_BUTTON_SIZE,
+                borderRadius: QR_BUTTON_SIZE / 2,
+                alignItems: "center",
+                justifyContent: "center",
+                borderWidth: 5,
+                borderColor: "#0a0a0a",
+                opacity: pressed ? 0.85 : 1,
+                transform: [{ scale: pressed ? 0.95 : 1 }],
+                ...Shadows.xl,
+              }}
+            >
+              {/* Better QR Code Icon Design */}
+              <View
+                style={{
+                  width: 36,
+                  height: 36,
+                  backgroundColor: "rgba(255, 255, 255, 0.2)",
+                  borderRadius: 6,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <View style={{ position: "relative" }}>
+                  {/* QR Corner squares */}
+                  <View style={{ width: 28, height: 28 }}>
+                    {/* Top-left square */}
+                    <View
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: 10,
+                        height: 10,
+                        borderWidth: 2,
+                        borderColor: "#ffffff",
+                        borderRadius: 2,
+                      }}
+                    />
+                    {/* Top-right square */}
+                    <View
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        right: 0,
+                        width: 10,
+                        height: 10,
+                        borderWidth: 2,
+                        borderColor: "#ffffff",
+                        borderRadius: 2,
+                      }}
+                    />
+                    {/* Bottom-left square */}
+                    <View
+                      style={{
+                        position: "absolute",
+                        bottom: 0,
+                        left: 0,
+                        width: 10,
+                        height: 10,
+                        borderWidth: 2,
+                        borderColor: "#ffffff",
+                        borderRadius: 2,
+                      }}
+                    />
+                    {/* Center dots pattern */}
+                    <View
+                      style={{
+                        position: "absolute",
+                        top: "50%",
+                        left: "50%",
+                        marginTop: -2,
+                        marginLeft: -2,
+                        width: 4,
+                        height: 4,
+                        backgroundColor: "#ffffff",
+                        borderRadius: 1,
+                      }}
+                    />
+                  </View>
+                </View>
+              </View>
+            </LinearGradient>
+          )}
+        </Pressable>
+      </View>
+
+      {/* Tab Bar Container */}
       <LinearGradient
         colors={["rgba(0, 0, 0, 0.95)", "rgba(20, 20, 20, 0.9)"]}
         start={{ x: 0, y: 0 }}
@@ -66,10 +178,11 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
         style={{
           flexDirection: "row",
           alignItems: "center",
-          justifyContent: "space-around",
-          height: 70,
-          borderRadius: 35,
-          paddingHorizontal: 16,
+          justifyContent: "space-between",
+          height: BAR_HEIGHT,
+          width: barWidth,
+          borderRadius: BAR_HEIGHT / 2,
+          paddingHorizontal: BAR_PADDING,
           borderWidth: 1,
           borderColor: "rgba(255, 255, 255, 0.1)",
           ...Shadows.xl,
@@ -79,9 +192,9 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
         <Animated.View
           style={{
             position: "absolute",
-            width: 70,
-            height: 54,
-            borderRadius: 27,
+            width: TAB_WIDTH,
+            height: TAB_HEIGHT,
+            borderRadius: TAB_HEIGHT / 2,
             backgroundColor: "rgba(168, 85, 247, 0.2)",
             borderWidth: 1,
             borderColor: "rgba(168, 85, 247, 0.4)",
@@ -94,18 +207,18 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
         <Pressable
           onPress={() => navigation.navigate("index")}
           style={{
-            width: 70,
-            height: 54,
+            width: TAB_WIDTH,
+            height: TAB_HEIGHT,
             alignItems: "center",
             justifyContent: "center",
-            borderRadius: 27,
+            borderRadius: TAB_HEIGHT / 2,
           }}
         >
           {({ pressed }) => (
             <View style={{ opacity: pressed ? 0.6 : 1 }}>
               <Ionicons
                 name={state.index === 0 ? "home" : "home-outline"}
-                size={26}
+                size={24}
                 color={state.index === 0 ? Colors.accent.purple.light : Colors.text.tertiary}
               />
             </View>
@@ -116,68 +229,43 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
         <Pressable
           onPress={() => navigation.navigate("notifications")}
           style={{
-            width: 70,
-            height: 54,
+            width: TAB_WIDTH,
+            height: TAB_HEIGHT,
             alignItems: "center",
             justifyContent: "center",
-            borderRadius: 27,
+            borderRadius: TAB_HEIGHT / 2,
           }}
         >
           {({ pressed }) => (
             <View style={{ opacity: pressed ? 0.6 : 1 }}>
               <Ionicons
                 name={state.index === 1 ? "heart" : "heart-outline"}
-                size={26}
+                size={24}
                 color={state.index === 1 ? Colors.accent.purple.light : Colors.text.tertiary}
               />
             </View>
           )}
         </Pressable>
 
-        {/* Center QR Button - Floating Above */}
-        <View style={{ width: 80, alignItems: "center", justifyContent: "center" }}>
-          <Pressable onPress={handleQRPress}>
-            {({ pressed }) => (
-              <LinearGradient
-                colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: 32,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginTop: -50, // Float above the tab bar
-                  borderWidth: 4,
-                  borderColor: "#0a0a0a",
-                  opacity: pressed ? 0.8 : 1,
-                  transform: [{ scale: pressed ? 0.95 : 1 }],
-                  ...Shadows.xl,
-                }}
-              >
-                <Ionicons name="qr-code-outline" size={32} color="#ffffff" />
-              </LinearGradient>
-            )}
-          </Pressable>
-        </View>
+        {/* Center Spacer for QR Button */}
+        <View style={{ width: QR_BUTTON_SIZE + QR_SPACING }} />
 
         {/* Search Tab */}
         <Pressable
           onPress={() => navigation.navigate("search")}
           style={{
-            width: 70,
-            height: 54,
+            width: TAB_WIDTH,
+            height: TAB_HEIGHT,
             alignItems: "center",
             justifyContent: "center",
-            borderRadius: 27,
+            borderRadius: TAB_HEIGHT / 2,
           }}
         >
           {({ pressed }) => (
             <View style={{ opacity: pressed ? 0.6 : 1 }}>
               <Ionicons
                 name={state.index === 2 ? "settings" : "settings-outline"}
-                size={26}
+                size={24}
                 color={state.index === 2 ? Colors.accent.purple.light : Colors.text.tertiary}
               />
             </View>
@@ -188,18 +276,18 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
         <Pressable
           onPress={() => navigation.navigate("profile")}
           style={{
-            width: 70,
-            height: 54,
+            width: TAB_WIDTH,
+            height: TAB_HEIGHT,
             alignItems: "center",
             justifyContent: "center",
-            borderRadius: 27,
+            borderRadius: TAB_HEIGHT / 2,
           }}
         >
           {({ pressed }) => (
             <View style={{ opacity: pressed ? 0.6 : 1 }}>
               <Ionicons
                 name={state.index === 3 ? "person" : "person-outline"}
-                size={26}
+                size={24}
                 color={state.index === 3 ? Colors.accent.purple.light : Colors.text.tertiary}
               />
             </View>
