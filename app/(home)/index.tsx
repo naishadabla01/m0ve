@@ -463,16 +463,20 @@ export default function HomeScreen() {
 
         {/* Active Event Card - Apple Music Style with Green Accent */}
         {activeEvent && (
-          <View
-            style={{
-              borderRadius: BorderRadius['2xl'],
-              borderWidth: 2,
-              borderColor: '#34d399', // Green border (Tailwind green-400)
-              backgroundColor: 'rgba(18, 18, 22, 0.95)', // Dark background like event cards
-              padding: Spacing.lg,
-              ...Shadows.xl,
-            }}
-          >
+          <Pressable onPress={() => router.push(`/move?event_id=${activeEvent.event_id}`)}>
+            {({ pressed }) => (
+              <View
+                style={{
+                  borderRadius: BorderRadius['2xl'],
+                  borderWidth: 2,
+                  borderColor: '#34d399', // Green border (Tailwind green-400)
+                  backgroundColor: 'rgba(18, 18, 22, 0.95)', // Dark background like event cards
+                  padding: Spacing.lg,
+                  ...Shadows.xl,
+                  opacity: pressed ? 0.85 : 1,
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                }}
+              >
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: Spacing.sm }}>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs, marginBottom: Spacing.xs }}>
@@ -536,37 +540,36 @@ export default function HomeScreen() {
 
             {/* Action Buttons */}
             <View style={{ gap: Spacing.xs }}>
-              {/* Start Moving Button - Green gradient */}
-              <Pressable onPress={() => router.push(`/move?event_id=${activeEvent.event_id}`)}>
-                {({ pressed }) => (
-                  <LinearGradient
-                    colors={['#10b981', '#34d399']} // Green gradient (Tailwind green-500 to green-400)
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
+              {/* Start Moving Button - Green gradient (card is already clickable) */}
+              <LinearGradient
+                colors={['#10b981', '#34d399']} // Green gradient (Tailwind green-500 to green-400)
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{
+                  paddingVertical: Spacing.sm,
+                  borderRadius: BorderRadius.lg,
+                  alignItems: "center",
+                  ...Shadows.md,
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.xs }}>
+                  <Ionicons name="play-circle" size={20} color="#ffffff" />
+                  <Text
                     style={{
-                      paddingVertical: Spacing.sm,
-                      borderRadius: BorderRadius.lg,
-                      alignItems: "center",
-                      opacity: pressed ? 0.8 : 1,
-                      ...Shadows.md,
+                      color: Colors.text.primary,
+                      fontWeight: Typography.weight.bold,
+                      fontSize: Typography.size.sm,
                     }}
                   >
-                    <Text
-                      style={{
-                        color: Colors.text.primary,
-                        fontWeight: Typography.weight.bold,
-                        fontSize: Typography.size.sm,
-                      }}
-                    >
-                      ⚡ Start Moving
-                    </Text>
-                  </LinearGradient>
-                )}
-              </Pressable>
+                    Start Moving
+                  </Text>
+                </View>
+              </LinearGradient>
 
               {/* Exit Event Button */}
               <Pressable
-                onPress={async () => {
+                onPress={async (e) => {
+                  e?.stopPropagation?.();
                   await AsyncStorage.removeItem("event_id");
                   setActiveEvent(null);
                 }}
@@ -596,6 +599,8 @@ export default function HomeScreen() {
               </Pressable>
             </View>
           </View>
+            )}
+          </Pressable>
         )}
 
         {/* Ongoing Events Component */}
