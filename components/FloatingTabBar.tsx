@@ -97,9 +97,9 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
           {({ pressed }) => (
             <LinearGradient
               colors={[
-                Colors.accent.purple.light,
-                "#c084fc",
-                Colors.accent.pink.light,
+                "rgba(30, 30, 35, 0.98)",
+                "rgba(40, 40, 48, 0.95)",
+                "rgba(35, 35, 40, 0.97)",
               ]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -109,13 +109,13 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
                 borderRadius: QR_BUTTON_SIZE / 2,
                 alignItems: "center",
                 justifyContent: "center",
-                borderWidth: 6,
-                borderColor: "rgba(10, 10, 10, 0.95)",
+                borderWidth: 2,
+                borderColor: "rgba(168, 85, 247, 0.4)",
                 opacity: pressed ? 0.85 : 1,
                 transform: [{ scale: pressed ? 0.95 : 1 }],
                 shadowColor: Colors.accent.purple.light,
                 shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.5,
+                shadowOpacity: 0.3,
                 shadowRadius: 12,
                 elevation: 8,
               }}

@@ -1,8 +1,6 @@
 // app/(home)/index.tsx - iOS 26 Redesigned Home Page
-// Main home screen with event browsing and joining functionality
 import { supabase } from "@/lib/supabase/client";
 import { normalizeScoreForDisplay } from "@/lib/scoreUtils";
-import { eventEmitter } from "@/lib/events";
 import { router } from "expo-router";
 import React, { useEffect, useState, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -22,7 +20,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
 import { Colors, Gradients, BorderRadius, Spacing, Typography, Shadows } from "../../constants/Design";
 
 const { width } = Dimensions.get("window");
@@ -30,6 +27,7 @@ const { width } = Dimensions.get("window");
 interface Event {
   event_id: string;
   artist_id: string;
+  artist_name?: string | null;
   name: string | null;
   title?: string | null;
   short_code?: string | null;
@@ -53,6 +51,9 @@ export default function HomeScreen() {
 
   // Animation for logo pulse effect
   const logoPulseAnim = useRef(new Animated.Value(1)).current;
+
+  // Parallax scroll animation
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   // Logo pulse animation
   useEffect(() => {
@@ -78,16 +79,6 @@ export default function HomeScreen() {
       if (!session) router.replace("/(auth)/signin");
     });
     return () => sub.subscription.unsubscribe();
-  }, []);
-
-  // Listen for QR button press from floating tab bar
-  useEffect(() => {
-    const handleQRPress = () => {
-      setShowJoinModal(true);
-    };
-
-    eventEmitter.on("openJoinModal", handleQRPress);
-    return () => eventEmitter.off("openJoinModal", handleQRPress);
   }, []);
 
   // Load joined event from AsyncStorage
@@ -177,11 +168,38 @@ export default function HomeScreen() {
       if (eventsError) console.error("❌ Events error:", eventsError);
 
       if (isMounted && events) {
+        // Get unique artist IDs
+        const artistIds = [...new Set(events.map(e => e.artist_id).filter(Boolean))];
+
+        // Fetch artist profiles separately
+        const { data: artistProfiles } = await supabase
+          .from("profiles")
+          .select("user_id, display_name, first_name, last_name")
+          .in("user_id", artistIds);
+
+        // Create artist lookup map
+        const artistMap = new Map(
+          (artistProfiles || []).map(profile => [
+            profile.user_id,
+            profile.display_name ||
+            [profile.first_name, profile.last_name].filter(Boolean).join(" ") ||
+            null
+          ])
+        );
+
         const now = new Date();
+
+        // Map events to include artist_name from profiles
+        const mappedEvents = events.map((event: any) => {
+          return {
+            ...event,
+            artist_name: artistMap.get(event.artist_id) || null,
+          };
+        });
 
         // Ongoing events: live, scheduled (future), or started but not ended
         // Status can be: 'scheduled', 'live', 'ended'
-        const ongoing = events.filter(e => {
+        const ongoing = mappedEvents.filter(e => {
           // Already ended - exclude
           if (e.status === 'ended' || e.ended_at) return false;
 
@@ -198,13 +216,13 @@ export default function HomeScreen() {
         });
 
         // Past events: events that have ended
-        const past = events.filter(e =>
+        const past = mappedEvents.filter(e =>
           e.status === 'ended' || e.ended_at
         );
 
         console.log("✅ Ongoing events:", ongoing.length);
         console.log("🏁 Past events:", past.length);
-        console.log("Ongoing:", ongoing.map(e => ({ name: e.name, status: e.status, start_at: e.start_at })));
+        console.log("Ongoing:", ongoing.map(e => ({ name: e.name, artist: e.artist_name, status: e.status, start_at: e.start_at })));
 
         setOngoingEvents(ongoing);
         setPastEvents(past);
@@ -216,11 +234,24 @@ export default function HomeScreen() {
     };
   }, []);
 
+  // Parallax transform for background blobs
+  const purpleBlobTransform = scrollY.interpolate({
+    inputRange: [0, 500],
+    outputRange: [0, -100], // Move slower (only -100px when scrolled 500px)
+    extrapolate: 'clamp',
+  });
+
+  const pinkBlobTransform = scrollY.interpolate({
+    inputRange: [0, 500],
+    outputRange: [0, -80], // Move even slower for variation
+    extrapolate: 'clamp',
+  });
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }} edges={['top', 'left', 'right']}>
-      {/* Animated Background Blobs */}
+      {/* Animated Background Blobs with Parallax */}
       <View pointerEvents="none" style={{ position: "absolute", inset: 0 }}>
-        <View
+        <Animated.View
           style={{
             position: "absolute",
             top: -70,
@@ -231,9 +262,10 @@ export default function HomeScreen() {
             backgroundColor: Colors.accent.purple.light,
             opacity: 0.14,
             filter: Platform.OS === "web" ? "blur(60px)" : undefined,
+            transform: [{ translateY: purpleBlobTransform }],
           }}
         />
-        <View
+        <Animated.View
           style={{
             position: "absolute",
             bottom: -90,
@@ -244,11 +276,12 @@ export default function HomeScreen() {
             backgroundColor: Colors.accent.pink.light,
             opacity: 0.1,
             filter: Platform.OS === "web" ? "blur(70px)" : undefined,
+            transform: [{ translateY: pinkBlobTransform }],
           }}
         />
       </View>
 
-      <ScrollView
+      <Animated.ScrollView
         contentContainerStyle={{
           paddingHorizontal: Spacing['2xl'],
           paddingTop: Spacing['2xl'],
@@ -256,6 +289,11 @@ export default function HomeScreen() {
           gap: Spacing.xl,
         }}
         showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
       >
         {/* App Logo - Clean and Simple */}
         <Animated.View style={{ alignItems: "center", marginBottom: Spacing.lg, transform: [{ scale: logoPulseAnim }] }}>
@@ -276,27 +314,54 @@ export default function HomeScreen() {
         <View style={{ marginBottom: Spacing.sm }}>
           <Text
             style={{
-              color: Colors.text.muted,
-              fontSize: Typography.size.xs,
-              fontWeight: '200',
-              letterSpacing: 3,
+              color: Colors.text.primary,
+<<<<<<< Updated upstream
+              fontSize: Typography.size['3xl'],
+              fontWeight: Typography.weight.bold,
+              lineHeight: 40,
+=======
+              fontSize: Typography.size.lg,
+              fontWeight: Typography.weight.semibold,
+              letterSpacing: 0.5,
               textTransform: 'lowercase',
-              opacity: 0.7,
               marginBottom: 2,
+>>>>>>> Stashed changes
             }}
           >
-            welcome back
+            Welcome Back
           </Text>
+<<<<<<< Updated upstream
           <Text
             style={{
               color: Colors.accent.purple.light,
               fontSize: Typography.size['4xl'],
               fontWeight: Typography.weight.bold,
               lineHeight: 48,
+              marginTop: Spacing.xs,
             }}
           >
             {displayName} 👋
           </Text>
+=======
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text
+              style={{
+                color: Colors.accent.purple.light,
+                fontSize: Typography.size['4xl'],
+                fontWeight: Typography.weight.bold,
+                lineHeight: 48,
+              }}
+            >
+              {displayName}
+            </Text>
+            <Ionicons
+              name="sparkles"
+              size={28}
+              color={Colors.accent.purple.light}
+              style={{ marginTop: 4 }}
+            />
+          </View>
+>>>>>>> Stashed changes
           <Text
             style={{
               color: Colors.text.muted,
@@ -312,14 +377,26 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        {/* Join an Event Button - iOS 26 Blue Theme (Hidden if already in an event) */}
+<<<<<<< Updated upstream
+        {/* Join an Event Button - Redesigned (Hidden if already in an event) */}
+=======
+        {/* Join an Event Button - iOS 26 with Dynamic Spotlight (Hidden if already in an event) */}
+>>>>>>> Stashed changes
         {!activeEvent && (
           <Pressable onPress={() => setShowJoinModal(true)}>
             {({ pressed }) => (
               <LinearGradient
-                colors={["#007AFF", "#0051D5"]} // iOS blue gradient
+<<<<<<< Updated upstream
+                colors={['rgba(168, 85, 247, 0.6)', 'rgba(236, 72, 153, 0.5)']}
+=======
+                colors={[
+                  "rgba(25, 25, 30, 0.95)",
+                  "rgba(30, 30, 38, 0.92)",
+                  "rgba(28, 28, 35, 0.94)",
+                ]}
+>>>>>>> Stashed changes
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={{
                   paddingVertical: Spacing.xl,
                   paddingHorizontal: Spacing.lg,
@@ -327,27 +404,60 @@ export default function HomeScreen() {
                   opacity: pressed ? 0.85 : 1,
                   ...Shadows.xl,
                   transform: [{ scale: pressed ? 0.98 : 1 }],
+<<<<<<< Updated upstream
                   borderWidth: 1,
-                  borderColor: 'rgba(0, 122, 255, 0.3)', // iOS blue border
+                  borderColor: 'rgba(168, 85, 247, 0.3)',
+=======
+                  borderWidth: 1.5,
+                  borderColor: 'rgba(59, 130, 246, 0.4)',
+                  overflow: 'hidden',
+                  position: 'relative',
+>>>>>>> Stashed changes
                 }}
               >
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: Spacing.md }}>
+                {/* Spotlight glow effect - top right INSIDE - Blue */}
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: -50,
+                    right: -50,
+                    width: 110,
+                    height: 110,
+                    borderRadius: 55,
+                    backgroundColor: 'rgba(59, 130, 246, 0.25)',
+                    filter: Platform.OS === 'web' ? 'blur(50px)' : undefined,
+                  }}
+                />
+                {/* Secondary glow - bottom left INSIDE - Blue */}
+                <View
+                  style={{
+                    position: 'absolute',
+                    bottom: -50,
+                    left: -50,
+                    width: 100,
+                    height: 100,
+                    borderRadius: 50,
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    filter: Platform.OS === 'web' ? 'blur(45px)' : undefined,
+                  }}
+                />
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: Spacing.md, zIndex: 1 }}>
                   <View
                     style={{
                       width: 48,
                       height: 48,
-                      borderRadius: BorderRadius.lg,
-                      backgroundColor: 'rgba(255, 255, 255, 0.25)', // Slightly more white for iOS look
+                      borderRadius: BorderRadius.full,
+                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <Ionicons name="qr-code-outline" size={28} color="#ffffff" />
+                    <Text style={{ fontSize: 24 }}>✨</Text>
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text
                       style={{
-                        color: "#ffffff",
+                        color: Colors.text.primary,
                         fontWeight: Typography.weight.bold,
                         fontSize: Typography.size.xl,
                         letterSpacing: 0.5,
@@ -357,7 +467,7 @@ export default function HomeScreen() {
                     </Text>
                     <Text
                       style={{
-                        color: 'rgba(255, 255, 255, 0.9)', // Brighter white for iOS
+                        color: 'rgba(255, 255, 255, 0.8)',
                         fontSize: Typography.size.xs,
                         marginTop: 2,
                       }}
@@ -365,7 +475,7 @@ export default function HomeScreen() {
                       Scan QR or enter code
                     </Text>
                   </View>
-                  <Text style={{ fontSize: 20, color: "#ffffff" }}>→</Text>
+                  <Text style={{ fontSize: 20, color: Colors.text.primary }}>→</Text>
                 </View>
               </LinearGradient>
             )}
@@ -513,7 +623,62 @@ export default function HomeScreen() {
 
         {/* Past Events Component */}
         <PastEventsComponent events={pastEvents} onShowDetails={setSelectedEventForDetails} />
-      </ScrollView>
+      </Animated.ScrollView>
+
+      {/* Floating QR Scan Button */}
+      {/* Floating QR Scan Button - Modern & Visible */}
+      <Pressable
+        onPress={() => router.push("/scan")}
+        style={{
+          position: "absolute",
+          bottom: 100,
+          right: Spacing.xl,
+          ...Shadows.xl,
+        }}
+      >
+        {({ pressed }) => (
+          <LinearGradient
+            colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: BorderRadius.full,
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: pressed ? 0.9 : 1,
+              transform: [{ scale: pressed ? 0.95 : 1 }],
+            }}
+          >
+            <View
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: BorderRadius.full,
+                backgroundColor: Colors.background.primary,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <LinearGradient
+                colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: BorderRadius.full,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ fontSize: 32 }}>⊞</Text>
+              </LinearGradient>
+            </View>
+          </LinearGradient>
+        )}
+      </Pressable>
 
       {/* Join Event Modal */}
       <JoinEventModal
@@ -531,17 +696,25 @@ export default function HomeScreen() {
         activeEvent={activeEvent}
         setActiveEvent={setActiveEvent}
       />
-      {/* Event Details Modal */}
-      {selectedEventForDetails && (
-        <EventDetailsModal
-          event={selectedEventForDetails}
-          onClose={() => setSelectedEventForDetails(null)}
-        />
-      )}
     </SafeAreaView>
+    {/* Event Details Modal - Rendered outside SafeAreaView to appear on top of All Events modal */}
+    {selectedEventForDetails && (
+      <EventDetailsModal
+        event={selectedEventForDetails}
+        onClose={() => {
+          setSelectedEventForDetails(null);
+          // Also close All Events modal if it was open
+          setShowAllEvents(false);
+        }}
+      />
+    )}
   );
 }
 
+<<<<<<< Updated upstream
+// Ongoing Events Carousel Component
+function OngoingEventsComponent({ events, onShowDetails }: { events: Event[]; onShowDetails: (event: Event) => void }) {
+=======
 // Reusable Event List Component - Uniform Layout for All Event Sections
 function EventListSection({
   title,
@@ -560,6 +733,7 @@ function EventListSection({
 }) {
   const [pressedId, setPressedId] = useState<string | null>(null);
   const [showAllEvents, setShowAllEvents] = useState(false);
+  const [menuVisible, setMenuVisible] = useState<string | null>(null); // Track which event menu is open
   const scrollX = useRef(new Animated.Value(0)).current;
   const screenWidth = Dimensions.get('window').width;
 
@@ -592,7 +766,10 @@ function EventListSection({
   const renderEventItem = (event: Event, index: number, isLastInPage: boolean) => (
     <View key={event.event_id}>
       <Pressable
-        onPress={() => onShowDetails(event)}
+        onPress={() => {
+          setMenuVisible(null); // Close menu when tapping card
+          onShowDetails(event);
+        }}
         onPressIn={() => setPressedId(event.event_id)}
         onPressOut={() => setPressedId(null)}
       >
@@ -642,84 +819,209 @@ function EventListSection({
 
             {/* Event Details */}
             <View style={{ flex: 1, justifyContent: 'space-between', paddingVertical: 4 }}>
-              {/* Date at top */}
-              <Text
-                style={{
-                  color: Colors.text.muted,
-                  fontSize: 11, // Smaller
-                  fontWeight: Typography.weight.medium,
-                }}
-              >
-                {formatEventDate(isPast ? (event.ended_at || event.start_at) : event.start_at)}
-              </Text>
+              {/* Top section: Date and Status Dot */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                {/* Status Dot - Green for live, Blue for upcoming */}
+                {!isPast && (
+                  <View
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: event.status === 'live' ? '#10b981' : '#3b82f6',
+                    }}
+                  />
+                )}
+                <Text
+                  style={{
+                    color: Colors.text.muted,
+                    fontSize: 11,
+                    fontWeight: Typography.weight.medium,
+                  }}
+                >
+                  {formatEventDate(isPast ? (event.ended_at || event.start_at) : event.start_at)}
+                </Text>
+              </View>
 
-              {/* Event name in middle */}
-              <Text
-                numberOfLines={2}
-                style={{
-                  color: Colors.text.primary,
-                  fontSize: Typography.size.base, // Reduced from lg
-                  fontWeight: Typography.weight.bold,
-                  lineHeight: Typography.size.base * 1.3,
-                }}
-              >
-                {event.name || event.title || event.short_code || 'Untitled Event'}
-              </Text>
+              {/* Middle section: Event name and 3-dot menu */}
+              <View style={{ flex: 1, justifyContent: 'center' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      color: Colors.text.primary,
+                      fontSize: Typography.size.base,
+                      fontWeight: Typography.weight.bold,
+                      flex: 1,
+                    }}
+                  >
+                    {event.name || event.title || event.short_code || 'Untitled Event'}
+                  </Text>
 
-              {/* Location at bottom */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  {/* 3-Dot Menu Button */}
+                  <Pressable
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      setMenuVisible(menuVisible === event.event_id ? null : event.event_id);
+                    }}
+                    style={{
+                      padding: 6,
+                    }}
+                  >
+                    <Ionicons name="ellipsis-horizontal" size={20} color={Colors.text.muted} />
+                  </Pressable>
+                </View>
+
+                {/* Artist Name with Instagram-style Verified Badge */}
+                {event.artist_name && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        color: Colors.text.secondary,
+                        fontSize: 13,
+                        fontWeight: Typography.weight.semibold,
+                      }}
+                    >
+                      {event.artist_name}
+                    </Text>
+                    <Ionicons name="checkmark-circle" size={15} color="#3b82f6" />
+                  </View>
+                )}
+              </View>
+
+              {/* Bottom section: Location moved to bottom right */}
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
                 <Text
                   numberOfLines={1}
                   style={{
                     color: Colors.text.muted,
-                    fontSize: 12, // Smaller
-                    flex: 1,
+                    fontSize: 11,
                   }}
                 >
                   📍 {event.location || 'Location TBA'}
                 </Text>
-
-                {/* LIVE indicator (only for ongoing events) - Modern pill design */}
-                {!isPast && event.status === 'live' && (
-                  <LinearGradient
-                    colors={['rgba(239, 68, 68, 0.15)', 'rgba(239, 68, 68, 0.08)']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 4,
-                      paddingHorizontal: 8,
-                      paddingVertical: 3,
-                      borderRadius: 12,
-                      borderWidth: 1,
-                      borderColor: 'rgba(239, 68, 68, 0.3)',
-                      marginLeft: Spacing.sm,
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: 5,
-                        height: 5,
-                        borderRadius: BorderRadius.full,
-                        backgroundColor: Colors.status.live,
-                      }}
-                    />
-                    <Text
-                      style={{
-                        color: Colors.status.live,
-                        fontSize: 10,
-                        fontWeight: Typography.weight.bold,
-                        letterSpacing: 0.5,
-                      }}
-                    >
-                      LIVE
-                    </Text>
-                  </LinearGradient>
-                )}
               </View>
             </View>
           </View>
+
+          {/* Popup Menu - Enhanced Apple Music Style with Gloss */}
+          {menuVisible === event.event_id && (
+            <>
+              {/* Backdrop to close menu when clicking outside */}
+              <Pressable
+                onPress={() => setMenuVisible(null)}
+                style={{
+                  position: 'absolute',
+                  top: -100,
+                  left: -100,
+                  right: -100,
+                  bottom: -100,
+                  zIndex: 998,
+                }}
+              />
+
+              <LinearGradient
+                colors={[
+                  'rgba(45, 45, 52, 0.98)',
+                  'rgba(35, 35, 42, 0.95)',
+                  'rgba(40, 40, 48, 0.97)',
+                ]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  position: 'absolute',
+                  top: 45,
+                  right: 8,
+                  borderRadius: 18,
+                  borderWidth: 1.5,
+                  borderColor: 'rgba(255, 255, 255, 0.15)',
+                  overflow: 'hidden',
+                  minWidth: 200,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.6,
+                  shadowRadius: 20,
+                  elevation: 12,
+                  zIndex: 999,
+                }}
+              >
+                {/* Inner glow effect */}
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 1,
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                  }}
+                />
+
+                {/* Leaderboard Option */}
+                <Pressable
+                  onPress={() => {
+                    setMenuVisible(null);
+                    router.push({
+                      pathname: "/(home)/leaderboard",
+                      params: { event_id: event.event_id },
+                    });
+                  }}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 16,
+                    paddingHorizontal: 18,
+                    backgroundColor: pressed ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                  })}
+                >
+                  <Ionicons name="trophy-outline" size={20} color={Colors.text.primary} style={{ marginRight: 14 }} />
+                  <Text style={{
+                    color: Colors.text.primary,
+                    fontSize: Typography.size.base,
+                    fontWeight: Typography.weight.semibold,
+                    letterSpacing: 0.2,
+                  }}>
+                    Leaderboard
+                  </Text>
+                </Pressable>
+
+                {/* Divider with gradient */}
+                <LinearGradient
+                  colors={['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{ height: 1, marginHorizontal: 14 }}
+                />
+
+                {/* I'm Interested Option */}
+                <Pressable
+                  onPress={() => {
+                    setMenuVisible(null);
+                    // TODO: Add functionality later
+                    console.log("I'm Interested clicked for event:", event.event_id);
+                  }}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 16,
+                    paddingHorizontal: 18,
+                    backgroundColor: pressed ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                  })}
+                >
+                  <Ionicons name="heart-outline" size={20} color={Colors.text.primary} style={{ marginRight: 14 }} />
+                  <Text style={{
+                    color: Colors.text.primary,
+                    fontSize: Typography.size.base,
+                    fontWeight: Typography.weight.semibold,
+                    letterSpacing: 0.2,
+                  }}>
+                    I'm Interested
+                  </Text>
+                </Pressable>
+              </LinearGradient>
+            </>
+          )}
         </Animated.View>
       </Pressable>
 
@@ -737,213 +1039,146 @@ function EventListSection({
     </View>
   );
 
+>>>>>>> Stashed changes
   return (
-    <View>
-      {/* Title outside the container with > arrow */}
-      <Pressable
-        onPress={() => setShowAllEvents(true)}
-        style={{ flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.lg, paddingHorizontal: Spacing.xs }}
-      >
+    <LinearGradient
+      colors={Gradients.glass.dark}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={{
+        borderRadius: BorderRadius['2xl'],
+        borderWidth: 1,
+        borderColor: Colors.border.glass,
+        padding: Spacing.xl,
+        ...Shadows.lg,
+      }}
+    >
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
         <Text
           style={{
             color: Colors.text.primary,
-            fontSize: Typography.size['2xl'],
+            fontSize: Typography.size.xl,
             fontWeight: Typography.weight.bold,
-            marginRight: Spacing.sm,
           }}
         >
-          {title}
+          Ongoing Events
         </Text>
-        <Ionicons name="chevron-forward" size={24} color={Colors.text.muted} />
-      </Pressable>
+        {/* Show All button removed - events folder deleted */}
+      </View>
 
       {events.length > 0 ? (
-        <View>
-          <Animated.ScrollView
-            horizontal
-            pagingEnabled={false}
-            showsHorizontalScrollIndicator={false}
-            snapToInterval={SNAP_INTERVAL}
-            snapToAlignment="start"
-            decelerationRate="fast"
-            contentContainerStyle={{
-              paddingRight: CONTAINER_MARGIN / 2,
-            }}
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-              { useNativeDriver: false }
-            )}
-            scrollEventThrottle={16}
-          >
-            {pages.map((pageEvents, pageIndex) => (
-              <View
-                key={pageIndex}
-                style={{
-                  width: CONTAINER_WIDTH,
-                  marginRight: pageIndex < pages.length - 1 ? PAGE_SPACING : 0,
-                  opacity: isPast ? 0.7 : 1,
-                }}
-              >
-                {pageEvents.map((event, index) =>
-                  renderEventItem(event, index, index === pageEvents.length - 1)
-                )}
-              </View>
-            ))}
-          </Animated.ScrollView>
-
-          {/* Pagination Dots - Only show if more than 1 page */}
-          {pages.length > 1 && (
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginTop: Spacing.md,
-                gap: 6,
-              }}
-            >
-              {pages.map((_, index) => {
-                const inputRange = [
-                  (index - 1) * SNAP_INTERVAL,
-                  index * SNAP_INTERVAL,
-                  (index + 1) * SNAP_INTERVAL,
-                ];
-
-                const dotWidth = scrollX.interpolate({
-                  inputRange,
-                  outputRange: [6, 20, 6],
-                  extrapolate: 'clamp',
-                });
-
-                const dotOpacity = scrollX.interpolate({
-                  inputRange,
-                  outputRange: [0.3, 1, 0.3],
-                  extrapolate: 'clamp',
-                });
-
-                const dotRadius = scrollX.interpolate({
-                  inputRange,
-                  outputRange: [3, 3, 3],
-                  extrapolate: 'clamp',
-                });
-
-                return (
-                  <Animated.View
-                    key={index}
-                    style={{
-                      width: dotWidth,
-                      height: 6,
-                      borderRadius: dotRadius,
-                      backgroundColor: Colors.accent.purple.light,
-                      opacity: dotOpacity,
-                    }}
-                  />
-                );
-              })}
-            </View>
-          )}
-        </View>
-      ) : (
-        <View
-          style={{
-            alignItems: 'center',
-            paddingVertical: Spacing['3xl'],
-            backgroundColor: 'rgba(0, 0, 0, 0.2)',
-            borderRadius: BorderRadius.xl,
-            borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.05)',
-          }}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: Spacing.md }}
         >
-          <Text style={{ fontSize: 48, marginBottom: Spacing.md }}>{emptyIcon}</Text>
+          {events.map((event) => (
+            <EventCard key={event.event_id} event={event} onShowDetails={onShowDetails} />
+          ))}
+        </ScrollView>
+      ) : (
+        <View style={{ alignItems: "center", paddingVertical: Spacing['2xl'] }}>
+          <Text style={{ fontSize: 48, marginBottom: Spacing.md }}>🎉</Text>
           <Text
             style={{
               color: Colors.text.muted,
               fontSize: Typography.size.base,
-              textAlign: 'center',
+              textAlign: "center",
             }}
           >
-            {emptyMessage}
+            No ongoing events right now
           </Text>
         </View>
       )}
+<<<<<<< Updated upstream
+    </LinearGradient>
+=======
 
       {/* All Events Modal */}
       {showAllEvents && (
-        <Modal visible={true} transparent animationType="slide">
-          <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
-            <View style={{ flex: 1 }}>
-              {/* Header */}
+        <Modal visible={true} animationType="slide">
+          <View style={{ flex: 1, backgroundColor: Colors.background.primary }}>
+            <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right', 'bottom']}>
+              {/* Header with proper spacing */}
               <View
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
                   paddingHorizontal: Spacing.xl,
-                  paddingVertical: Spacing.md,
+                  paddingVertical: Spacing.xl,
                   borderBottomWidth: 1,
                   borderBottomColor: Colors.border.glass,
+                  backgroundColor: Colors.background.primary,
                 }}
               >
-                <Pressable onPress={() => setShowAllEvents(false)}>
-                  <Ionicons name="chevron-back" size={28} color={Colors.accent.purple.light} />
+                <Pressable
+                  onPress={() => setShowAllEvents(false)}
+                  style={{
+                    padding: Spacing.sm,
+                    marginLeft: -Spacing.sm,
+                  }}
+                >
+                  <Ionicons name="chevron-back" size={32} color={Colors.accent.purple.light} />
                 </Pressable>
                 <Text
                   style={{
                     flex: 1,
                     textAlign: 'center',
                     color: Colors.text.primary,
-                    fontSize: Typography.size.xl,
+                    fontSize: Typography.size['2xl'],
                     fontWeight: Typography.weight.bold,
-                    marginRight: 28,
+                    marginRight: 32,
                   }}
                 >
                   All {title}
                 </Text>
               </View>
 
-              {/* Scrollable list of all events */}
+              {/* Scrollable list of all events - Clean compact style */}
               <ScrollView
+                style={{ flex: 1 }}
                 contentContainerStyle={{
-                  padding: Spacing.xl,
-                  gap: Spacing.md,
+                  paddingHorizontal: Spacing.lg,
+                  paddingVertical: Spacing.md,
+                  gap: Spacing.sm,
+                  paddingBottom: Spacing['3xl'],
                 }}
+                showsVerticalScrollIndicator={false}
               >
                 {events.map((event) => (
                   <Pressable
                     key={event.event_id}
                     onPress={() => {
-                      setShowAllEvents(false);
+                      // Open event details modal directly without closing all events modal
                       onShowDetails(event);
                     }}
                     onPressIn={() => setPressedId(event.event_id)}
                     onPressOut={() => setPressedId(null)}
                   >
-                    <Animated.View
-                      style={{
-                        transform: [{ scale: pressedId === event.event_id ? 0.98 : 1 }],
-                        opacity: isPast ? 0.7 : 1,
-                      }}
-                    >
+                    {({ pressed }) => (
                       <LinearGradient
-                        colors={['rgba(255, 255, 255, 0.03)', 'rgba(255, 255, 255, 0.01)']}
+                        colors={['rgba(30, 30, 35, 0.6)', 'rgba(25, 25, 30, 0.5)']}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                         style={{
                           flexDirection: 'row',
+                          alignItems: 'center',
                           borderRadius: BorderRadius.xl,
                           borderWidth: 1,
                           borderColor: 'rgba(255, 255, 255, 0.08)',
                           padding: Spacing.md,
-                          backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                          ...Shadows.sm,
+                          opacity: pressed ? 0.7 : 1,
+                          transform: [{ scale: pressed ? 0.98 : 1 }],
                         }}
                       >
+                        {/* Event Cover Image - Smaller */}
                         <View
                           style={{
-                            width: IMAGE_SIZE,
-                            height: IMAGE_SIZE,
+                            width: 70,
+                            height: 70,
                             borderRadius: BorderRadius.lg,
                             overflow: 'hidden',
-                            marginRight: IMAGE_MARGIN,
+                            marginRight: Spacing.md,
                           }}
                         >
                           {event.cover_image_url ? (
@@ -954,7 +1189,7 @@ function EventListSection({
                             />
                           ) : (
                             <LinearGradient
-                              colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
+                              colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
                               start={{ x: 0, y: 0 }}
                               end={{ x: 1, y: 1 }}
                               style={{
@@ -964,72 +1199,274 @@ function EventListSection({
                                 justifyContent: 'center',
                               }}
                             >
-                              <Text style={{ fontSize: 36 }}>🎵</Text>
+                              <Text style={{ fontSize: 28 }}>🎵</Text>
                             </LinearGradient>
                           )}
                         </View>
 
-                        <View style={{ flex: 1, justifyContent: 'space-between', paddingVertical: 4 }}>
-                          <Text style={{ color: Colors.text.muted, fontSize: 11, fontWeight: Typography.weight.medium }}>
-                            {formatEventDate(isPast ? (event.ended_at || event.start_at) : event.start_at)}
-                          </Text>
-                          <Text numberOfLines={2} style={{ color: Colors.text.primary, fontSize: Typography.size.base, fontWeight: Typography.weight.bold, lineHeight: Typography.size.base * 1.3 }}>
+                        {/* Event Details */}
+                        <View style={{ flex: 1 }}>
+                          {/* Date and Status Dot */}
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                            {!isPast && (
+                              <View
+                                style={{
+                                  width: 6,
+                                  height: 6,
+                                  borderRadius: 3,
+                                  backgroundColor: event.status === 'live' ? '#10b981' : '#3b82f6',
+                                }}
+                              />
+                            )}
+                            <Text style={{ color: Colors.text.muted, fontSize: 12, fontWeight: Typography.weight.medium }}>
+                              {formatEventDate(isPast ? (event.ended_at || event.start_at) : event.start_at)}
+                            </Text>
+                          </View>
+
+                          {/* Event Name */}
+                          <Text
+                            numberOfLines={1}
+                            style={{
+                              color: Colors.text.primary,
+                              fontSize: Typography.size.lg,
+                              fontWeight: Typography.weight.bold,
+                              marginBottom: 4,
+                            }}
+                          >
                             {event.name || event.title || event.short_code || 'Untitled Event'}
                           </Text>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <Text numberOfLines={1} style={{ color: Colors.text.muted, fontSize: 12, flex: 1 }}>
-                              📍 {event.location || 'Location TBA'}
-                            </Text>
-                            {!isPast && event.status === 'live' && (
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: Spacing.sm }}>
-                                <View style={{ width: 6, height: 6, borderRadius: BorderRadius.full, backgroundColor: Colors.status.live }} />
-                                <Text style={{ color: Colors.status.live, fontSize: Typography.size.xs, fontWeight: Typography.weight.bold }}>LIVE</Text>
-                              </View>
-                            )}
-                          </View>
+
+                          {/* Location */}
+                          <Text
+                            numberOfLines={1}
+                            style={{
+                              color: Colors.text.muted,
+                              fontSize: 13,
+                            }}
+                          >
+                            📍 {event.location || 'Location TBA'}
+                          </Text>
                         </View>
+
+                        {/* LIVE indicator on right */}
+                        {!isPast && event.status === 'live' && (
+                          <View
+                            style={{
+                              backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                              paddingHorizontal: 10,
+                              paddingVertical: 4,
+                              borderRadius: 12,
+                              marginLeft: Spacing.sm,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: '#10b981',
+                                fontSize: 11,
+                                fontWeight: Typography.weight.bold,
+                                letterSpacing: 0.5,
+                              }}
+                            >
+                              LIVE
+                            </Text>
+                          </View>
+                        )}
                       </LinearGradient>
-                    </Animated.View>
+                    )}
                   </Pressable>
                 ))}
               </ScrollView>
-            </View>
-          </SafeAreaView>
+            </SafeAreaView>
+          </View>
         </Modal>
       )}
     </View>
+>>>>>>> Stashed changes
   );
 }
 
-// Ongoing Events Component - Uses Reusable Component
-function OngoingEventsComponent({ events, onShowDetails }: { events: Event[]; onShowDetails: (event: Event) => void }) {
-  return (
-    <EventListSection
-      title="Ongoing Events"
-      events={events}
-      onShowDetails={onShowDetails}
-      isPast={false}
-      emptyIcon="🎉"
-      emptyMessage="No ongoing events right now"
-    />
-  );
-}
-
-// Past Events Component - Uses Reusable Component
+// Past Events Component
 function PastEventsComponent({ events, onShowDetails }: { events: Event[]; onShowDetails: (event: Event) => void }) {
   return (
-    <EventListSection
-      title="Past Events"
-      events={events}
-      onShowDetails={onShowDetails}
-      isPast={true}
-      emptyIcon="📅"
-      emptyMessage="No past events yet"
-    />
+    <LinearGradient
+      colors={Gradients.glass.dark}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={{
+        borderRadius: BorderRadius['2xl'],
+        borderWidth: 1,
+        borderColor: Colors.border.glass,
+        padding: Spacing.xl,
+        ...Shadows.lg,
+      }}
+    >
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
+        <Text
+          style={{
+            color: Colors.text.primary,
+            fontSize: Typography.size.xl,
+            fontWeight: Typography.weight.bold,
+          }}
+        >
+          Past Events
+        </Text>
+        {/* Show All button removed - events folder deleted */}
+      </View>
+
+      {events.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: Spacing.md }}
+        >
+          {events.slice(0, 8).map((event) => (
+            <EventCard key={event.event_id} event={event} isPast onShowDetails={onShowDetails} />
+          ))}
+        </ScrollView>
+      ) : (
+        <View style={{ alignItems: "center", paddingVertical: Spacing['2xl'] }}>
+          <Text style={{ fontSize: 48, marginBottom: Spacing.md }}>📅</Text>
+          <Text
+            style={{
+              color: Colors.text.muted,
+              fontSize: Typography.size.base,
+              textAlign: "center",
+            }}
+          >
+            No past events yet
+          </Text>
+        </View>
+      )}
+    </LinearGradient>
   );
 }
 
-// Old implementations removed - using reusable EventListSection component
+// Event Card (Spotify-style)
+function EventCard({ event, isPast = false, onShowDetails }: { event: Event; isPast?: boolean; onShowDetails: (event: Event) => void }) {
+  return (
+    <Pressable
+      onPress={() => onShowDetails(event)}
+      style={{ width: 220 }}
+    >
+      {({ pressed }) => (
+        <LinearGradient
+          colors={Gradients.glass.medium}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            borderRadius: BorderRadius.xl,
+            borderWidth: 1,
+            borderColor: Colors.border.glass,
+            padding: Spacing.lg,
+            opacity: isPast ? 0.7 : pressed ? 0.85 : 1,
+            ...Shadows.md,
+            transform: [{ scale: pressed ? 0.98 : 1 }],
+          }}
+        >
+        {/* Cover Image or Gradient Placeholder */}
+        {event.cover_image_url ? (
+          <Image
+            source={{ uri: event.cover_image_url }}
+            style={{
+              width: "100%",
+              height: 180,
+              borderRadius: BorderRadius.lg,
+              marginBottom: Spacing.md,
+            }}
+            resizeMode="cover"
+          />
+        ) : (
+          <LinearGradient
+            colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              width: "100%",
+              height: 180,
+              borderRadius: BorderRadius.lg,
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: Spacing.md,
+              ...Shadows.md,
+            }}
+          >
+            <Text style={{ fontSize: 48 }}>🎵</Text>
+          </LinearGradient>
+        )}
+
+        <Text
+          numberOfLines={1}
+          style={{
+            color: Colors.text.primary,
+            fontSize: Typography.size.lg,
+            fontWeight: Typography.weight.bold,
+            marginBottom: Spacing.xs,
+          }}
+        >
+          {event.name || event.title || event.short_code || 'Untitled Event'}
+        </Text>
+
+        <Text
+          numberOfLines={1}
+          style={{
+            color: Colors.text.muted,
+            fontSize: Typography.size.sm,
+            marginBottom: Spacing.sm,
+          }}
+        >
+          {event.location || (event.short_code ? `Code: ${event.short_code}` : 'Location TBA')}
+        </Text>
+
+        {/* Bottom Row: LIVE indicator and tap indicator */}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          {event.status === 'live' && !isPast ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
+              <View
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: BorderRadius.full,
+                  backgroundColor: Colors.status.live,
+                }}
+              />
+              <Text
+                style={{
+                  color: Colors.status.live,
+                  fontSize: Typography.size.xs,
+                  fontWeight: Typography.weight.semibold,
+                }}
+              >
+                LIVE NOW
+              </Text>
+            </View>
+          ) : <View />}
+
+          {/* Tap to view indicator */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: Spacing.xs,
+              paddingHorizontal: Spacing.sm,
+            }}
+          >
+            <Text
+              style={{
+                color: Colors.text.muted,
+                fontSize: Typography.size.xs,
+                fontStyle: "italic",
+              }}
+            >
+              Tap to view
+            </Text>
+            <Text style={{ color: Colors.accent.purple.light, fontSize: 14 }}>→</Text>
+          </View>
+        </View>
+      </LinearGradient>
+      )}
+    </Pressable>
+  );
+}
 
 // Join Event Modal Component
 function JoinEventModal({
@@ -1055,6 +1492,59 @@ function JoinEventModal({
 }) {
   const [isJoining, setIsJoining] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
+
+  // Animation values
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const blurAnim = useRef(new Animated.Value(0)).current;
+
+  // Trigger animation when modal becomes visible
+  useEffect(() => {
+    if (visible) {
+      // Reset animations
+      scaleAnim.setValue(0.8);
+      opacityAnim.setValue(0);
+      blurAnim.setValue(0);
+
+      // Run animations in parallel
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(blurAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+      ]).start();
+    }
+  }, [visible]);
+
+  const handleClose = () => {
+    // Animate out
+    Animated.parallel([
+      Animated.timing(scaleAnim, {
+        toValue: 0.8,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose();
+    });
+  };
 
   const handleJoinWithCode = async () => {
     // Check if user is already in an event
@@ -1118,36 +1608,88 @@ function JoinEventModal({
     }
   };
 
+  // Interpolate blur radius
+  const backdropBlur = blurAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 10],
+  });
+
+  const backdropOpacity = blurAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.92],
+  });
+
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
-      onRequestClose={onClose}
+      animationType="none"
+      onRequestClose={handleClose}
     >
-      <Pressable
+      {/* Animated Backdrop with Enhanced Blur Effect */}
+      <Animated.View
         style={{
           flex: 1,
-          backgroundColor: "rgba(0, 0, 0, 0.8)",
+          backgroundColor: backdropOpacity.interpolate({
+            inputRange: [0, 0.92],
+            outputRange: ['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0.92)'],
+          }),
           justifyContent: "center",
           alignItems: "center",
         }}
-        onPress={onClose}
       >
         <Pressable
-          style={{ width: "90%", maxWidth: 500 }}
-          onPress={(e) => e.stopPropagation()}
+          style={{ flex: 1, width: '100%', justifyContent: "center", alignItems: "center" }}
+          onPress={handleClose}
         >
-          <View
+          {/* Animated Modal Content */}
+          <Animated.View
             style={{
-              backgroundColor: Colors.background.primary,
-              borderRadius: BorderRadius['2xl'],
-              borderWidth: 1,
-              borderColor: Colors.border.strong,
-              padding: Spacing.xl,
-              ...Shadows.xl,
+              width: "90%",
+              maxWidth: 500,
+              transform: [{ scale: scaleAnim }],
+              opacity: opacityAnim,
             }}
           >
+            <Pressable onPress={(e) => e.stopPropagation()}>
+              {/* iOS 26 Glassmorphism Modal Container with Gloss */}
+              <View style={{ position: 'relative', borderRadius: BorderRadius['2xl'] }}>
+                {/* Subtle gloss/shine effect at top */}
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 100,
+                    borderTopLeftRadius: BorderRadius['2xl'],
+                    borderTopRightRadius: BorderRadius['2xl'],
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    zIndex: 1,
+                    pointerEvents: 'none',
+                  }}
+                />
+                <LinearGradient
+                  colors={[
+                    'rgba(18, 18, 22, 0.95)',
+                    'rgba(25, 25, 30, 0.92)',
+                    'rgba(20, 20, 25, 0.94)',
+                  ]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{
+                    borderRadius: BorderRadius['2xl'],
+                    borderWidth: 1.5,
+                    borderColor: 'rgba(255, 255, 255, 0.15)',
+                    padding: Spacing.xl,
+                    ...Shadows.xl,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 10 },
+                    shadowOpacity: 0.5,
+                    shadowRadius: 30,
+                    elevation: 15,
+                  }}
+                >
             {/* Header */}
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.xl }}>
               <Text
@@ -1159,76 +1701,127 @@ function JoinEventModal({
               >
                 Join an Event
               </Text>
-              <Pressable onPress={onClose}>
+              <Pressable onPress={handleClose}>
                 <Text style={{ color: Colors.text.muted, fontSize: 28 }}>×</Text>
               </Pressable>
             </View>
 
-            {/* Scan QR Code Button - iOS 26 Style */}
+<<<<<<< Updated upstream
+            {/* Scan QR Code Button */}
             <Pressable onPress={() => { onClose(); router.push("/scan"); }}>
               {({ pressed }) => (
                 <LinearGradient
-                  colors={["#007AFF", "#0051D5"]} // iOS blue
+                  colors={[Gradients.purplePink.start, Gradients.purplePink.end] as const}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={{
                     paddingVertical: Spacing.lg,
-                    paddingHorizontal: Spacing.lg,
                     borderRadius: BorderRadius.lg,
                     alignItems: "center",
-                    flexDirection: "row",
-                    justifyContent: "center",
-                    gap: Spacing.sm,
                     marginBottom: Spacing.md,
-                    opacity: pressed ? 0.85 : 1,
+                    opacity: pressed ? 0.9 : 1,
                     ...Shadows.md,
                   }}
                 >
-                  <Ionicons name="qr-code-outline" size={22} color="#ffffff" />
                   <Text
                     style={{
-                      color: "#ffffff",
+                      color: Colors.text.primary,
                       fontWeight: Typography.weight.bold,
                       fontSize: Typography.size.base,
                     }}
                   >
-                    Scan QR Code
+                    📷 Scan QR Code
                   </Text>
                 </LinearGradient>
               )}
             </Pressable>
+=======
+            {/* Scan QR Code Button - iOS 26 Style with Light Blue */}
+            <View style={{ overflow: 'hidden', borderRadius: BorderRadius.xl, marginBottom: Spacing.md }}>
+              {/* Glow effect layer - Light Blue */}
+              <View style={{
+                position: 'absolute', top: -50, right: -50, width: 110, height: 110,
+                borderRadius: 55, backgroundColor: 'rgba(96, 165, 250, 0.3)', zIndex: 0,
+              }} />
+              <View style={{
+                position: 'absolute', bottom: -50, left: -50, width: 100, height: 100,
+                borderRadius: 50, backgroundColor: 'rgba(59, 130, 246, 0.25)', zIndex: 0,
+              }} />
 
-            {/* Enter Code Button - iOS 26 Style */}
-            {!showCodeInput ? (
-              <Pressable onPress={() => setShowCodeInput(true)}>
+              <Pressable onPress={() => { onClose(); router.push("/scan"); }}>
                 {({ pressed }) => (
-                  <View
+                  <LinearGradient
+                    colors={[
+                      'rgba(30, 32, 38, 0.85)',
+                      'rgba(38, 42, 50, 0.85)',
+                      'rgba(32, 35, 42, 0.85)',
+                    ]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
                     style={{
                       paddingVertical: Spacing.lg,
                       paddingHorizontal: Spacing.lg,
-                      borderRadius: BorderRadius.lg,
+                      borderRadius: BorderRadius.xl,
                       alignItems: "center",
                       flexDirection: "row",
                       justifyContent: "center",
                       gap: Spacing.sm,
-                      backgroundColor: "rgba(120, 120, 128, 0.16)", // iOS gray background
-                      borderWidth: 1,
-                      borderColor: "rgba(255, 255, 255, 0.1)",
-                      marginBottom: Spacing.lg,
-                      opacity: pressed ? 0.7 : 1,
+                      borderWidth: 2,
+                      borderColor: 'rgba(96, 165, 250, 0.4)',
+                      opacity: pressed ? 0.85 : 1,
+                      transform: [{ scale: pressed ? 0.98 : 1 }],
+                      shadowColor: 'rgba(96, 165, 250, 0.5)',
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.4,
+                      shadowRadius: 12,
+                      elevation: 8,
                     }}
                   >
-                    <Ionicons name="key-outline" size={20} color="#8E8E93" />
+                    <Ionicons name="qr-code-outline" size={24} color="#60a5fa" />
                     <Text
                       style={{
                         color: "#ffffff",
+                        fontWeight: Typography.weight.bold,
+                        fontSize: Typography.size.base,
+                      }}
+                    >
+                      Scan QR Code
+                    </Text>
+                  </LinearGradient>
+                )}
+              </Pressable>
+            </View>
+>>>>>>> Stashed changes
+
+            {/* Enter Code Button */}
+            {!showCodeInput ? (
+              <Pressable onPress={() => setShowCodeInput(true)}>
+                {({ pressed }) => (
+                  <LinearGradient
+                    colors={Gradients.glass.light}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{
+                      paddingVertical: Spacing.lg,
+                      borderRadius: BorderRadius.lg,
+                      alignItems: "center",
+                      borderWidth: 1,
+                      borderColor: Colors.border.glass,
+                      marginBottom: Spacing.lg,
+                      opacity: pressed ? 0.8 : 1,
+                      ...Shadows.sm,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: Colors.text.secondary,
                         fontWeight: Typography.weight.semibold,
                         fontSize: Typography.size.base,
                       }}
                     >
-                      Enter Event Code
+                      🔑 Enter Event Code
                     </Text>
-                  </View>
+                  </LinearGradient>
                 )}
               </Pressable>
             ) : (
@@ -1288,7 +1881,7 @@ function JoinEventModal({
                 <Pressable onPress={handleJoinWithCode} disabled={isJoining}>
                   {({ pressed }) => (
                     <LinearGradient
-                      colors={[Gradients.purplePink.start, Gradients.purplePink.end] as const}
+                      colors={['#3b82f6', '#2563eb', '#1d4ed8'] as const}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                       style={{
@@ -1320,7 +1913,7 @@ function JoinEventModal({
               </View>
             )}
 
-            {/* Live Events Carousel */}
+            {/* Live Events Horizontal Scroll */}
             <View>
               <Text
                 style={{
@@ -1330,13 +1923,13 @@ function JoinEventModal({
                   marginBottom: Spacing.md,
                 }}
               >
-                Live Events
+                Live Events Nearby
               </Text>
               {liveEvents.length > 0 ? (
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ gap: Spacing.md }}
+                  contentContainerStyle={{ gap: Spacing.md, paddingRight: Spacing.md }}
                 >
                   {liveEvents.map((event) => (
                     <LiveEventCard
@@ -1349,8 +1942,8 @@ function JoinEventModal({
                   ))}
                 </ScrollView>
               ) : (
-                <View style={{ alignItems: "center", paddingVertical: Spacing.xl }}>
-                  <Text style={{ fontSize: 32, marginBottom: Spacing.sm }}>🎵</Text>
+                <View style={{ alignItems: "center", paddingVertical: Spacing.lg }}>
+                  <Text style={{ fontSize: 32, marginBottom: Spacing.sm }}>📍</Text>
                   <Text
                     style={{
                       color: Colors.text.muted,
@@ -1358,19 +1951,22 @@ function JoinEventModal({
                       textAlign: "center",
                     }}
                   >
-                    No live events right now
+                    No live events nearby
                   </Text>
                 </View>
               )}
             </View>
-          </View>
+          </LinearGradient>
+              </View>
+            </Pressable>
+          </Animated.View>
         </Pressable>
-      </Pressable>
+      </Animated.View>
     </Modal>
   );
 }
 
-// Live Event Card (Spotify-style for modal)
+// Live Event Card - Compact card with photo on left
 function LiveEventCard({
   event,
   onJoin,
@@ -1382,14 +1978,28 @@ function LiveEventCard({
   activeEvent: Event | null;
   setActiveEvent: (event: Event | null) => void;
 }) {
-  const cardWidth = 160;
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const cardWidth = 200;
 
   return (
+<<<<<<< Updated upstream
     <Pressable
-      onPress={() => {
-        // Navigate to event details page
-        onJoin(); // Close modal
-        router.push(`/event-details?event_id=${event.event_id}`);
+      onPress={async () => {
+        // Check if user is already in a different event
+        if (activeEvent && activeEvent.event_id !== event.event_id) {
+          // Could show an alert here, but for now just prevent action
+          return;
+        }
+
+        // Save event_id to AsyncStorage
+        await AsyncStorage.setItem("event_id", event.event_id);
+
+        // Set as active event
+        setActiveEvent(event);
+
+        // Navigate to movement tracker for this live event
+        onJoin();
+        router.push(`/move?event_id=${event.event_id}`);
       }}
     >
       {({ pressed }) => (
@@ -1400,129 +2010,330 @@ function LiveEventCard({
           }}
         >
           {/* Event Image/Icon */}
-          <View
+          <LinearGradient
+            colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
             style={{
               width: cardWidth,
               height: cardWidth,
               borderRadius: BorderRadius.lg,
+              alignItems: "center",
+              justifyContent: "center",
               marginBottom: Spacing.sm,
               ...Shadows.md,
-              overflow: 'hidden',
             }}
           >
-            {event.cover_image_url ? (
-              <Image
-                source={{ uri: event.cover_image_url }}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                }}
-                resizeMode="cover"
-              />
-            ) : (
-              <LinearGradient
-                colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text style={{ fontSize: 48 }}>🎵</Text>
-              </LinearGradient>
-            )}
+            <Text style={{ fontSize: 48 }}>🎵</Text>
             {/* Live Indicator */}
             <View
+=======
+    <>
+      <Pressable
+        onPress={() => setShowDetailsModal(true)}
+      >
+        {({ pressed }) => (
+          <View style={{ width: cardWidth }}>
+            {/* Card Container with subtle purple/pink glow */}
+            <LinearGradient
+              colors={[
+                'rgba(30, 30, 35, 0.7)',
+                'rgba(35, 35, 42, 0.6)',
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+>>>>>>> Stashed changes
               style={{
-                position: "absolute",
-                top: Spacing.sm,
-                right: Spacing.sm,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: Spacing.xs,
-                backgroundColor: "rgba(0, 0, 0, 0.6)",
-                paddingHorizontal: Spacing.sm,
-                paddingVertical: 4,
-                borderRadius: BorderRadius.md,
+                borderRadius: BorderRadius.xl,
+                borderWidth: 1,
+                borderColor: 'rgba(168, 85, 247, 0.2)', // Subtle purple border
+                overflow: 'hidden',
+                opacity: pressed ? 0.85 : 1,
+                ...Shadows.md,
               }}
             >
+              {/* Subtle purple glow in corner */}
               <View
                 style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: BorderRadius.full,
-                  backgroundColor: Colors.status.live,
+                  position: 'absolute',
+                  top: -20,
+                  right: -20,
+                  width: 60,
+                  height: 60,
+                  borderRadius: 30,
+                  backgroundColor: 'rgba(168, 85, 247, 0.15)',
+                  zIndex: 0,
                 }}
               />
-              <Text
+
+              {/* Cover Image - Top */}
+              <View
                 style={{
-                  color: Colors.status.live,
-                  fontSize: Typography.size.xs,
-                  fontWeight: Typography.weight.bold,
+                  width: '100%',
+                  height: 100,
+                  overflow: 'hidden',
                 }}
               >
+<<<<<<< Updated upstream
                 LIVE
               </Text>
             </View>
-          </View>
-
-          {/* Event Details */}
-          <Text
-            numberOfLines={1}
-            style={{
-              color: Colors.text.primary,
-              fontSize: Typography.size.sm,
-              fontWeight: Typography.weight.bold,
-              marginBottom: 4,
-            }}
-          >
-            {event.name || event.title || event.short_code || 'Untitled Event'}
-          </Text>
-          <Text
-            numberOfLines={1}
-            style={{
-              color: Colors.text.muted,
-              fontSize: Typography.size.xs,
-              marginBottom: Spacing.sm,
-            }}
-          >
-            {event.location || (event.short_code ? `Code: ${event.short_code}` : 'Tap to join')}
-          </Text>
-
-          {/* Join Button */}
-          <LinearGradient
-            colors={['rgba(168, 85, 247, 0.3)', 'rgba(236, 72, 153, 0.3)'] as const}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={{
-              paddingVertical: Spacing.sm,
-              borderRadius: BorderRadius.md,
-              alignItems: "center",
-              borderWidth: 1,
-              borderColor: Colors.border.glass,
-            }}
-          >
-            <Text
-              style={{
-                color: Colors.text.primary,
-                fontWeight: Typography.weight.semibold,
-                fontSize: Typography.size.xs,
-              }}
-            >
-              Join
-            </Text>
           </LinearGradient>
-        </View>
+=======
+                {event.cover_image_url ? (
+                  <Image
+                    source={{ uri: event.cover_image_url }}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                    }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <LinearGradient
+                    colors={[
+                      'rgba(168, 85, 247, 0.4)', // Purple
+                      'rgba(236, 72, 153, 0.4)', // Pink
+                    ]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Text style={{ fontSize: 36 }}>🎵</Text>
+                  </LinearGradient>
+                )}
+                {/* Live Indicator */}
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 6,
+                    right: 6,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 4,
+                    backgroundColor: "rgba(0, 0, 0, 0.75)",
+                    paddingHorizontal: 6,
+                    paddingVertical: 3,
+                    borderRadius: BorderRadius.md,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: BorderRadius.full,
+                      backgroundColor: Colors.status.live,
+                    }}
+                  />
+                  <Text
+                    style={{
+                      color: Colors.status.live,
+                      fontSize: 10,
+                      fontWeight: Typography.weight.bold,
+                    }}
+                  >
+                    LIVE
+                  </Text>
+                </View>
+              </View>
+
+              {/* Event Details - Bottom */}
+              <View style={{ padding: Spacing.sm }}>
+                {/* Event Title */}
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    color: Colors.text.primary,
+                    fontSize: Typography.size.sm,
+                    fontWeight: Typography.weight.bold,
+                    marginBottom: 3,
+                  }}
+                >
+                  {event.name || event.title || event.short_code || 'Untitled Event'}
+                </Text>
+
+                {/* Artist Name with purple/pink gradient text effect */}
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    color: '#c084fc', // Light purple
+                    fontSize: Typography.size.xs,
+                    fontWeight: Typography.weight.semibold,
+                    marginBottom: 4,
+                  }}
+                >
+                  {event.artist_name || 'Artist'}
+                </Text>
+
+                {/* Time */}
+                {event.start_at && (
+                  <Text
+                    style={{
+                      color: Colors.text.muted,
+                      fontSize: Typography.size.xs,
+                      marginBottom: 6,
+                    }}
+                  >
+                    {new Date(event.start_at).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </Text>
+                )}
+
+                {/* Location with arrow at bottom */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Ionicons name="location-sharp" size={12} color="#ec4899" />
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      color: '#ec4899', // Pink
+                      fontSize: Typography.size.xs,
+                      fontWeight: Typography.weight.medium,
+                      flex: 1,
+                    }}
+                  >
+                    {event.location || 'Location TBA'}
+                  </Text>
+                </View>
+              </View>
+            </LinearGradient>
+          </View>
+        )}
+      </Pressable>
+>>>>>>> Stashed changes
+
+      {/* Event Details Modal */}
+      {showDetailsModal && (
+        <EventDetailsModal
+          visible={showDetailsModal}
+          event={event}
+          onClose={() => setShowDetailsModal(false)}
+        />
       )}
-    </Pressable>
+    </>
   );
 }
 
+// Reusable Event Info Box Component
+const renderEventInfoBox = ({
+  icon,
+  iconColor,
+  label,
+  value,
+  subValue,
+  backgroundColor,
+  borderColor,
+  glowColor,
+  isCode = false,
+}: {
+  icon: any;
+  iconColor: string;
+  label: string;
+  value: string;
+  subValue?: string;
+  backgroundColor: string;
+  borderColor: string;
+  glowColor: string;
+  isCode?: boolean;
+}) => {
+  return (
+    <View style={{ flex: 1, overflow: 'hidden', borderRadius: BorderRadius.xl }}>
+      {/* Glow effect layer */}
+      <View style={{
+        position: 'absolute',
+        top: -20,
+        right: -20,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: glowColor,
+        opacity: 0.4,
+      }} />
+      <View style={{
+        backgroundColor,
+        borderRadius: BorderRadius.xl,
+        padding: Spacing.md,
+        borderWidth: 1,
+        borderColor,
+        minHeight: 90,
+        justifyContent: 'space-between',
+      }}>
+        <Ionicons name={icon} size={18} color={iconColor} style={{ marginBottom: 6 }} />
+        <View>
+          <Text style={{
+            color: Colors.text.muted,
+            fontSize: 10,
+            marginBottom: 4,
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+          }}>
+            {label}
+          </Text>
+          {isCode ? (
+            <LinearGradient
+              colors={[`${backgroundColor}99`, backgroundColor, `${backgroundColor}99`]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{
+                paddingHorizontal: Spacing.xs,
+                paddingVertical: 4,
+                borderRadius: BorderRadius.md,
+                borderWidth: 1,
+                borderColor: borderColor,
+                alignSelf: 'flex-start',
+              }}
+            >
+              <Text style={{
+                color: iconColor,
+                fontSize: Typography.size.base,
+                fontWeight: Typography.weight.bold,
+                letterSpacing: 2,
+              }}>
+                {value}
+              </Text>
+            </LinearGradient>
+          ) : (
+            <>
+              <Text numberOfLines={2} style={{
+                color: Colors.text.primary,
+                fontSize: Typography.size.sm,
+                fontWeight: Typography.weight.semibold,
+              }}>
+                {value}
+              </Text>
+              {subValue && (
+                <Text style={{
+                  color: Colors.text.muted,
+                  fontSize: 10,
+                  marginTop: 2,
+                }}>
+                  {subValue}
+                </Text>
+              )}
+            </>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+};
+
 // Event Details Modal Component
-function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => void }) {
+function EventDetailsModal({
+  event,
+  onClose,
+  showJoinButton = false
+}: {
+  event: Event;
+  onClose: () => void;
+  showJoinButton?: boolean;
+}) {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
   const [eventStats, setEventStats] = useState<{ totalEnergy: number; participantCount: number } | null>(null);
@@ -1601,44 +2412,97 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
     });
   };
 
+<<<<<<< Updated upstream
   // Swipe down gesture to close modal
   const translateY = useRef(new Animated.Value(0)).current;
+=======
+  // Swipe down gesture to close modal with smooth animations
+  const translateY = useRef(new Animated.Value(1000)).current; // Start from bottom
+  const modalOpacity = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef<any>(null);
   const [isScrolledToTop, setIsScrolledToTop] = useState(true);
+>>>>>>> Stashed changes
+
+  // Entrance animation on mount - Smooth slide up from bottom
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(translateY, {
+        toValue: 0,
+        tension: 50,
+        friction: 9,
+        useNativeDriver: true,
+      }),
+      Animated.timing(modalOpacity, {
+        toValue: 1,
+        duration: 350,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   // Backdrop opacity animation - fades as user swipes down
-  const backdropOpacity = translateY.interpolate({
-    inputRange: [0, 300],
-    outputRange: [0.85, 0],
+  const backdropOpacity = modalOpacity.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.85],
     extrapolate: 'clamp',
   });
 
-  const panResponder = useRef(
+  const handleClose = () => {
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: 1000,
+        duration: 350,
+        useNativeDriver: true,
+      }),
+      Animated.timing(modalOpacity, {
+        toValue: 0,
+        duration: 350,
+        useNativeDriver: true,
+      }),
+    ]).start(() => onClose());
+  };
+
+  // Enhanced pan responder for header area
+  const headerPanResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Respond to downward swipes anywhere on the modal (very gentle threshold)
-        return gestureState.dy > 3 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+<<<<<<< Updated upstream
+        // Only respond to downward swipes
+        return gestureState.dy > 5;
       },
       onPanResponderMove: (_, gestureState) => {
-        // Allow downward movement from anywhere
+        // Only allow downward movement
+=======
+        // Always respond to vertical gestures in header
+        return Math.abs(gestureState.dy) > 5;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Allow downward movement only
+>>>>>>> Stashed changes
         if (gestureState.dy > 0) {
           translateY.setValue(gestureState.dy);
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        // If swiped down more than 100px, close the modal
-        if (gestureState.dy > 100) {
+<<<<<<< Updated upstream
+        // If swiped down more than 150px, close the modal
+        if (gestureState.dy > 150) {
           Animated.timing(translateY, {
             toValue: 1000,
             duration: 200,
             useNativeDriver: false, // Can't use native driver with opacity
           }).start(() => onClose());
+=======
+        // If swiped down more than 150px or velocity is high, close
+        if (gestureState.dy > 150 || gestureState.vy > 0.5) {
+          handleClose();
+>>>>>>> Stashed changes
         } else {
           // Otherwise, spring back to original position
           Animated.spring(translateY, {
             toValue: 0,
-            useNativeDriver: false,
+            useNativeDriver: true,
             tension: 50,
             friction: 8,
           }).start();
@@ -1647,12 +2511,15 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
     })
   ).current;
 
+  // Removed contentPanResponder to fix glitchy swipe behavior
+  // Only headerPanResponder is used for smooth swipe-to-close
+
   return (
     <Modal
       visible={true}
       transparent
-      animationType="slide"
-      onRequestClose={onClose}
+      animationType="none"
+      onRequestClose={handleClose}
     >
       <Animated.View
         style={[
@@ -1668,25 +2535,32 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
           },
         ]}
       >
+        <Pressable
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+          onPress={handleClose}
+        />
         <Animated.View
-          {...panResponder.panHandlers}
           style={{
             height: "90%",
             borderTopLeftRadius: BorderRadius['3xl'],
             borderTopRightRadius: BorderRadius['3xl'],
+            borderWidth: 1,
+            borderBottomWidth: 0,
+            borderColor: Colors.border.strong,
             shadowColor: Colors.accent.purple.light,
             shadowOffset: { width: 0, height: -4 },
             shadowOpacity: 0.3,
             shadowRadius: 20,
             elevation: 20,
             transform: [{ translateY }],
+            opacity: modalOpacity,
             overflow: 'hidden',
           }}
         >
-          {/* Background Image with Blur Effect */}
+          {/* Background Image with Reduced Blur Effect */}
           {event.cover_image_url ? (
             <>
-              {/* Blurred background layer using native blurRadius */}
+              {/* Less blurred background layer */}
               <Image
                 source={{ uri: event.cover_image_url }}
                 style={{
@@ -1697,14 +2571,22 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                   bottom: 0,
                   width: '100%',
                   height: '100%',
-                  opacity: 0.6,
+                  opacity: 0.7,
                 }}
                 resizeMode="cover"
-                blurRadius={20}
+<<<<<<< Updated upstream
+                blurRadius={15}
               />
-              {/* Dark vignette overlay from edges */}
+              {/* Dark gradient overlay for text readability */}
               <LinearGradient
-                colors={['rgba(0, 0, 0, 0.8)', 'rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.7)']}
+                colors={['rgba(0, 0, 0, 0.5)', 'rgba(0, 0, 0, 0.4)', 'rgba(0, 0, 0, 0.6)']}
+=======
+                blurRadius={8}
+              />
+              {/* Lighter vignette overlay from edges */}
+              <LinearGradient
+                colors={['rgba(0, 0, 0, 0.7)', 'rgba(0, 0, 0, 0.2)', 'rgba(0, 0, 0, 0.2)', 'rgba(0, 0, 0, 0.6)']}
+>>>>>>> Stashed changes
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
                 style={{
@@ -1715,9 +2597,11 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                   bottom: 0,
                 }}
               />
+<<<<<<< Updated upstream
+=======
               {/* Left edge shadow */}
               <LinearGradient
-                colors={['rgba(0, 0, 0, 0.6)', 'rgba(0, 0, 0, 0)']}
+                colors={['rgba(0, 0, 0, 0.5)', 'rgba(0, 0, 0, 0)']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={{
@@ -1730,7 +2614,7 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
               />
               {/* Right edge shadow */}
               <LinearGradient
-                colors={['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0.6)']}
+                colors={['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0.5)']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={{
@@ -1744,8 +2628,8 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
               {/* Subtle purple/pink highlight overlay for depth */}
               <LinearGradient
                 colors={[
-                  'rgba(168, 85, 247, 0.1)',
-                  'rgba(236, 72, 153, 0.05)',
+                  'rgba(168, 85, 247, 0.08)',
+                  'rgba(236, 72, 153, 0.04)',
                   'rgba(0, 0, 0, 0)',
                 ]}
                 start={{ x: 0, y: 0 }}
@@ -1758,6 +2642,7 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                   height: '40%',
                 }}
               />
+>>>>>>> Stashed changes
             </>
           ) : (
             <View
@@ -1781,11 +2666,76 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
               paddingBottom: Spacing['3xl'],
             }}
           >
+<<<<<<< Updated upstream
             {/* Handle Bar - Swipe down to close */}
-            <View
+            <Pressable
+              onPress={onClose}
               style={{ alignItems: "center", paddingVertical: Spacing.lg, marginBottom: Spacing.lg }}
             >
-              <Pressable onPress={onClose}>
+              <View
+                style={{
+                  width: 60,
+                  height: 6,
+                  borderRadius: BorderRadius.full,
+                  backgroundColor: Colors.text.muted,
+                  opacity: 0.5,
+                }}
+              />
+            </Pressable>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Header */}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: Spacing.xl }}>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      color: Colors.text.primary,
+                      fontSize: Typography.size['3xl'],
+                      fontWeight: Typography.weight.bold,
+                      marginBottom: Spacing.xs,
+                    }}
+                  >
+                    {event.name || event.title || event.short_code || 'Untitled Event'}
+                  </Text>
+                  {event.status === 'live' && (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
+                      <View
+                        style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: BorderRadius.full,
+                          backgroundColor: Colors.status.live,
+                        }}
+                      />
+                      <Text
+                        style={{
+                          color: Colors.status.live,
+                          fontSize: Typography.size.sm,
+                          fontWeight: Typography.weight.bold,
+                        }}
+                      >
+                        LIVE NOW
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <Pressable onPress={onClose}>
+                  <Text style={{ color: Colors.text.muted, fontSize: 32 }}>×</Text>
+                </Pressable>
+              </View>
+
+              {/* Event Info Card */}
+              <LinearGradient
+                colors={Gradients.glass.medium}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+=======
+            {/* Handle Bar and Header - Draggable Area */}
+            <View {...headerPanResponder.panHandlers}>
+              {/* Handle Bar - Swipe down to close */}
+              <View
+                style={{ alignItems: "center", paddingVertical: Spacing.lg, marginBottom: Spacing.lg }}
+              >
                 <View
                   style={{
                     width: 60,
@@ -1795,9 +2745,58 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                     opacity: 0.5,
                   }}
                 />
-              </Pressable>
+              </View>
+
+              {/* Header - iOS Centered Style */}
+              <View style={{ marginBottom: Spacing.xl, alignItems: 'center' }}>
+                <Text
+                  style={{
+                    color: Colors.text.primary,
+                    fontSize: Typography.size['3xl'],
+                    fontWeight: Typography.weight.bold,
+                    marginBottom: Spacing.sm,
+                    textAlign: 'center',
+                    letterSpacing: 0.3,
+                  }}
+                >
+                  {event.name || event.title || event.short_code || 'Untitled Event'}
+                </Text>
+                {event.status === 'live' && (
+                  <View style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: Spacing.xs,
+                    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                    paddingHorizontal: Spacing.md,
+                    paddingVertical: Spacing.xs,
+                    borderRadius: BorderRadius.full,
+                    borderWidth: 1,
+                    borderColor: 'rgba(16, 185, 129, 0.3)',
+                  }}>
+                    <View
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: BorderRadius.full,
+                        backgroundColor: Colors.status.live,
+                      }}
+                    />
+                    <Text
+                      style={{
+                        color: Colors.status.live,
+                        fontSize: Typography.size.xs,
+                        fontWeight: Typography.weight.bold,
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      LIVE NOW
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
 
+            {/* Scrollable Content */}
             <ScrollView
               ref={scrollViewRef}
               showsVerticalScrollIndicator={false}
@@ -1806,201 +2805,223 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                 setIsScrolledToTop(offsetY <= 0);
               }}
               scrollEventThrottle={16}
+              {...(isScrolledToTop ? contentPanResponder.panHandlers : {})}
             >
-              {/* Header */}
-              <View style={{ marginBottom: Spacing.xl }}>
-                <Text
-                  style={{
-                    color: Colors.text.primary,
-                    fontSize: Typography.size['3xl'],
-                    fontWeight: Typography.weight.bold,
-                    marginBottom: Spacing.xs,
-                  }}
-                >
-                  {event.name || event.title || event.short_code || 'Untitled Event'}
-                </Text>
-                {event.status === 'live' && (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
-                    <View
-                      style={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: BorderRadius.full,
-                        backgroundColor: Colors.status.live,
-                      }}
-                    />
-                    <Text
-                      style={{
-                        color: Colors.status.live,
-                        fontSize: Typography.size.sm,
-                        fontWeight: Typography.weight.bold,
-                      }}
-                    >
-                      LIVE NOW
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Event Info Card */}
-              <LinearGradient
-                colors={Gradients.glass.medium}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+              {/* Event Info Card - 2x2 Grid with Reusable Component */}
+              <View
+>>>>>>> Stashed changes
                 style={{
-                  borderRadius: BorderRadius.xl,
+                  borderRadius: BorderRadius['2xl'],
                   borderWidth: 1,
-                  borderColor: Colors.border.glass,
+                  borderColor: 'rgba(255, 255, 255, 0.08)',
+                  backgroundColor: 'rgba(18, 18, 22, 0.85)',
                   padding: Spacing.lg,
-                  marginBottom: Spacing.xl,
-                  ...Shadows.md,
+                  marginBottom: Spacing.lg,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 12,
+                  elevation: 8,
                 }}
               >
-                <Text
-                  style={{
-                    color: Colors.accent.purple.light,
-                    fontSize: Typography.size.xs,
-                    fontWeight: Typography.weight.bold,
-                    letterSpacing: 1.5,
-                    marginBottom: Spacing.md,
-                  }}
-                >
-                  EVENT INFORMATION
-                </Text>
+                {/* 2x2 Grid */}
+                <View style={{ gap: Spacing.sm }}>
+                  {/* Row 1: Location and Event Code */}
+                  <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+                    {/* Location */}
+                    {renderEventInfoBox({
+                      icon: 'location',
+                      iconColor: Colors.accent.purple.light,
+                      label: 'Location',
+                      value: event.location || 'TBA',
+                      backgroundColor: 'rgba(168, 85, 247, 0.12)',
+                      borderColor: 'rgba(168, 85, 247, 0.3)',
+                      glowColor: 'rgba(168, 85, 247, 0.3)',
+                    })}
 
-                <View style={{ gap: Spacing.md }}>
-                  {/* Location */}
-                  <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
-                    <Text style={{ fontSize: 18, marginRight: Spacing.sm }}>📍</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: Colors.text.muted, fontSize: Typography.size.xs, marginBottom: 2 }}>
-                        Location
-                      </Text>
-                      <Text style={{ color: Colors.text.primary, fontSize: Typography.size.base, fontWeight: Typography.weight.semibold }}>
-                        {event.location || 'Location TBA'}
-                      </Text>
-                    </View>
+                    {/* Event Code */}
+                    {renderEventInfoBox({
+                      icon: 'qr-code',
+                      iconColor: '#10b981',
+                      label: 'Code',
+                      value: event.short_code || 'N/A',
+                      backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                      borderColor: 'rgba(16, 185, 129, 0.3)',
+                      glowColor: 'rgba(16, 185, 129, 0.3)',
+                      isCode: true,
+                    })}
                   </View>
 
-                  {/* Start Time */}
-                  <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
-                    <Text style={{ fontSize: 18, marginRight: Spacing.sm }}>🕐</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: Colors.text.muted, fontSize: Typography.size.xs, marginBottom: 2 }}>
-                        Start Time
-                      </Text>
-                      <Text style={{ color: Colors.text.primary, fontSize: Typography.size.base, fontWeight: Typography.weight.semibold }}>
-                        {formatDateTime(event.start_at)}
-                      </Text>
-                    </View>
+                  {/* Row 2: Start Time and End Time */}
+                  <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+                    {/* Start Time */}
+                    {renderEventInfoBox({
+                      icon: 'time-outline',
+                      iconColor: '#3b82f6',
+                      label: 'Start',
+                      value: event.start_at ? new Date(event.start_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 'TBA',
+                      subValue: event.start_at ? new Date(event.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+                      backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                      borderColor: 'rgba(59, 130, 246, 0.3)',
+                      glowColor: 'rgba(59, 130, 246, 0.3)',
+                    })}
+
+                    {/* End Time */}
+                    {renderEventInfoBox({
+                      icon: 'alarm-outline',
+                      iconColor: Colors.accent.pink.light,
+                      label: 'End',
+                      value: event.end_at ? new Date(event.end_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 'TBA',
+                      subValue: event.end_at ? new Date(event.end_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+                      backgroundColor: 'rgba(236, 72, 153, 0.12)',
+                      borderColor: 'rgba(236, 72, 153, 0.3)',
+                      glowColor: 'rgba(236, 72, 153, 0.3)',
+                    })}
                   </View>
-
-                  {/* End Time */}
-                  {event.end_at && (
-                    <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
-                      <Text style={{ fontSize: 18, marginRight: Spacing.sm }}>⏰</Text>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: Colors.text.muted, fontSize: Typography.size.xs, marginBottom: 2 }}>
-                          End Time
-                        </Text>
-                        <Text style={{ color: Colors.text.primary, fontSize: Typography.size.base, fontWeight: Typography.weight.semibold }}>
-                          {formatDateTime(event.end_at)}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Event Code */}
-                  {event.short_code && (
-                    <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
-                      <Text style={{ fontSize: 18, marginRight: Spacing.sm }}>🔑</Text>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: Colors.text.muted, fontSize: Typography.size.xs, marginBottom: 2 }}>
-                          Event Code
-                        </Text>
-                        <Text style={{ color: Colors.text.primary, fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, letterSpacing: 2 }}>
-                          {event.short_code}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
                 </View>
-              </LinearGradient>
+              </View>
 
-              {/* Event Stats */}
+              {/* Event Stats - Compact with Glows */}
               {eventStats && (
-                <LinearGradient
-                  colors={Gradients.glass.medium}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
+                <View
                   style={{
-                    borderRadius: BorderRadius.xl,
+                    borderRadius: BorderRadius['2xl'],
                     borderWidth: 1,
-                    borderColor: Colors.border.glass,
-                    padding: Spacing.lg,
-                    marginBottom: Spacing.xl,
+                    borderColor: 'rgba(255, 255, 255, 0.08)',
+                    backgroundColor: 'rgba(18, 18, 22, 0.85)',
+                    padding: Spacing.md,
+                    marginBottom: Spacing.lg,
                     flexDirection: "row",
-                    gap: Spacing.lg,
-                    ...Shadows.md,
+                    gap: Spacing.sm,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 12,
+                    elevation: 8,
+                    overflow: 'hidden',
                   }}
                 >
-                  <View style={{ flex: 1, alignItems: "center" }}>
-                    <Text style={{ fontSize: 32, marginBottom: Spacing.xs }}>⚡</Text>
+                  {/* Purple glow for Energy */}
+                  <View style={{
+                    position: 'absolute',
+                    left: -20,
+                    top: -20,
+                    width: 100,
+                    height: 100,
+                    borderRadius: 50,
+                    backgroundColor: 'rgba(168, 85, 247, 0.2)',
+                    opacity: 0.3,
+                  }} />
+
+                  {/* Pink glow for Players */}
+                  <View style={{
+                    position: 'absolute',
+                    right: -20,
+                    top: -20,
+                    width: 100,
+                    height: 100,
+                    borderRadius: 50,
+                    backgroundColor: 'rgba(236, 72, 153, 0.2)',
+                    opacity: 0.3,
+                  }} />
+
+                  <View style={{ flex: 1, alignItems: "center", paddingVertical: Spacing.sm }}>
+                    <View style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      backgroundColor: 'rgba(168, 85, 247, 0.2)',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: Spacing.xs,
+                      borderWidth: 1,
+                      borderColor: 'rgba(168, 85, 247, 0.3)',
+                      shadowColor: Colors.accent.purple.light,
+                      shadowOffset: { width: 0, height: 0 },
+                      shadowOpacity: 0.6,
+                      shadowRadius: 8,
+                      elevation: 4,
+                    }}>
+                      <Ionicons name="flash" size={18} color={Colors.accent.purple.light} />
+                    </View>
                     <Text
                       style={{
-                        color: Colors.accent.purple.light,
-                        fontSize: Typography.size['2xl'],
+                        color: Colors.text.primary,
+                        fontSize: Typography.size.lg,
                         fontWeight: Typography.weight.bold,
+                        marginBottom: 2,
                       }}
                     >
                       {normalizeScoreForDisplay(eventStats.totalEnergy).toLocaleString()}
                     </Text>
-                    <Text style={{ color: Colors.text.muted, fontSize: Typography.size.xs, marginTop: 4 }}>
-                      Total Energy
+                    <Text style={{ color: Colors.text.muted, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      Energy
                     </Text>
                   </View>
-                  <View style={{ width: 1, backgroundColor: Colors.border.glass }} />
-                  <View style={{ flex: 1, alignItems: "center" }}>
-                    <Text style={{ fontSize: 32, marginBottom: Spacing.xs }}>👥</Text>
+                  <View style={{ width: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)' }} />
+                  <View style={{ flex: 1, alignItems: "center", paddingVertical: Spacing.sm }}>
+                    <View style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      backgroundColor: 'rgba(236, 72, 153, 0.2)',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: Spacing.xs,
+                      borderWidth: 1,
+                      borderColor: 'rgba(236, 72, 153, 0.3)',
+                      shadowColor: Colors.accent.pink.light,
+                      shadowOffset: { width: 0, height: 0 },
+                      shadowOpacity: 0.6,
+                      shadowRadius: 8,
+                      elevation: 4,
+                    }}>
+                      <Ionicons name="people" size={18} color={Colors.accent.pink.light} />
+                    </View>
                     <Text
                       style={{
-                        color: Colors.accent.pink.light,
-                        fontSize: Typography.size['2xl'],
+                        color: Colors.text.primary,
+                        fontSize: Typography.size.lg,
                         fontWeight: Typography.weight.bold,
+                        marginBottom: 2,
                       }}
                     >
                       {eventStats.participantCount}
                     </Text>
-                    <Text style={{ color: Colors.text.muted, fontSize: Typography.size.xs, marginTop: 4 }}>
-                      Participants
+                    <Text style={{ color: Colors.text.muted, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      Players
                     </Text>
                   </View>
-                </LinearGradient>
+                </View>
               )}
 
-              {/* Leaderboard */}
-              <LinearGradient
-                colors={Gradients.glass.medium}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+              {/* Leaderboard - Top 5 visible, rest scrollable inside */}
+              <View
                 style={{
-                  borderRadius: BorderRadius.xl,
+                  borderRadius: BorderRadius['2xl'],
                   borderWidth: 1,
-                  borderColor: Colors.border.glass,
-                  padding: Spacing.lg,
-                  ...Shadows.md,
+                  borderColor: 'rgba(255, 255, 255, 0.08)',
+                  backgroundColor: 'rgba(18, 18, 22, 0.85)',
+                  padding: Spacing.xl,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 12,
+                  elevation: 8,
                 }}
               >
                 <Text
                   style={{
-                    color: Colors.accent.purple.light,
+                    color: Colors.text.secondary,
                     fontSize: Typography.size.xs,
                     fontWeight: Typography.weight.bold,
-                    letterSpacing: 1.5,
-                    marginBottom: Spacing.md,
+                    letterSpacing: 1.2,
+                    textTransform: 'uppercase',
+                    marginBottom: Spacing.lg,
+                    opacity: 0.7,
                   }}
                 >
-                  TOP 10 LEADERBOARD
+                  Top 10 Leaderboard
                 </Text>
 
                 {loadingLeaderboard ? (
@@ -2008,98 +3029,225 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                     <ActivityIndicator color={Colors.accent.purple.light} size="large" />
                   </View>
                 ) : leaderboard.length > 0 ? (
-                  <View style={{ gap: Spacing.sm }}>
-                    {leaderboard.map((entry, index) => {
-                      return (
-                        <LinearGradient
-                          key={entry.user_id}
-                          colors={index < 3 ? Gradients.glass.light : ['rgba(255, 255, 255, 0.03)', 'rgba(255, 255, 255, 0.01)'] as const}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 1 }}
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            padding: Spacing.md,
-                            borderRadius: BorderRadius.lg,
-                            borderWidth: index < 3 ? 1 : 0,
-                            borderColor: index < 3 ? Colors.border.glass : 'transparent',
-                          }}
-                        >
-                          {/* Rank */}
+                  <>
+                    {/* Top 5 - Always visible */}
+                    <View style={{ gap: Spacing.xs, marginBottom: leaderboard.length > 5 ? Spacing.xs : 0 }}>
+                      {leaderboard.slice(0, 5).map((entry, index) => {
+                        return (
                           <View
+                            key={entry.user_id}
                             style={{
-                              width: 32,
-                              height: 32,
-                              borderRadius: BorderRadius.full,
-                              backgroundColor: index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : 'rgba(255, 255, 255, 0.1)',
+                              flexDirection: "row",
                               alignItems: "center",
-                              justifyContent: "center",
-                              marginRight: Spacing.md,
+                              padding: Spacing.md,
+                              borderRadius: BorderRadius.xl,
+                              backgroundColor: index < 3 ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)',
+                              borderWidth: index < 3 ? 1 : 0,
+                              borderColor: index < 3 ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
                             }}
                           >
-                            <Text
+                            {/* Rank Badge */}
+                            <View
                               style={{
-                                color: index < 3 ? '#000' : Colors.text.primary,
-                                fontSize: Typography.size.sm,
-                                fontWeight: Typography.weight.bold,
+                                width: 32,
+                                height: 32,
+                                borderRadius: 9,
+                                backgroundColor: index === 0 ? 'rgba(255, 215, 0, 0.2)' : index === 1 ? 'rgba(192, 192, 192, 0.2)' : index === 2 ? 'rgba(205, 127, 50, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                                borderWidth: 1.5,
+                                borderColor: index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : 'rgba(255, 255, 255, 0.1)',
+                                alignItems: "center",
+                                justifyContent: "center",
+                                marginRight: Spacing.sm,
                               }}
                             >
-                              {index + 1}
-                            </Text>
-                          </View>
-
-                          {/* User Info */}
-                          <View style={{ flex: 1 }}>
-                            <Text
-                              numberOfLines={1}
-                              style={{
-                                color: Colors.text.primary,
-                                fontSize: Typography.size.base,
-                                fontWeight: Typography.weight.semibold,
-                              }}
-                            >
-                              {entry.display_name}
-                            </Text>
-                            {entry.is_live && (
                               <Text
                                 style={{
-                                  color: Colors.status.live,
-                                  fontSize: Typography.size.xs,
-                                  marginTop: 2,
+                                  color: index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : Colors.text.primary,
+                                  fontSize: Typography.size.sm,
+                                  fontWeight: Typography.weight.bold,
                                 }}
                               >
-                                🔴 Live
+                                {index + 1}
                               </Text>
-                            )}
-                          </View>
+                            </View>
 
-                          {/* Energy */}
-                          <View style={{ alignItems: "flex-end" }}>
-                            <Text
-                              style={{
-                                color: Colors.accent.purple.light,
-                                fontSize: Typography.size.lg,
-                                fontWeight: Typography.weight.bold,
-                              }}
-                            >
-                              {normalizeScoreForDisplay(entry.score || 0).toLocaleString()}
-                            </Text>
-                            <Text
-                              style={{
-                                color: Colors.text.muted,
-                                fontSize: Typography.size.xs,
-                              }}
-                            >
-                              energy
-                            </Text>
+                            {/* User Info */}
+                            <View style={{ flex: 1 }}>
+                              <Text
+                                numberOfLines={1}
+                                style={{
+                                  color: Colors.text.primary,
+                                  fontSize: Typography.size.sm,
+                                  fontWeight: Typography.weight.semibold,
+                                }}
+                              >
+                                {entry.display_name}
+                              </Text>
+                              {entry.is_live && (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                                  <View style={{
+                                    width: 5,
+                                    height: 5,
+                                    borderRadius: 2.5,
+                                    backgroundColor: Colors.status.live,
+                                  }} />
+                                  <Text
+                                    style={{
+                                      color: Colors.status.live,
+                                      fontSize: 10,
+                                      fontWeight: Typography.weight.medium,
+                                    }}
+                                  >
+                                    Live
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+
+                            {/* Energy Score */}
+                            <View style={{ alignItems: "flex-end" }}>
+                              <Text
+                                style={{
+                                  color: Colors.text.primary,
+                                  fontSize: Typography.size.base,
+                                  fontWeight: Typography.weight.bold,
+                                }}
+                              >
+                                {normalizeScoreForDisplay(entry.score || 0).toLocaleString()}
+                              </Text>
+                              <Text
+                                style={{
+                                  color: Colors.text.muted,
+                                  fontSize: 10,
+                                }}
+                              >
+                                energy
+                              </Text>
+                            </View>
                           </View>
-                        </LinearGradient>
-                      );
-                    })}
-                  </View>
+                        );
+                      })}
+                    </View>
+
+                    {/* Rest (6-10) - Scrollable inside leaderboard */}
+                    {leaderboard.length > 5 && (
+                      <ScrollView
+                        style={{ maxHeight: 200 }}
+                        showsVerticalScrollIndicator={true}
+                        nestedScrollEnabled={true}
+                      >
+                        <View style={{ gap: Spacing.xs }}>
+                          {leaderboard.slice(5, 10).map((entry, idx) => {
+                            const index = idx + 5; // Actual index (5-9)
+                            return (
+                              <View
+                                key={entry.user_id}
+                                style={{
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                  padding: Spacing.md,
+                                  borderRadius: BorderRadius.xl,
+                                  backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                }}
+                              >
+                                {/* Rank Badge */}
+                                <View
+                                  style={{
+                                    width: 32,
+                                    height: 32,
+                                    borderRadius: 9,
+                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                    borderWidth: 1,
+                                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    marginRight: Spacing.sm,
+                                  }}
+                                >
+                                  <Text
+                                    style={{
+                                      color: Colors.text.primary,
+                                      fontSize: Typography.size.sm,
+                                      fontWeight: Typography.weight.bold,
+                                    }}
+                                  >
+                                    {index + 1}
+                                  </Text>
+                                </View>
+
+                                {/* User Info */}
+                                <View style={{ flex: 1 }}>
+                                  <Text
+                                    numberOfLines={1}
+                                    style={{
+                                      color: Colors.text.primary,
+                                      fontSize: Typography.size.sm,
+                                      fontWeight: Typography.weight.semibold,
+                                    }}
+                                  >
+                                    {entry.display_name}
+                                  </Text>
+                                  {entry.is_live && (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                                      <View style={{
+                                        width: 5,
+                                        height: 5,
+                                        borderRadius: 2.5,
+                                        backgroundColor: Colors.status.live,
+                                      }} />
+                                      <Text
+                                        style={{
+                                          color: Colors.status.live,
+                                          fontSize: 10,
+                                          fontWeight: Typography.weight.medium,
+                                        }}
+                                      >
+                                        Live
+                                      </Text>
+                                    </View>
+                                  )}
+                                </View>
+
+                                {/* Energy Score */}
+                                <View style={{ alignItems: "flex-end" }}>
+                                  <Text
+                                    style={{
+                                      color: Colors.text.primary,
+                                      fontSize: Typography.size.base,
+                                      fontWeight: Typography.weight.bold,
+                                    }}
+                                  >
+                                    {normalizeScoreForDisplay(entry.score || 0).toLocaleString()}
+                                  </Text>
+                                  <Text
+                                    style={{
+                                      color: Colors.text.muted,
+                                      fontSize: 10,
+                                    }}
+                                  >
+                                    energy
+                                  </Text>
+                                </View>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      </ScrollView>
+                    )}
+                  </>
                 ) : (
-                  <View style={{ alignItems: "center", paddingVertical: Spacing['2xl'] }}>
-                    <Text style={{ fontSize: 48, marginBottom: Spacing.md }}>🏆</Text>
+                  <View style={{ alignItems: "center", paddingVertical: Spacing['3xl'] }}>
+                    <View style={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: 16,
+                      backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: Spacing.md,
+                    }}>
+                      <Ionicons name="trophy" size={32} color={Colors.accent.purple.light} />
+                    </View>
                     <Text
                       style={{
                         color: Colors.text.muted,
@@ -2111,7 +3259,80 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                     </Text>
                   </View>
                 )}
-              </LinearGradient>
+              </View>
+
+              {/* Join Event Button - Only shown when opening from Live Events */}
+              {showJoinButton && (
+                <View style={{ marginTop: Spacing.xl, paddingBottom: Spacing.lg }}>
+                  <View style={{ overflow: 'hidden', borderRadius: BorderRadius.xl }}>
+                    {/* Glow effect layer - Blue */}
+                    <View style={{
+                      position: 'absolute', top: -50, right: -50, width: 110, height: 110,
+                      borderRadius: 55, backgroundColor: 'rgba(59, 130, 246, 0.3)', zIndex: 0,
+                    }} />
+                    <View style={{
+                      position: 'absolute', bottom: -50, left: -50, width: 100, height: 100,
+                      borderRadius: 50, backgroundColor: 'rgba(59, 130, 246, 0.25)', zIndex: 0,
+                    }} />
+
+                    <Pressable
+                      onPress={async () => {
+                        try {
+                          // Save event_id to AsyncStorage
+                          await AsyncStorage.setItem("event_id", event.event_id);
+
+                          // Close modal and navigate to movement screen
+                          onClose();
+                          router.push(`/move?event_id=${event.event_id}`);
+                        } catch (error) {
+                          console.error("Error joining event:", error);
+                        }
+                      }}
+                    >
+                      {({ pressed }) => (
+                        <LinearGradient
+                          colors={[
+                            'rgba(30, 32, 38, 0.85)',
+                            'rgba(38, 42, 50, 0.85)',
+                            'rgba(32, 35, 42, 0.85)',
+                          ]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={{
+                            paddingVertical: Spacing.lg,
+                            paddingHorizontal: Spacing.lg,
+                            borderRadius: BorderRadius.xl,
+                            alignItems: "center",
+                            flexDirection: "row",
+                            justifyContent: "center",
+                            gap: Spacing.sm,
+                            borderWidth: 2,
+                            borderColor: 'rgba(59, 130, 246, 0.5)',
+                            opacity: pressed ? 0.85 : 1,
+                            transform: [{ scale: pressed ? 0.98 : 1 }],
+                            shadowColor: 'rgba(59, 130, 246, 0.5)',
+                            shadowOffset: { width: 0, height: 4 },
+                            shadowOpacity: 0.5,
+                            shadowRadius: 12,
+                            elevation: 8,
+                          }}
+                        >
+                          <Ionicons name="enter-outline" size={24} color="#60a5fa" />
+                          <Text
+                            style={{
+                              color: "#ffffff",
+                              fontWeight: Typography.weight.bold,
+                              fontSize: Typography.size.lg,
+                            }}
+                          >
+                            Join Event
+                          </Text>
+                        </LinearGradient>
+                      )}
+                    </Pressable>
+                  </View>
+                </View>
+              )}
             </ScrollView>
           </View>
         </Animated.View>
