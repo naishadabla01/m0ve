@@ -53,6 +53,11 @@ export default function SignUpScreen() {
       return;
     }
 
+    if (!displayName.trim()) {
+      Alert.alert('Error', 'Display name is required');
+      return;
+    }
+
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match');
       return;
@@ -256,7 +261,7 @@ export default function SignUpScreen() {
                 />
 
                 <GlassInput
-                  label="Display Name (Optional)"
+                  label="Display Name *"
                   value={displayName}
                   onChangeText={setDisplayName}
                   placeholder="JohnD"

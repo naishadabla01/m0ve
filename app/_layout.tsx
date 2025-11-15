@@ -42,6 +42,22 @@ export default function RootLayout() {
     }
   }, [session, segments, isReady]);
 
+  // Show loading screen while initializing
+  if (!isReady) {
+    return (
+      <SafeAreaProvider>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: "#0a0a0a" },
+          }}
+        >
+          <Stack.Screen name="index" />
+        </Stack>
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <Stack
@@ -57,6 +73,8 @@ export default function RootLayout() {
         <Stack.Screen name="(home)" options={{ headerShown: false }} />
         <Stack.Screen name="move" options={{ headerShown: false }} />
         <Stack.Screen name="scan" options={{ headerShown: false }} />
+        <Stack.Screen name="event-details" options={{ headerShown: false }} />
+        <Stack.Screen name="leaderboard" options={{ headerShown: false }} />
       </Stack>
     </SafeAreaProvider>
   );
