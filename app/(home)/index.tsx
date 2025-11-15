@@ -620,18 +620,15 @@ export default function HomeScreen() {
         activeEvent={activeEvent}
         setActiveEvent={setActiveEvent}
       />
+
+      {/* Event Details Modal - Rendered inside SafeAreaView */}
+      {selectedEventForDetails && (
+        <EventDetailsModal
+          event={selectedEventForDetails}
+          onClose={() => setSelectedEventForDetails(null)}
+        />
+      )}
     </SafeAreaView>
-    {/* Event Details Modal - Rendered outside SafeAreaView to appear on top of All Events modal */}
-    {selectedEventForDetails && (
-      <EventDetailsModal
-        event={selectedEventForDetails}
-        onClose={() => {
-          setSelectedEventForDetails(null);
-          // Also close All Events modal if it was open
-          setShowAllEvents(false);
-        }}
-      />
-    )}
   );
 }
 
@@ -1969,7 +1966,6 @@ function LiveEventCard({
       {/* Event Details Modal */}
       {showDetailsModal && (
         <EventDetailsModal
-          visible={showDetailsModal}
           event={event}
           onClose={() => setShowDetailsModal(false)}
         />
@@ -2462,7 +2458,6 @@ function EventDetailsModal({
                 setIsScrolledToTop(offsetY <= 0);
               }}
               scrollEventThrottle={16}
-              {...(isScrolledToTop ? contentPanResponder.panHandlers : {})}
             >
               {/* Event Info Card - 2x2 Grid with Reusable Component */}
               <View
