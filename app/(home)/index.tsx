@@ -1,6 +1,7 @@
 // app/(home)/index.tsx - iOS 26 Redesigned Home Page
 import { supabase } from "@/lib/supabase/client";
 import { normalizeScoreForDisplay } from "@/lib/scoreUtils";
+import { eventEmitter } from "@/lib/events";
 import { router } from "expo-router";
 import React, { useEffect, useState, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -20,6 +21,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { Colors, Gradients, BorderRadius, Spacing, Typography, Shadows } from "../../constants/Design";
 
 const { width } = Dimensions.get("window");
@@ -79,6 +81,16 @@ export default function HomeScreen() {
       if (!session) router.replace("/(auth)/signin");
     });
     return () => sub.subscription.unsubscribe();
+  }, []);
+
+  // Listen for QR button press from floating tab bar
+  useEffect(() => {
+    const handleQRPress = () => {
+      setShowJoinModal(true);
+    };
+
+    eventEmitter.on("openJoinModal", handleQRPress);
+    return () => eventEmitter.off("openJoinModal", handleQRPress);
   }, []);
 
   // Load joined event from AsyncStorage
@@ -315,34 +327,15 @@ export default function HomeScreen() {
           <Text
             style={{
               color: Colors.text.primary,
-<<<<<<< Updated upstream
-              fontSize: Typography.size['3xl'],
-              fontWeight: Typography.weight.bold,
-              lineHeight: 40,
-=======
               fontSize: Typography.size.lg,
               fontWeight: Typography.weight.semibold,
               letterSpacing: 0.5,
               textTransform: 'lowercase',
               marginBottom: 2,
->>>>>>> Stashed changes
             }}
           >
-            Welcome Back
+            welcome back
           </Text>
-<<<<<<< Updated upstream
-          <Text
-            style={{
-              color: Colors.accent.purple.light,
-              fontSize: Typography.size['4xl'],
-              fontWeight: Typography.weight.bold,
-              lineHeight: 48,
-              marginTop: Spacing.xs,
-            }}
-          >
-            {displayName} 👋
-          </Text>
-=======
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text
               style={{
@@ -361,7 +354,6 @@ export default function HomeScreen() {
               style={{ marginTop: 4 }}
             />
           </View>
->>>>>>> Stashed changes
           <Text
             style={{
               color: Colors.text.muted,
@@ -377,24 +369,16 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-<<<<<<< Updated upstream
-        {/* Join an Event Button - Redesigned (Hidden if already in an event) */}
-=======
         {/* Join an Event Button - iOS 26 with Dynamic Spotlight (Hidden if already in an event) */}
->>>>>>> Stashed changes
         {!activeEvent && (
           <Pressable onPress={() => setShowJoinModal(true)}>
             {({ pressed }) => (
               <LinearGradient
-<<<<<<< Updated upstream
-                colors={['rgba(168, 85, 247, 0.6)', 'rgba(236, 72, 153, 0.5)']}
-=======
                 colors={[
                   "rgba(25, 25, 30, 0.95)",
                   "rgba(30, 30, 38, 0.92)",
                   "rgba(28, 28, 35, 0.94)",
                 ]}
->>>>>>> Stashed changes
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
@@ -404,15 +388,10 @@ export default function HomeScreen() {
                   opacity: pressed ? 0.85 : 1,
                   ...Shadows.xl,
                   transform: [{ scale: pressed ? 0.98 : 1 }],
-<<<<<<< Updated upstream
-                  borderWidth: 1,
-                  borderColor: 'rgba(168, 85, 247, 0.3)',
-=======
                   borderWidth: 1.5,
                   borderColor: 'rgba(59, 130, 246, 0.4)',
                   overflow: 'hidden',
                   position: 'relative',
->>>>>>> Stashed changes
                 }}
               >
                 {/* Spotlight glow effect - top right INSIDE - Blue */}
@@ -446,18 +425,18 @@ export default function HomeScreen() {
                     style={{
                       width: 48,
                       height: 48,
-                      borderRadius: BorderRadius.full,
-                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                      borderRadius: BorderRadius.lg,
+                      backgroundColor: 'rgba(255, 255, 255, 0.25)', // Slightly more white for iOS look
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <Text style={{ fontSize: 24 }}>✨</Text>
+                    <Ionicons name="qr-code-outline" size={28} color="#ffffff" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text
                       style={{
-                        color: Colors.text.primary,
+                        color: "#ffffff",
                         fontWeight: Typography.weight.bold,
                         fontSize: Typography.size.xl,
                         letterSpacing: 0.5,
@@ -467,7 +446,7 @@ export default function HomeScreen() {
                     </Text>
                     <Text
                       style={{
-                        color: 'rgba(255, 255, 255, 0.8)',
+                        color: 'rgba(255, 255, 255, 0.9)', // Brighter white for iOS
                         fontSize: Typography.size.xs,
                         marginTop: 2,
                       }}
@@ -475,7 +454,7 @@ export default function HomeScreen() {
                       Scan QR or enter code
                     </Text>
                   </View>
-                  <Text style={{ fontSize: 20, color: Colors.text.primary }}>→</Text>
+                  <Text style={{ fontSize: 20, color: "#ffffff" }}>→</Text>
                 </View>
               </LinearGradient>
             )}
@@ -625,61 +604,6 @@ export default function HomeScreen() {
         <PastEventsComponent events={pastEvents} onShowDetails={setSelectedEventForDetails} />
       </Animated.ScrollView>
 
-      {/* Floating QR Scan Button */}
-      {/* Floating QR Scan Button - Modern & Visible */}
-      <Pressable
-        onPress={() => router.push("/scan")}
-        style={{
-          position: "absolute",
-          bottom: 100,
-          right: Spacing.xl,
-          ...Shadows.xl,
-        }}
-      >
-        {({ pressed }) => (
-          <LinearGradient
-            colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: BorderRadius.full,
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: pressed ? 0.9 : 1,
-              transform: [{ scale: pressed ? 0.95 : 1 }],
-            }}
-          >
-            <View
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: BorderRadius.full,
-                backgroundColor: Colors.background.primary,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <LinearGradient
-                colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: BorderRadius.full,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text style={{ fontSize: 32 }}>⊞</Text>
-              </LinearGradient>
-            </View>
-          </LinearGradient>
-        )}
-      </Pressable>
-
       {/* Join Event Modal */}
       <JoinEventModal
         visible={showJoinModal}
@@ -711,10 +635,6 @@ export default function HomeScreen() {
   );
 }
 
-<<<<<<< Updated upstream
-// Ongoing Events Carousel Component
-function OngoingEventsComponent({ events, onShowDetails }: { events: Event[]; onShowDetails: (event: Event) => void }) {
-=======
 // Reusable Event List Component - Uniform Layout for All Event Sections
 function EventListSection({
   title,
@@ -1039,60 +959,135 @@ function EventListSection({
     </View>
   );
 
->>>>>>> Stashed changes
   return (
-    <LinearGradient
-      colors={Gradients.glass.dark}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{
-        borderRadius: BorderRadius['2xl'],
-        borderWidth: 1,
-        borderColor: Colors.border.glass,
-        padding: Spacing.xl,
-        ...Shadows.lg,
-      }}
-    >
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
+    <View>
+      {/* Title outside the container with > arrow */}
+      <Pressable
+        onPress={() => setShowAllEvents(true)}
+        style={{ flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.lg, paddingHorizontal: Spacing.xs }}
+      >
         <Text
           style={{
             color: Colors.text.primary,
-            fontSize: Typography.size.xl,
+            fontSize: Typography.size['2xl'],
             fontWeight: Typography.weight.bold,
+            marginRight: Spacing.sm,
           }}
         >
-          Ongoing Events
+          {title}
         </Text>
-        {/* Show All button removed - events folder deleted */}
-      </View>
+        <Ionicons name="chevron-forward" size={24} color={Colors.text.muted} />
+      </Pressable>
 
       {events.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: Spacing.md }}
-        >
-          {events.map((event) => (
-            <EventCard key={event.event_id} event={event} onShowDetails={onShowDetails} />
-          ))}
-        </ScrollView>
+        <View>
+          <Animated.ScrollView
+            horizontal
+            pagingEnabled={false}
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={SNAP_INTERVAL}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            contentContainerStyle={{
+              paddingRight: CONTAINER_MARGIN / 2,
+            }}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+              { useNativeDriver: false }
+            )}
+            scrollEventThrottle={16}
+          >
+            {pages.map((pageEvents, pageIndex) => (
+              <View
+                key={pageIndex}
+                style={{
+                  width: CONTAINER_WIDTH,
+                  marginRight: pageIndex < pages.length - 1 ? PAGE_SPACING : 0,
+                  opacity: isPast ? 0.7 : 1,
+                }}
+              >
+                {pageEvents.map((event, index) =>
+                  renderEventItem(event, index, index === pageEvents.length - 1)
+                )}
+              </View>
+            ))}
+          </Animated.ScrollView>
+
+          {/* Pagination Dots - Only show if more than 1 page */}
+          {pages.length > 1 && (
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginTop: Spacing.md,
+                gap: 6,
+              }}
+            >
+              {pages.map((_, index) => {
+                const inputRange = [
+                  (index - 1) * SNAP_INTERVAL,
+                  index * SNAP_INTERVAL,
+                  (index + 1) * SNAP_INTERVAL,
+                ];
+
+                const dotWidth = scrollX.interpolate({
+                  inputRange,
+                  outputRange: [6, 20, 6],
+                  extrapolate: 'clamp',
+                });
+
+                const dotOpacity = scrollX.interpolate({
+                  inputRange,
+                  outputRange: [0.3, 1, 0.3],
+                  extrapolate: 'clamp',
+                });
+
+                const dotRadius = scrollX.interpolate({
+                  inputRange,
+                  outputRange: [3, 3, 3],
+                  extrapolate: 'clamp',
+                });
+
+                return (
+                  <Animated.View
+                    key={index}
+                    style={{
+                      width: dotWidth,
+                      height: 6,
+                      borderRadius: dotRadius,
+                      backgroundColor: Colors.accent.purple.light,
+                      opacity: dotOpacity,
+                    }}
+                  />
+                );
+              })}
+            </View>
+          )}
+        </View>
       ) : (
-        <View style={{ alignItems: "center", paddingVertical: Spacing['2xl'] }}>
-          <Text style={{ fontSize: 48, marginBottom: Spacing.md }}>🎉</Text>
+        <View
+          style={{
+            alignItems: 'center',
+            paddingVertical: Spacing['3xl'],
+            backgroundColor: 'rgba(0, 0, 0, 0.2)',
+            borderRadius: BorderRadius.xl,
+            borderWidth: 1,
+            borderColor: 'rgba(255, 255, 255, 0.05)',
+          }}
+        >
+          <Text style={{ fontSize: 48, marginBottom: Spacing.md }}>{emptyIcon}</Text>
           <Text
             style={{
               color: Colors.text.muted,
               fontSize: Typography.size.base,
-              textAlign: "center",
+              textAlign: 'center',
             }}
           >
-            No ongoing events right now
+            {emptyMessage}
           </Text>
         </View>
       )}
-<<<<<<< Updated upstream
-    </LinearGradient>
-=======
 
       {/* All Events Modal */}
       {showAllEvents && (
@@ -1281,192 +1276,38 @@ function EventListSection({
         </Modal>
       )}
     </View>
->>>>>>> Stashed changes
   );
 }
 
-// Past Events Component
+// Ongoing Events Component - Uses Reusable Component
+function OngoingEventsComponent({ events, onShowDetails }: { events: Event[]; onShowDetails: (event: Event) => void }) {
+  return (
+    <EventListSection
+      title="Ongoing Events"
+      events={events}
+      onShowDetails={onShowDetails}
+      isPast={false}
+      emptyIcon="🎉"
+      emptyMessage="No ongoing events right now"
+    />
+  );
+}
+
+// Past Events Component - Uses Reusable Component
 function PastEventsComponent({ events, onShowDetails }: { events: Event[]; onShowDetails: (event: Event) => void }) {
   return (
-    <LinearGradient
-      colors={Gradients.glass.dark}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{
-        borderRadius: BorderRadius['2xl'],
-        borderWidth: 1,
-        borderColor: Colors.border.glass,
-        padding: Spacing.xl,
-        ...Shadows.lg,
-      }}
-    >
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
-        <Text
-          style={{
-            color: Colors.text.primary,
-            fontSize: Typography.size.xl,
-            fontWeight: Typography.weight.bold,
-          }}
-        >
-          Past Events
-        </Text>
-        {/* Show All button removed - events folder deleted */}
-      </View>
-
-      {events.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: Spacing.md }}
-        >
-          {events.slice(0, 8).map((event) => (
-            <EventCard key={event.event_id} event={event} isPast onShowDetails={onShowDetails} />
-          ))}
-        </ScrollView>
-      ) : (
-        <View style={{ alignItems: "center", paddingVertical: Spacing['2xl'] }}>
-          <Text style={{ fontSize: 48, marginBottom: Spacing.md }}>📅</Text>
-          <Text
-            style={{
-              color: Colors.text.muted,
-              fontSize: Typography.size.base,
-              textAlign: "center",
-            }}
-          >
-            No past events yet
-          </Text>
-        </View>
-      )}
-    </LinearGradient>
+    <EventListSection
+      title="Past Events"
+      events={events}
+      onShowDetails={onShowDetails}
+      isPast={true}
+      emptyIcon="📅"
+      emptyMessage="No past events yet"
+    />
   );
 }
 
-// Event Card (Spotify-style)
-function EventCard({ event, isPast = false, onShowDetails }: { event: Event; isPast?: boolean; onShowDetails: (event: Event) => void }) {
-  return (
-    <Pressable
-      onPress={() => onShowDetails(event)}
-      style={{ width: 220 }}
-    >
-      {({ pressed }) => (
-        <LinearGradient
-          colors={Gradients.glass.medium}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            borderRadius: BorderRadius.xl,
-            borderWidth: 1,
-            borderColor: Colors.border.glass,
-            padding: Spacing.lg,
-            opacity: isPast ? 0.7 : pressed ? 0.85 : 1,
-            ...Shadows.md,
-            transform: [{ scale: pressed ? 0.98 : 1 }],
-          }}
-        >
-        {/* Cover Image or Gradient Placeholder */}
-        {event.cover_image_url ? (
-          <Image
-            source={{ uri: event.cover_image_url }}
-            style={{
-              width: "100%",
-              height: 180,
-              borderRadius: BorderRadius.lg,
-              marginBottom: Spacing.md,
-            }}
-            resizeMode="cover"
-          />
-        ) : (
-          <LinearGradient
-            colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
-              width: "100%",
-              height: 180,
-              borderRadius: BorderRadius.lg,
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: Spacing.md,
-              ...Shadows.md,
-            }}
-          >
-            <Text style={{ fontSize: 48 }}>🎵</Text>
-          </LinearGradient>
-        )}
-
-        <Text
-          numberOfLines={1}
-          style={{
-            color: Colors.text.primary,
-            fontSize: Typography.size.lg,
-            fontWeight: Typography.weight.bold,
-            marginBottom: Spacing.xs,
-          }}
-        >
-          {event.name || event.title || event.short_code || 'Untitled Event'}
-        </Text>
-
-        <Text
-          numberOfLines={1}
-          style={{
-            color: Colors.text.muted,
-            fontSize: Typography.size.sm,
-            marginBottom: Spacing.sm,
-          }}
-        >
-          {event.location || (event.short_code ? `Code: ${event.short_code}` : 'Location TBA')}
-        </Text>
-
-        {/* Bottom Row: LIVE indicator and tap indicator */}
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          {event.status === 'live' && !isPast ? (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
-              <View
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: BorderRadius.full,
-                  backgroundColor: Colors.status.live,
-                }}
-              />
-              <Text
-                style={{
-                  color: Colors.status.live,
-                  fontSize: Typography.size.xs,
-                  fontWeight: Typography.weight.semibold,
-                }}
-              >
-                LIVE NOW
-              </Text>
-            </View>
-          ) : <View />}
-
-          {/* Tap to view indicator */}
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: Spacing.xs,
-              paddingHorizontal: Spacing.sm,
-            }}
-          >
-            <Text
-              style={{
-                color: Colors.text.muted,
-                fontSize: Typography.size.xs,
-                fontStyle: "italic",
-              }}
-            >
-              Tap to view
-            </Text>
-            <Text style={{ color: Colors.accent.purple.light, fontSize: 14 }}>→</Text>
-          </View>
-        </View>
-      </LinearGradient>
-      )}
-    </Pressable>
-  );
-}
+// Old implementations removed - using reusable EventListSection component
 
 // Join Event Modal Component
 function JoinEventModal({
@@ -1706,36 +1547,6 @@ function JoinEventModal({
               </Pressable>
             </View>
 
-<<<<<<< Updated upstream
-            {/* Scan QR Code Button */}
-            <Pressable onPress={() => { onClose(); router.push("/scan"); }}>
-              {({ pressed }) => (
-                <LinearGradient
-                  colors={[Gradients.purplePink.start, Gradients.purplePink.end] as const}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={{
-                    paddingVertical: Spacing.lg,
-                    borderRadius: BorderRadius.lg,
-                    alignItems: "center",
-                    marginBottom: Spacing.md,
-                    opacity: pressed ? 0.9 : 1,
-                    ...Shadows.md,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: Colors.text.primary,
-                      fontWeight: Typography.weight.bold,
-                      fontSize: Typography.size.base,
-                    }}
-                  >
-                    📷 Scan QR Code
-                  </Text>
-                </LinearGradient>
-              )}
-            </Pressable>
-=======
             {/* Scan QR Code Button - iOS 26 Style with Light Blue */}
             <View style={{ overflow: 'hidden', borderRadius: BorderRadius.xl, marginBottom: Spacing.md }}>
               {/* Glow effect layer - Light Blue */}
@@ -1791,37 +1602,38 @@ function JoinEventModal({
                 )}
               </Pressable>
             </View>
->>>>>>> Stashed changes
 
-            {/* Enter Code Button */}
+            {/* Enter Code Button - iOS 26 Style */}
             {!showCodeInput ? (
               <Pressable onPress={() => setShowCodeInput(true)}>
                 {({ pressed }) => (
-                  <LinearGradient
-                    colors={Gradients.glass.light}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
+                  <View
                     style={{
                       paddingVertical: Spacing.lg,
+                      paddingHorizontal: Spacing.lg,
                       borderRadius: BorderRadius.lg,
                       alignItems: "center",
+                      flexDirection: "row",
+                      justifyContent: "center",
+                      gap: Spacing.sm,
+                      backgroundColor: "rgba(120, 120, 128, 0.16)", // iOS gray background
                       borderWidth: 1,
-                      borderColor: Colors.border.glass,
+                      borderColor: "rgba(255, 255, 255, 0.1)",
                       marginBottom: Spacing.lg,
-                      opacity: pressed ? 0.8 : 1,
-                      ...Shadows.sm,
+                      opacity: pressed ? 0.7 : 1,
                     }}
                   >
+                    <Ionicons name="key-outline" size={20} color="#8E8E93" />
                     <Text
                       style={{
-                        color: Colors.text.secondary,
+                        color: "#ffffff",
                         fontWeight: Typography.weight.semibold,
                         fontSize: Typography.size.base,
                       }}
                     >
-                      🔑 Enter Event Code
+                      Enter Event Code
                     </Text>
-                  </LinearGradient>
+                  </View>
                 )}
               </Pressable>
             ) : (
@@ -1982,52 +1794,6 @@ function LiveEventCard({
   const cardWidth = 200;
 
   return (
-<<<<<<< Updated upstream
-    <Pressable
-      onPress={async () => {
-        // Check if user is already in a different event
-        if (activeEvent && activeEvent.event_id !== event.event_id) {
-          // Could show an alert here, but for now just prevent action
-          return;
-        }
-
-        // Save event_id to AsyncStorage
-        await AsyncStorage.setItem("event_id", event.event_id);
-
-        // Set as active event
-        setActiveEvent(event);
-
-        // Navigate to movement tracker for this live event
-        onJoin();
-        router.push(`/move?event_id=${event.event_id}`);
-      }}
-    >
-      {({ pressed }) => (
-        <View
-          style={{
-            width: cardWidth,
-            opacity: pressed ? 0.8 : 1,
-          }}
-        >
-          {/* Event Image/Icon */}
-          <LinearGradient
-            colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
-              width: cardWidth,
-              height: cardWidth,
-              borderRadius: BorderRadius.lg,
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: Spacing.sm,
-              ...Shadows.md,
-            }}
-          >
-            <Text style={{ fontSize: 48 }}>🎵</Text>
-            {/* Live Indicator */}
-            <View
-=======
     <>
       <Pressable
         onPress={() => setShowDetailsModal(true)}
@@ -2042,7 +1808,6 @@ function LiveEventCard({
               ]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
->>>>>>> Stashed changes
               style={{
                 borderRadius: BorderRadius.xl,
                 borderWidth: 1,
@@ -2074,12 +1839,6 @@ function LiveEventCard({
                   overflow: 'hidden',
                 }}
               >
-<<<<<<< Updated upstream
-                LIVE
-              </Text>
-            </View>
-          </LinearGradient>
-=======
                 {event.cover_image_url ? (
                   <Image
                     source={{ uri: event.cover_image_url }}
@@ -2206,7 +1965,6 @@ function LiveEventCard({
           </View>
         )}
       </Pressable>
->>>>>>> Stashed changes
 
       {/* Event Details Modal */}
       {showDetailsModal && (
@@ -2412,16 +2170,11 @@ function EventDetailsModal({
     });
   };
 
-<<<<<<< Updated upstream
-  // Swipe down gesture to close modal
-  const translateY = useRef(new Animated.Value(0)).current;
-=======
   // Swipe down gesture to close modal with smooth animations
   const translateY = useRef(new Animated.Value(1000)).current; // Start from bottom
   const modalOpacity = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef<any>(null);
   const [isScrolledToTop, setIsScrolledToTop] = useState(true);
->>>>>>> Stashed changes
 
   // Entrance animation on mount - Smooth slide up from bottom
   useEffect(() => {
@@ -2467,37 +2220,19 @@ function EventDetailsModal({
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-<<<<<<< Updated upstream
-        // Only respond to downward swipes
-        return gestureState.dy > 5;
-      },
-      onPanResponderMove: (_, gestureState) => {
-        // Only allow downward movement
-=======
         // Always respond to vertical gestures in header
         return Math.abs(gestureState.dy) > 5;
       },
       onPanResponderMove: (_, gestureState) => {
         // Allow downward movement only
->>>>>>> Stashed changes
         if (gestureState.dy > 0) {
           translateY.setValue(gestureState.dy);
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-<<<<<<< Updated upstream
-        // If swiped down more than 150px, close the modal
-        if (gestureState.dy > 150) {
-          Animated.timing(translateY, {
-            toValue: 1000,
-            duration: 200,
-            useNativeDriver: false, // Can't use native driver with opacity
-          }).start(() => onClose());
-=======
         // If swiped down more than 150px or velocity is high, close
         if (gestureState.dy > 150 || gestureState.vy > 0.5) {
           handleClose();
->>>>>>> Stashed changes
         } else {
           // Otherwise, spring back to original position
           Animated.spring(translateY, {
@@ -2544,9 +2279,6 @@ function EventDetailsModal({
             height: "90%",
             borderTopLeftRadius: BorderRadius['3xl'],
             borderTopRightRadius: BorderRadius['3xl'],
-            borderWidth: 1,
-            borderBottomWidth: 0,
-            borderColor: Colors.border.strong,
             shadowColor: Colors.accent.purple.light,
             shadowOffset: { width: 0, height: -4 },
             shadowOpacity: 0.3,
@@ -2574,19 +2306,11 @@ function EventDetailsModal({
                   opacity: 0.7,
                 }}
                 resizeMode="cover"
-<<<<<<< Updated upstream
-                blurRadius={15}
-              />
-              {/* Dark gradient overlay for text readability */}
-              <LinearGradient
-                colors={['rgba(0, 0, 0, 0.5)', 'rgba(0, 0, 0, 0.4)', 'rgba(0, 0, 0, 0.6)']}
-=======
                 blurRadius={8}
               />
               {/* Lighter vignette overlay from edges */}
               <LinearGradient
                 colors={['rgba(0, 0, 0, 0.7)', 'rgba(0, 0, 0, 0.2)', 'rgba(0, 0, 0, 0.2)', 'rgba(0, 0, 0, 0.6)']}
->>>>>>> Stashed changes
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
                 style={{
@@ -2597,8 +2321,6 @@ function EventDetailsModal({
                   bottom: 0,
                 }}
               />
-<<<<<<< Updated upstream
-=======
               {/* Left edge shadow */}
               <LinearGradient
                 colors={['rgba(0, 0, 0, 0.5)', 'rgba(0, 0, 0, 0)']}
@@ -2642,7 +2364,6 @@ function EventDetailsModal({
                   height: '40%',
                 }}
               />
->>>>>>> Stashed changes
             </>
           ) : (
             <View
@@ -2666,70 +2387,6 @@ function EventDetailsModal({
               paddingBottom: Spacing['3xl'],
             }}
           >
-<<<<<<< Updated upstream
-            {/* Handle Bar - Swipe down to close */}
-            <Pressable
-              onPress={onClose}
-              style={{ alignItems: "center", paddingVertical: Spacing.lg, marginBottom: Spacing.lg }}
-            >
-              <View
-                style={{
-                  width: 60,
-                  height: 6,
-                  borderRadius: BorderRadius.full,
-                  backgroundColor: Colors.text.muted,
-                  opacity: 0.5,
-                }}
-              />
-            </Pressable>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Header */}
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: Spacing.xl }}>
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      color: Colors.text.primary,
-                      fontSize: Typography.size['3xl'],
-                      fontWeight: Typography.weight.bold,
-                      marginBottom: Spacing.xs,
-                    }}
-                  >
-                    {event.name || event.title || event.short_code || 'Untitled Event'}
-                  </Text>
-                  {event.status === 'live' && (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
-                      <View
-                        style={{
-                          width: 10,
-                          height: 10,
-                          borderRadius: BorderRadius.full,
-                          backgroundColor: Colors.status.live,
-                        }}
-                      />
-                      <Text
-                        style={{
-                          color: Colors.status.live,
-                          fontSize: Typography.size.sm,
-                          fontWeight: Typography.weight.bold,
-                        }}
-                      >
-                        LIVE NOW
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                <Pressable onPress={onClose}>
-                  <Text style={{ color: Colors.text.muted, fontSize: 32 }}>×</Text>
-                </Pressable>
-              </View>
-
-              {/* Event Info Card */}
-              <LinearGradient
-                colors={Gradients.glass.medium}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-=======
             {/* Handle Bar and Header - Draggable Area */}
             <View {...headerPanResponder.panHandlers}>
               {/* Handle Bar - Swipe down to close */}
@@ -2809,7 +2466,6 @@ function EventDetailsModal({
             >
               {/* Event Info Card - 2x2 Grid with Reusable Component */}
               <View
->>>>>>> Stashed changes
                 style={{
                   borderRadius: BorderRadius['2xl'],
                   borderWidth: 1,
