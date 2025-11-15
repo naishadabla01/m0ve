@@ -461,16 +461,14 @@ export default function HomeScreen() {
           </Pressable>
         )}
 
-        {/* Active Event Modal - Conditional */}
+        {/* Active Event Card - Apple Music Style with Green Accent */}
         {activeEvent && (
-          <LinearGradient
-            colors={Gradients.glass.medium}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+          <View
             style={{
               borderRadius: BorderRadius['2xl'],
               borderWidth: 2,
-              borderColor: Colors.accent.purple.light,
+              borderColor: '#34d399', // Green border (Tailwind green-400)
+              backgroundColor: 'rgba(18, 18, 22, 0.95)', // Dark background like event cards
               padding: Spacing.lg,
               ...Shadows.xl,
             }}
@@ -483,13 +481,16 @@ export default function HomeScreen() {
                       width: 8,
                       height: 8,
                       borderRadius: BorderRadius.full,
-                      backgroundColor: Colors.status.live,
-                      ...Shadows.md,
+                      backgroundColor: '#34d399', // Green dot
+                      shadowColor: '#34d399',
+                      shadowOffset: { width: 0, height: 0 },
+                      shadowOpacity: 0.6,
+                      shadowRadius: 4,
                     }}
                   />
                   <Text
                     style={{
-                      color: Colors.accent.purple.light,
+                      color: '#34d399', // Green text
                       fontSize: Typography.size.xs,
                       fontWeight: Typography.weight.bold,
                       letterSpacing: 1.5,
@@ -535,11 +536,11 @@ export default function HomeScreen() {
 
             {/* Action Buttons */}
             <View style={{ gap: Spacing.xs }}>
-              {/* Start Moving Button */}
+              {/* Start Moving Button - Green gradient */}
               <Pressable onPress={() => router.push(`/move?event_id=${activeEvent.event_id}`)}>
                 {({ pressed }) => (
                   <LinearGradient
-                    colors={[Colors.accent.purple.light, Colors.accent.pink.light]}
+                    colors={['#10b981', '#34d399']} // Green gradient (Tailwind green-500 to green-400)
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={{
@@ -594,7 +595,7 @@ export default function HomeScreen() {
                 )}
               </Pressable>
             </View>
-          </LinearGradient>
+          </View>
         )}
 
         {/* Ongoing Events Component */}
