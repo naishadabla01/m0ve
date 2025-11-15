@@ -581,13 +581,13 @@ export default function HomeScreen() {
                       borderRadius: BorderRadius.lg,
                       alignItems: "center",
                       borderWidth: 1.5,
-                      borderColor: '#ef4444', // Red border (Tailwind red-500)
+                      borderColor: 'rgba(239, 68, 68, 0.5)', // Toned down red border (50% opacity)
                       opacity: pressed ? 0.7 : 1,
                     }}
                   >
                     <Text
                       style={{
-                        color: '#ef4444', // Red text to match border
+                        color: Colors.text.primary, // White text
                         fontWeight: Typography.weight.semibold,
                         fontSize: Typography.size.sm,
                       }}
