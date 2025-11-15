@@ -1968,7 +1968,10 @@ function LiveEventCard({
       {showDetailsModal && (
         <EventDetailsModal
           event={event}
-          onClose={() => setShowDetailsModal(false)}
+          onClose={() => {
+            setShowDetailsModal(false);
+            onJoin(); // Also close the parent JoinEventModal
+          }}
           showJoinButton={true}
         />
       )}
