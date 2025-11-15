@@ -626,6 +626,7 @@ export default function HomeScreen() {
         <EventDetailsModal
           event={selectedEventForDetails}
           onClose={() => setSelectedEventForDetails(null)}
+          showJoinButton={false}
         />
       )}
     </SafeAreaView>
@@ -1968,6 +1969,7 @@ function LiveEventCard({
         <EventDetailsModal
           event={event}
           onClose={() => setShowDetailsModal(false)}
+          showJoinButton={true}
         />
       )}
     </>
@@ -2929,7 +2931,29 @@ function EventDetailsModal({
                     <Pressable
                       onPress={async () => {
                         try {
-                          // Save event_id to AsyncStorage
+                          // Get current user
+                          const { data: { user } } = await supabase.auth.getUser();
+                          if (!user) {
+                            console.error("No user found");
+                            return;
+                          }
+
+                          // Add user to event_participants table
+                          const { error: joinError } = await supabase
+                            .from("event_participants")
+                            .upsert({
+                              event_id: event.event_id,
+                              user_id: user.id,
+                              joined_at: new Date().toISOString(),
+                            }, {
+                              onConflict: 'event_id,user_id'
+                            });
+
+                          if (joinError) {
+                            console.error("Error joining event:", joinError);
+                          }
+
+                          // Save event_id to AsyncStorage (so it shows in home screen)
                           await AsyncStorage.setItem("event_id", event.event_id);
 
                           // Close modal and navigate to movement screen
