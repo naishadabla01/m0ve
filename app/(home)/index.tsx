@@ -1,4 +1,5 @@
 // app/(home)/index.tsx - iOS 26 Redesigned Home Page
+// Main home screen with event browsing and joining functionality
 import { supabase } from "@/lib/supabase/client";
 import { normalizeScoreForDisplay } from "@/lib/scoreUtils";
 import { router } from "expo-router";
