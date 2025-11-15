@@ -309,12 +309,12 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        {/* Join an Event Button - Redesigned (Hidden if already in an event) */}
+        {/* Join an Event Button - iOS 26 Blue Theme (Hidden if already in an event) */}
         {!activeEvent && (
           <Pressable onPress={() => setShowJoinModal(true)}>
             {({ pressed }) => (
               <LinearGradient
-                colors={['rgba(168, 85, 247, 0.6)', 'rgba(236, 72, 153, 0.5)']}
+                colors={["#007AFF", "#0051D5"]} // iOS blue gradient
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={{
@@ -325,7 +325,7 @@ export default function HomeScreen() {
                   ...Shadows.xl,
                   transform: [{ scale: pressed ? 0.98 : 1 }],
                   borderWidth: 1,
-                  borderColor: 'rgba(168, 85, 247, 0.3)',
+                  borderColor: 'rgba(0, 122, 255, 0.3)', // iOS blue border
                 }}
               >
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: Spacing.md }}>
@@ -334,17 +334,17 @@ export default function HomeScreen() {
                       width: 48,
                       height: 48,
                       borderRadius: BorderRadius.lg,
-                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.25)', // Slightly more white for iOS look
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <Ionicons name="qr-code-outline" size={28} color={Colors.text.primary} />
+                    <Ionicons name="qr-code-outline" size={28} color="#ffffff" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text
                       style={{
-                        color: Colors.text.primary,
+                        color: "#ffffff",
                         fontWeight: Typography.weight.bold,
                         fontSize: Typography.size.xl,
                         letterSpacing: 0.5,
@@ -354,7 +354,7 @@ export default function HomeScreen() {
                     </Text>
                     <Text
                       style={{
-                        color: 'rgba(255, 255, 255, 0.8)',
+                        color: 'rgba(255, 255, 255, 0.9)', // Brighter white for iOS
                         fontSize: Typography.size.xs,
                         marginTop: 2,
                       }}
@@ -362,7 +362,7 @@ export default function HomeScreen() {
                       Scan QR or enter code
                     </Text>
                   </View>
-                  <Text style={{ fontSize: 20, color: Colors.text.primary }}>→</Text>
+                  <Text style={{ fontSize: 20, color: "#ffffff" }}>→</Text>
                 </View>
               </LinearGradient>
             )}
@@ -539,244 +539,494 @@ export default function HomeScreen() {
   );
 }
 
-// Ongoing Events Carousel Component
-function OngoingEventsComponent({ events, onShowDetails }: { events: Event[]; onShowDetails: (event: Event) => void }) {
-  return (
-    <LinearGradient
-      colors={Gradients.glass.dark}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{
-        borderRadius: BorderRadius['2xl'],
-        borderWidth: 1,
-        borderColor: Colors.border.glass,
-        padding: Spacing.xl,
-        ...Shadows.lg,
-      }}
-    >
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
-        <Text
+// Reusable Event List Component - Uniform Layout for All Event Sections
+function EventListSection({
+  title,
+  events,
+  onShowDetails,
+  isPast = false,
+  emptyIcon = '🎉',
+  emptyMessage = 'No events right now'
+}: {
+  title: string;
+  events: Event[];
+  onShowDetails: (event: Event) => void;
+  isPast?: boolean;
+  emptyIcon?: string;
+  emptyMessage?: string;
+}) {
+  const [pressedId, setPressedId] = useState<string | null>(null);
+  const [showAllEvents, setShowAllEvents] = useState(false);
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const screenWidth = Dimensions.get('window').width;
+
+  // Dynamic constants based on screen width - Smaller and neater
+  const CONTAINER_MARGIN = 64; // 32px on each side - more margin
+  const CONTAINER_WIDTH = screenWidth - CONTAINER_MARGIN;
+  const PAGE_SPACING = 16; // Fixed spacing between pages
+  const SNAP_INTERVAL = CONTAINER_WIDTH + PAGE_SPACING; // Total width for snapping
+  const IMAGE_SIZE = 80; // Reduced from 100
+  const IMAGE_MARGIN = 12; // Reduced from 16
+  const SEPARATOR_START = IMAGE_SIZE + IMAGE_MARGIN + IMAGE_MARGIN;
+
+  const formatEventDate = (dateString: string | null) => {
+    if (!dateString) return 'Date TBA';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  // Group events into pages of 3
+  const eventsPerPage = 3;
+  const pages: Event[][] = [];
+  for (let i = 0; i < events.length; i += eventsPerPage) {
+    pages.push(events.slice(i, i + eventsPerPage));
+  }
+
+  const renderEventItem = (event: Event, index: number, isLastInPage: boolean) => (
+    <View key={event.event_id}>
+      <Pressable
+        onPress={() => onShowDetails(event)}
+        onPressIn={() => setPressedId(event.event_id)}
+        onPressOut={() => setPressedId(null)}
+      >
+        <Animated.View
           style={{
-            color: Colors.text.primary,
-            fontSize: Typography.size.xl,
-            fontWeight: Typography.weight.bold,
+            transform: [{ scale: pressedId === event.event_id ? 0.98 : 1 }],
           }}
         >
-          Ongoing Events
-        </Text>
-        {/* Show All button removed - events folder deleted */}
-      </View>
-
-      {events.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: Spacing.md }}
-        >
-          {events.map((event) => (
-            <EventCard key={event.event_id} event={event} onShowDetails={onShowDetails} />
-          ))}
-        </ScrollView>
-      ) : (
-        <View style={{ alignItems: "center", paddingVertical: Spacing['2xl'] }}>
-          <Text style={{ fontSize: 48, marginBottom: Spacing.md }}>🎉</Text>
-          <Text
-            style={{
-              color: Colors.text.muted,
-              fontSize: Typography.size.base,
-              textAlign: "center",
-            }}
-          >
-            No ongoing events right now
-          </Text>
-        </View>
-      )}
-    </LinearGradient>
-  );
-}
-
-// Past Events Component
-function PastEventsComponent({ events, onShowDetails }: { events: Event[]; onShowDetails: (event: Event) => void }) {
-  return (
-    <LinearGradient
-      colors={Gradients.glass.dark}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{
-        borderRadius: BorderRadius['2xl'],
-        borderWidth: 1,
-        borderColor: Colors.border.glass,
-        padding: Spacing.xl,
-        ...Shadows.lg,
-      }}
-    >
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
-        <Text
-          style={{
-            color: Colors.text.primary,
-            fontSize: Typography.size.xl,
-            fontWeight: Typography.weight.bold,
-          }}
-        >
-          Past Events
-        </Text>
-        {/* Show All button removed - events folder deleted */}
-      </View>
-
-      {events.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: Spacing.md }}
-        >
-          {events.slice(0, 8).map((event) => (
-            <EventCard key={event.event_id} event={event} isPast onShowDetails={onShowDetails} />
-          ))}
-        </ScrollView>
-      ) : (
-        <View style={{ alignItems: "center", paddingVertical: Spacing['2xl'] }}>
-          <Text style={{ fontSize: 48, marginBottom: Spacing.md }}>📅</Text>
-          <Text
-            style={{
-              color: Colors.text.muted,
-              fontSize: Typography.size.base,
-              textAlign: "center",
-            }}
-          >
-            No past events yet
-          </Text>
-        </View>
-      )}
-    </LinearGradient>
-  );
-}
-
-// Event Card (Spotify-style)
-function EventCard({ event, isPast = false, onShowDetails }: { event: Event; isPast?: boolean; onShowDetails: (event: Event) => void }) {
-  return (
-    <Pressable
-      onPress={() => onShowDetails(event)}
-      style={{ width: 220 }}
-    >
-      {({ pressed }) => (
-        <LinearGradient
-          colors={Gradients.glass.medium}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            borderRadius: BorderRadius.xl,
-            borderWidth: 1,
-            borderColor: Colors.border.glass,
-            padding: Spacing.lg,
-            opacity: isPast ? 0.7 : pressed ? 0.85 : 1,
-            ...Shadows.md,
-            transform: [{ scale: pressed ? 0.98 : 1 }],
-          }}
-        >
-        {/* Cover Image or Gradient Placeholder */}
-        {event.cover_image_url ? (
-          <Image
-            source={{ uri: event.cover_image_url }}
-            style={{
-              width: "100%",
-              height: 180,
-              borderRadius: BorderRadius.lg,
-              marginBottom: Spacing.md,
-            }}
-            resizeMode="cover"
-          />
-        ) : (
-          <LinearGradient
-            colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
-              width: "100%",
-              height: 180,
-              borderRadius: BorderRadius.lg,
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: Spacing.md,
-              ...Shadows.md,
-            }}
-          >
-            <Text style={{ fontSize: 48 }}>🎵</Text>
-          </LinearGradient>
-        )}
-
-        <Text
-          numberOfLines={1}
-          style={{
-            color: Colors.text.primary,
-            fontSize: Typography.size.lg,
-            fontWeight: Typography.weight.bold,
-            marginBottom: Spacing.xs,
-          }}
-        >
-          {event.name || event.title || event.short_code || 'Untitled Event'}
-        </Text>
-
-        <Text
-          numberOfLines={1}
-          style={{
-            color: Colors.text.muted,
-            fontSize: Typography.size.sm,
-            marginBottom: Spacing.sm,
-          }}
-        >
-          {event.location || (event.short_code ? `Code: ${event.short_code}` : 'Location TBA')}
-        </Text>
-
-        {/* Bottom Row: LIVE indicator and tap indicator */}
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          {event.status === 'live' && !isPast ? (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
-              <View
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: BorderRadius.full,
-                  backgroundColor: Colors.status.live,
-                }}
-              />
-              <Text
-                style={{
-                  color: Colors.status.live,
-                  fontSize: Typography.size.xs,
-                  fontWeight: Typography.weight.semibold,
-                }}
-              >
-                LIVE NOW
-              </Text>
-            </View>
-          ) : <View />}
-
-          {/* Tap to view indicator */}
           <View
             style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: Spacing.xs,
-              paddingHorizontal: Spacing.sm,
+              flexDirection: 'row',
+              padding: IMAGE_MARGIN - 2, // Slightly tighter padding
             }}
           >
-            <Text
+            {/* Cover Image */}
+            <View
               style={{
-                color: Colors.text.muted,
-                fontSize: Typography.size.xs,
-                fontStyle: "italic",
+                width: IMAGE_SIZE,
+                height: IMAGE_SIZE,
+                borderRadius: BorderRadius.lg,
+                overflow: 'hidden',
+                marginRight: IMAGE_MARGIN,
               }}
             >
-              Tap to view
-            </Text>
-            <Text style={{ color: Colors.accent.purple.light, fontSize: 14 }}>→</Text>
+              {event.cover_image_url ? (
+                <Image
+                  source={{ uri: event.cover_image_url }}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <LinearGradient
+                  colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{ fontSize: 36 }}>🎵</Text>
+                </LinearGradient>
+              )}
+            </View>
+
+            {/* Event Details */}
+            <View style={{ flex: 1, justifyContent: 'space-between', paddingVertical: 4 }}>
+              {/* Date at top */}
+              <Text
+                style={{
+                  color: Colors.text.muted,
+                  fontSize: 11, // Smaller
+                  fontWeight: Typography.weight.medium,
+                }}
+              >
+                {formatEventDate(isPast ? (event.ended_at || event.start_at) : event.start_at)}
+              </Text>
+
+              {/* Event name in middle */}
+              <Text
+                numberOfLines={2}
+                style={{
+                  color: Colors.text.primary,
+                  fontSize: Typography.size.base, // Reduced from lg
+                  fontWeight: Typography.weight.bold,
+                  lineHeight: Typography.size.base * 1.3,
+                }}
+              >
+                {event.name || event.title || event.short_code || 'Untitled Event'}
+              </Text>
+
+              {/* Location at bottom */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    color: Colors.text.muted,
+                    fontSize: 12, // Smaller
+                    flex: 1,
+                  }}
+                >
+                  📍 {event.location || 'Location TBA'}
+                </Text>
+
+                {/* LIVE indicator (only for ongoing events) - Modern pill design */}
+                {!isPast && event.status === 'live' && (
+                  <LinearGradient
+                    colors={['rgba(239, 68, 68, 0.15)', 'rgba(239, 68, 68, 0.08)']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: 'rgba(239, 68, 68, 0.3)',
+                      marginLeft: Spacing.sm,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: BorderRadius.full,
+                        backgroundColor: Colors.status.live,
+                      }}
+                    />
+                    <Text
+                      style={{
+                        color: Colors.status.live,
+                        fontSize: 10,
+                        fontWeight: Typography.weight.bold,
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      LIVE
+                    </Text>
+                  </LinearGradient>
+                )}
+              </View>
+            </View>
           </View>
-        </View>
-      </LinearGradient>
+        </Animated.View>
+      </Pressable>
+
+      {/* Separator line - starts from text area, thinner and lighter */}
+      {!isLastInPage && (
+        <View
+          style={{
+            height: 0.5,
+            backgroundColor: 'rgba(255, 255, 255, 0.15)',
+            marginLeft: SEPARATOR_START,
+            marginRight: IMAGE_MARGIN,
+          }}
+        />
       )}
-    </Pressable>
+    </View>
+  );
+
+  return (
+    <View>
+      {/* Title outside the container with > arrow */}
+      <Pressable
+        onPress={() => setShowAllEvents(true)}
+        style={{ flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.lg, paddingHorizontal: Spacing.xs }}
+      >
+        <Text
+          style={{
+            color: Colors.text.primary,
+            fontSize: Typography.size['2xl'],
+            fontWeight: Typography.weight.bold,
+            marginRight: Spacing.sm,
+          }}
+        >
+          {title}
+        </Text>
+        <Ionicons name="chevron-forward" size={24} color={Colors.text.muted} />
+      </Pressable>
+
+      {events.length > 0 ? (
+        <View>
+          <Animated.ScrollView
+            horizontal
+            pagingEnabled={false}
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={SNAP_INTERVAL}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            contentContainerStyle={{
+              paddingRight: CONTAINER_MARGIN / 2,
+            }}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+              { useNativeDriver: false }
+            )}
+            scrollEventThrottle={16}
+          >
+            {pages.map((pageEvents, pageIndex) => (
+              <View
+                key={pageIndex}
+                style={{
+                  width: CONTAINER_WIDTH,
+                  marginRight: pageIndex < pages.length - 1 ? PAGE_SPACING : 0,
+                  opacity: isPast ? 0.7 : 1,
+                }}
+              >
+                {pageEvents.map((event, index) =>
+                  renderEventItem(event, index, index === pageEvents.length - 1)
+                )}
+              </View>
+            ))}
+          </Animated.ScrollView>
+
+          {/* Pagination Dots - Only show if more than 1 page */}
+          {pages.length > 1 && (
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginTop: Spacing.md,
+                gap: 6,
+              }}
+            >
+              {pages.map((_, index) => {
+                const inputRange = [
+                  (index - 1) * SNAP_INTERVAL,
+                  index * SNAP_INTERVAL,
+                  (index + 1) * SNAP_INTERVAL,
+                ];
+
+                const dotWidth = scrollX.interpolate({
+                  inputRange,
+                  outputRange: [6, 20, 6],
+                  extrapolate: 'clamp',
+                });
+
+                const dotOpacity = scrollX.interpolate({
+                  inputRange,
+                  outputRange: [0.3, 1, 0.3],
+                  extrapolate: 'clamp',
+                });
+
+                const dotRadius = scrollX.interpolate({
+                  inputRange,
+                  outputRange: [3, 3, 3],
+                  extrapolate: 'clamp',
+                });
+
+                return (
+                  <Animated.View
+                    key={index}
+                    style={{
+                      width: dotWidth,
+                      height: 6,
+                      borderRadius: dotRadius,
+                      backgroundColor: Colors.accent.purple.light,
+                      opacity: dotOpacity,
+                    }}
+                  />
+                );
+              })}
+            </View>
+          )}
+        </View>
+      ) : (
+        <View
+          style={{
+            alignItems: 'center',
+            paddingVertical: Spacing['3xl'],
+            backgroundColor: 'rgba(0, 0, 0, 0.2)',
+            borderRadius: BorderRadius.xl,
+            borderWidth: 1,
+            borderColor: 'rgba(255, 255, 255, 0.05)',
+          }}
+        >
+          <Text style={{ fontSize: 48, marginBottom: Spacing.md }}>{emptyIcon}</Text>
+          <Text
+            style={{
+              color: Colors.text.muted,
+              fontSize: Typography.size.base,
+              textAlign: 'center',
+            }}
+          >
+            {emptyMessage}
+          </Text>
+        </View>
+      )}
+
+      {/* All Events Modal */}
+      {showAllEvents && (
+        <Modal visible={true} transparent animationType="slide">
+          <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
+            <View style={{ flex: 1 }}>
+              {/* Header */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: Spacing.xl,
+                  paddingVertical: Spacing.md,
+                  borderBottomWidth: 1,
+                  borderBottomColor: Colors.border.glass,
+                }}
+              >
+                <Pressable onPress={() => setShowAllEvents(false)}>
+                  <Ionicons name="chevron-back" size={28} color={Colors.accent.purple.light} />
+                </Pressable>
+                <Text
+                  style={{
+                    flex: 1,
+                    textAlign: 'center',
+                    color: Colors.text.primary,
+                    fontSize: Typography.size.xl,
+                    fontWeight: Typography.weight.bold,
+                    marginRight: 28,
+                  }}
+                >
+                  All {title}
+                </Text>
+              </View>
+
+              {/* Scrollable list of all events */}
+              <ScrollView
+                contentContainerStyle={{
+                  padding: Spacing.xl,
+                  gap: Spacing.md,
+                }}
+              >
+                {events.map((event) => (
+                  <Pressable
+                    key={event.event_id}
+                    onPress={() => {
+                      setShowAllEvents(false);
+                      onShowDetails(event);
+                    }}
+                    onPressIn={() => setPressedId(event.event_id)}
+                    onPressOut={() => setPressedId(null)}
+                  >
+                    <Animated.View
+                      style={{
+                        transform: [{ scale: pressedId === event.event_id ? 0.98 : 1 }],
+                        opacity: isPast ? 0.7 : 1,
+                      }}
+                    >
+                      <LinearGradient
+                        colors={['rgba(255, 255, 255, 0.03)', 'rgba(255, 255, 255, 0.01)']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={{
+                          flexDirection: 'row',
+                          borderRadius: BorderRadius.xl,
+                          borderWidth: 1,
+                          borderColor: 'rgba(255, 255, 255, 0.08)',
+                          padding: Spacing.md,
+                          backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                          ...Shadows.sm,
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: IMAGE_SIZE,
+                            height: IMAGE_SIZE,
+                            borderRadius: BorderRadius.lg,
+                            overflow: 'hidden',
+                            marginRight: IMAGE_MARGIN,
+                          }}
+                        >
+                          {event.cover_image_url ? (
+                            <Image
+                              source={{ uri: event.cover_image_url }}
+                              style={{ width: '100%', height: '100%' }}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <LinearGradient
+                              colors={[Gradients.purplePink.start, Gradients.purplePink.end]}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 1 }}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <Text style={{ fontSize: 36 }}>🎵</Text>
+                            </LinearGradient>
+                          )}
+                        </View>
+
+                        <View style={{ flex: 1, justifyContent: 'space-between', paddingVertical: 4 }}>
+                          <Text style={{ color: Colors.text.muted, fontSize: 11, fontWeight: Typography.weight.medium }}>
+                            {formatEventDate(isPast ? (event.ended_at || event.start_at) : event.start_at)}
+                          </Text>
+                          <Text numberOfLines={2} style={{ color: Colors.text.primary, fontSize: Typography.size.base, fontWeight: Typography.weight.bold, lineHeight: Typography.size.base * 1.3 }}>
+                            {event.name || event.title || event.short_code || 'Untitled Event'}
+                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <Text numberOfLines={1} style={{ color: Colors.text.muted, fontSize: 12, flex: 1 }}>
+                              📍 {event.location || 'Location TBA'}
+                            </Text>
+                            {!isPast && event.status === 'live' && (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: Spacing.sm }}>
+                                <View style={{ width: 6, height: 6, borderRadius: BorderRadius.full, backgroundColor: Colors.status.live }} />
+                                <Text style={{ color: Colors.status.live, fontSize: Typography.size.xs, fontWeight: Typography.weight.bold }}>LIVE</Text>
+                              </View>
+                            )}
+                          </View>
+                        </View>
+                      </LinearGradient>
+                    </Animated.View>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          </SafeAreaView>
+        </Modal>
+      )}
+    </View>
   );
 }
+
+// Ongoing Events Component - Uses Reusable Component
+function OngoingEventsComponent({ events, onShowDetails }: { events: Event[]; onShowDetails: (event: Event) => void }) {
+  return (
+    <EventListSection
+      title="Ongoing Events"
+      events={events}
+      onShowDetails={onShowDetails}
+      isPast={false}
+      emptyIcon="🎉"
+      emptyMessage="No ongoing events right now"
+    />
+  );
+}
+
+// Past Events Component - Uses Reusable Component
+function PastEventsComponent({ events, onShowDetails }: { events: Event[]; onShowDetails: (event: Event) => void }) {
+  return (
+    <EventListSection
+      title="Past Events"
+      events={events}
+      onShowDetails={onShowDetails}
+      isPast={true}
+      emptyIcon="📅"
+      emptyMessage="No past events yet"
+    />
+  );
+}
+
+// Old implementations removed - using reusable EventListSection component
 
 // Join Event Modal Component
 function JoinEventModal({
@@ -1350,6 +1600,8 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
 
   // Swipe down gesture to close modal
   const translateY = useRef(new Animated.Value(0)).current;
+  const scrollViewRef = useRef<any>(null);
+  const [isScrolledToTop, setIsScrolledToTop] = useState(true);
 
   // Backdrop opacity animation - fades as user swipes down
   const backdropOpacity = translateY.interpolate({
@@ -1360,20 +1612,20 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only respond to downward swipes
-        return gestureState.dy > 5;
+        // Respond to downward swipes anywhere on the modal (very gentle threshold)
+        return gestureState.dy > 3 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
       },
       onPanResponderMove: (_, gestureState) => {
-        // Only allow downward movement
+        // Allow downward movement from anywhere
         if (gestureState.dy > 0) {
           translateY.setValue(gestureState.dy);
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        // If swiped down more than 150px, close the modal
-        if (gestureState.dy > 150) {
+        // If swiped down more than 100px, close the modal
+        if (gestureState.dy > 100) {
           Animated.timing(translateY, {
             toValue: 1000,
             duration: 200,
@@ -1419,9 +1671,6 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
             height: "90%",
             borderTopLeftRadius: BorderRadius['3xl'],
             borderTopRightRadius: BorderRadius['3xl'],
-            borderWidth: 1,
-            borderBottomWidth: 0,
-            borderColor: Colors.border.strong,
             shadowColor: Colors.accent.purple.light,
             shadowOffset: { width: 0, height: -4 },
             shadowOpacity: 0.3,
@@ -1445,14 +1694,14 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                   bottom: 0,
                   width: '100%',
                   height: '100%',
-                  opacity: 0.7,
+                  opacity: 0.6,
                 }}
                 resizeMode="cover"
-                blurRadius={15}
+                blurRadius={20}
               />
-              {/* Dark gradient overlay for text readability */}
+              {/* Dark vignette overlay from edges */}
               <LinearGradient
-                colors={['rgba(0, 0, 0, 0.5)', 'rgba(0, 0, 0, 0.4)', 'rgba(0, 0, 0, 0.6)']}
+                colors={['rgba(0, 0, 0, 0.8)', 'rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.7)']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
                 style={{
@@ -1461,6 +1710,49 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
                   left: 0,
                   right: 0,
                   bottom: 0,
+                }}
+              />
+              {/* Left edge shadow */}
+              <LinearGradient
+                colors={['rgba(0, 0, 0, 0.6)', 'rgba(0, 0, 0, 0)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  bottom: 0,
+                  width: 100,
+                }}
+              />
+              {/* Right edge shadow */}
+              <LinearGradient
+                colors={['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0.6)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  width: 100,
+                }}
+              />
+              {/* Subtle purple/pink highlight overlay for depth */}
+              <LinearGradient
+                colors={[
+                  'rgba(168, 85, 247, 0.1)',
+                  'rgba(236, 72, 153, 0.05)',
+                  'rgba(0, 0, 0, 0)',
+                ]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: '40%',
                 }}
               />
             </>
@@ -1487,60 +1779,64 @@ function EventDetailsModal({ event, onClose }: { event: Event; onClose: () => vo
             }}
           >
             {/* Handle Bar - Swipe down to close */}
-            <Pressable
-              onPress={onClose}
+            <View
               style={{ alignItems: "center", paddingVertical: Spacing.lg, marginBottom: Spacing.lg }}
             >
-              <View
-                style={{
-                  width: 60,
-                  height: 6,
-                  borderRadius: BorderRadius.full,
-                  backgroundColor: Colors.text.muted,
-                  opacity: 0.5,
-                }}
-              />
-            </Pressable>
+              <Pressable onPress={onClose}>
+                <View
+                  style={{
+                    width: 60,
+                    height: 6,
+                    borderRadius: BorderRadius.full,
+                    backgroundColor: Colors.text.muted,
+                    opacity: 0.5,
+                  }}
+                />
+              </Pressable>
+            </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView
+              ref={scrollViewRef}
+              showsVerticalScrollIndicator={false}
+              onScroll={(e) => {
+                const offsetY = e.nativeEvent.contentOffset.y;
+                setIsScrolledToTop(offsetY <= 0);
+              }}
+              scrollEventThrottle={16}
+            >
               {/* Header */}
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: Spacing.xl }}>
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      color: Colors.text.primary,
-                      fontSize: Typography.size['3xl'],
-                      fontWeight: Typography.weight.bold,
-                      marginBottom: Spacing.xs,
-                    }}
-                  >
-                    {event.name || event.title || event.short_code || 'Untitled Event'}
-                  </Text>
-                  {event.status === 'live' && (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
-                      <View
-                        style={{
-                          width: 10,
-                          height: 10,
-                          borderRadius: BorderRadius.full,
-                          backgroundColor: Colors.status.live,
-                        }}
-                      />
-                      <Text
-                        style={{
-                          color: Colors.status.live,
-                          fontSize: Typography.size.sm,
-                          fontWeight: Typography.weight.bold,
-                        }}
-                      >
-                        LIVE NOW
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                <Pressable onPress={onClose}>
-                  <Text style={{ color: Colors.text.muted, fontSize: 32 }}>×</Text>
-                </Pressable>
+              <View style={{ marginBottom: Spacing.xl }}>
+                <Text
+                  style={{
+                    color: Colors.text.primary,
+                    fontSize: Typography.size['3xl'],
+                    fontWeight: Typography.weight.bold,
+                    marginBottom: Spacing.xs,
+                  }}
+                >
+                  {event.name || event.title || event.short_code || 'Untitled Event'}
+                </Text>
+                {event.status === 'live' && (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
+                    <View
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: BorderRadius.full,
+                        backgroundColor: Colors.status.live,
+                      }}
+                    />
+                    <Text
+                      style={{
+                        color: Colors.status.live,
+                        fontSize: Typography.size.sm,
+                        fontWeight: Typography.weight.bold,
+                      }}
+                    >
+                      LIVE NOW
+                    </Text>
+                  </View>
+                )}
               </View>
 
               {/* Event Info Card */}

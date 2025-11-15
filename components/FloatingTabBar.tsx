@@ -127,12 +127,12 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
         </Pressable>
       </View>
 
-      {/* Tab Bar Container - iOS 26 Liquid Glass */}
+      {/* Tab Bar Container - iOS 26 Liquid Glass - Darker */}
       <LinearGradient
         colors={[
-          "rgba(10, 10, 10, 0.85)",
-          "rgba(25, 25, 30, 0.75)",
-          "rgba(15, 15, 20, 0.8)",
+          "rgba(5, 5, 8, 0.95)",
+          "rgba(12, 12, 18, 0.92)",
+          "rgba(8, 8, 12, 0.94)",
         ]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -145,8 +145,8 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
           borderRadius: BAR_HEIGHT / 2,
           paddingHorizontal: BAR_PADDING,
           borderWidth: 1.5,
-          borderColor: "rgba(255, 255, 255, 0.15)",
-          backgroundColor: "rgba(0, 0, 0, 0.3)", // Backdrop for glass effect
+          borderColor: "rgba(255, 255, 255, 0.1)",
+          backgroundColor: "rgba(0, 0, 0, 0.6)", // Darker backdrop
           ...Shadows.xl,
         }}
       >
