@@ -275,13 +275,16 @@ export default function HomeScreen() {
         <View style={{ marginBottom: Spacing.sm }}>
           <Text
             style={{
-              color: Colors.text.primary,
-              fontSize: Typography.size['3xl'],
-              fontWeight: Typography.weight.bold,
-              lineHeight: 40,
+              color: Colors.text.muted,
+              fontSize: Typography.size.xs,
+              fontWeight: '200',
+              letterSpacing: 3,
+              textTransform: 'lowercase',
+              opacity: 0.7,
+              marginBottom: 2,
             }}
           >
-            Welcome Back
+            welcome back
           </Text>
           <Text
             style={{
@@ -289,7 +292,6 @@ export default function HomeScreen() {
               fontSize: Typography.size['4xl'],
               fontWeight: Typography.weight.bold,
               lineHeight: 48,
-              marginTop: Spacing.xs,
             }}
           >
             {displayName} 👋
