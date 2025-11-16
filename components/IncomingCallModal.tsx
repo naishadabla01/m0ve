@@ -62,24 +62,30 @@ export function IncomingCallModal() {
               call_id,
               room_name,
               event:events(name),
-              host:profiles(display_name, avatar_url, user_id)
+              host:profiles!call_sessions_host_id_fkey(display_name, avatar_url, user_id)
             `)
             .eq('call_id', payload.new.call_id)
             .eq('status', 'active')
             .single();
 
-          if (callData && callData.host) {
-            setIncomingCall({
-              callId: callData.call_id,
-              artistId: callData.host.user_id,
-              artistName: callData.host.display_name || 'Artist',
-              artistAvatar: callData.host.avatar_url,
-              roomName: callData.room_name,
-              eventName: callData.event?.name || 'Event',
-            });
+          if (callData) {
+            // Type assertion for nested relations
+            const host = callData.host as any;
+            const event = callData.event as any;
 
-            // Vibrate to alert user
-            Vibration.vibrate([0, 400, 200, 400]);
+            if (host && event) {
+              setIncomingCall({
+                callId: callData.call_id,
+                artistId: host.user_id,
+                artistName: host.display_name || 'Artist',
+                artistAvatar: host.avatar_url,
+                roomName: callData.room_name,
+                eventName: event.name || 'Event',
+              });
+
+              // Vibrate to alert user
+              Vibration.vibrate([0, 400, 200, 400]);
+            }
           }
         }
       )
