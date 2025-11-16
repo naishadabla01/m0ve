@@ -42,6 +42,8 @@ interface Event {
 }
 
 export default function HomeScreen() {
+  console.log('🔴 [HOME] HomeScreen component rendering/re-rendering');
+
   const [displayName, setDisplayName] = useState<string>("");
   const [activeEvent, setActiveEvent] = useState<Event | null>(null);
   const [ongoingEvents, setOngoingEvents] = useState<Event[]>([]);
@@ -93,13 +95,19 @@ export default function HomeScreen() {
     return () => eventEmitter.off("openJoinModal", handleQRPress);
   }, []);
 
+  // Close modal when screen comes back into focus (after navigation)
+  // Removed - was causing modal to stay open during navigation
+  // Modal now closes automatically when navigation completes
+
   // Load joined event from AsyncStorage
   useEffect(() => {
+    console.log('🟢 [HOME] useEffect - Load joined event from AsyncStorage');
     let isMounted = true;
 
     (async () => {
       try {
         const savedEventId = await AsyncStorage.getItem("event_id");
+        console.log('🟢 [HOME] Saved event ID from AsyncStorage:', savedEventId);
         if (!savedEventId || !isMounted) return;
 
         // Fetch event details
@@ -139,6 +147,7 @@ export default function HomeScreen() {
 
   // Load user data and events
   useEffect(() => {
+    console.log('🟡 [HOME] useEffect - Load user data and events');
     let isMounted = true;
 
     (async () => {
@@ -463,20 +472,35 @@ export default function HomeScreen() {
 
         {/* Active Event Card - Apple Music Style with Green Accent */}
         {activeEvent && (
-          <Pressable onPress={() => router.push(`/move?event_id=${activeEvent.event_id}`)}>
-            {({ pressed }) => (
-              <View
-                style={{
-                  borderRadius: BorderRadius['2xl'],
-                  borderWidth: 2,
-                  borderColor: '#34d399', // Green border (Tailwind green-400)
-                  backgroundColor: 'rgba(18, 18, 22, 0.95)', // Dark background like event cards
-                  padding: Spacing.lg,
-                  ...Shadows.xl,
-                  opacity: pressed ? 0.85 : 1,
-                  transform: [{ scale: pressed ? 0.98 : 1 }],
-                }}
-              >
+          <View
+            style={{
+              borderRadius: BorderRadius['2xl'],
+              borderWidth: 2,
+              borderColor: '#34d399', // Green border (Tailwind green-400)
+              backgroundColor: 'rgba(18, 18, 22, 0.95)', // Dark background like event cards
+              padding: Spacing.lg,
+              marginBottom: Spacing.lg,
+              ...Shadows.xl,
+            }}
+          >
+            <Pressable
+              onPress={() => {
+                console.log('🔵 [HOME] Joined Event card clicked');
+                console.log('🔵 [HOME] Event ID:', activeEvent.event_id);
+                console.log('🔵 [HOME] Event Name:', activeEvent.name || activeEvent.title);
+                console.log('🔵 [HOME] About to navigate to move screen');
+                try {
+                  router.push({
+                    pathname: '/move',
+                    params: { event_id: activeEvent.event_id }
+                  });
+                  console.log('🔵 [HOME] router.push called successfully');
+                } catch (error) {
+                  console.error('🔴 [HOME] Navigation error:', error);
+                }
+              }}
+              style={{ opacity: 1 }}
+            >
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: Spacing.sm }}>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs, marginBottom: Spacing.xs }}>
@@ -598,9 +622,8 @@ export default function HomeScreen() {
                 )}
               </Pressable>
             </View>
-          </View>
-            )}
           </Pressable>
+          </View>
         )}
 
         {/* Ongoing Events Component */}
@@ -1346,6 +1369,9 @@ function JoinEventModal({
   // Trigger animation when modal becomes visible
   useEffect(() => {
     if (visible) {
+      // Reset joining state when modal opens
+      setIsJoining(false);
+
       // Reset animations
       scaleAnim.setValue(0.8);
       opacityAnim.setValue(0);
@@ -1754,6 +1780,8 @@ function JoinEventModal({
                       onJoin={onClose}
                       activeEvent={activeEvent}
                       setActiveEvent={setActiveEvent}
+                      isJoining={isJoining}
+                      setIsJoining={setIsJoining}
                     />
                   ))}
                 </ScrollView>
@@ -1788,11 +1816,15 @@ function LiveEventCard({
   onJoin,
   activeEvent,
   setActiveEvent,
+  isJoining,
+  setIsJoining,
 }: {
   event: Event;
   onJoin: () => void;
   activeEvent: Event | null;
   setActiveEvent: (event: Event | null) => void;
+  isJoining: boolean;
+  setIsJoining: (joining: boolean) => void;
 }) {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const cardWidth = 200;
@@ -1976,9 +2008,16 @@ function LiveEventCard({
           event={event}
           onClose={() => {
             setShowDetailsModal(false);
-            onJoin(); // Also close the parent JoinEventModal
+            // Don't close parent JoinEventModal - just close details modal
+          }}
+          onCloseParent={() => {
+            // Close both details modal and parent JoinEventModal
+            setShowDetailsModal(false);
+            onJoin();
           }}
           showJoinButton={true}
+          isJoining={isJoining}
+          setIsJoining={setIsJoining}
         />
       )}
     </>
@@ -2093,11 +2132,17 @@ const renderEventInfoBox = ({
 function EventDetailsModal({
   event,
   onClose,
-  showJoinButton = false
+  onCloseParent,
+  showJoinButton = false,
+  isJoining = false,
+  setIsJoining = () => {}
 }: {
   event: Event;
   onClose: () => void;
+  onCloseParent?: () => void;
   showJoinButton?: boolean;
+  isJoining?: boolean;
+  setIsJoining?: (joining: boolean) => void;
 }) {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
@@ -2938,39 +2983,41 @@ function EventDetailsModal({
                     }} />
 
                     <Pressable
-                      onPress={async () => {
-                        try {
-                          // Get current user
-                          const { data: { user } } = await supabase.auth.getUser();
-                          if (!user) {
-                            console.error("No user found");
-                            return;
-                          }
+                      onPress={() => {
+                        const eventId = event.event_id;
 
-                          // Add user to event_participants table
-                          const { error: joinError } = await supabase
-                            .from("event_participants")
-                            .upsert({
-                              event_id: event.event_id,
-                              user_id: user.id,
-                              joined_at: new Date().toISOString(),
-                            }, {
-                              onConflict: 'event_id,user_id'
-                            });
-
-                          if (joinError) {
-                            console.error("Error joining event:", joinError);
-                          }
-
-                          // Save event_id to AsyncStorage (so it shows in home screen)
-                          await AsyncStorage.setItem("event_id", event.event_id);
-
-                          // Close modal and navigate to movement screen
+                        // Close modals and navigate simultaneously
+                        if (onCloseParent) {
+                          onCloseParent();
+                        } else {
                           onClose();
-                          router.push(`/move?event_id=${event.event_id}`);
-                        } catch (error) {
-                          console.error("Error joining event:", error);
                         }
+
+                        router.push({
+                          pathname: '/move',
+                          params: { event_id: eventId }
+                        });
+
+                        // Do DB operations in background
+                        (async () => {
+                          try {
+                            await AsyncStorage.setItem("event_id", eventId);
+                            const { data: { user } } = await supabase.auth.getUser();
+                            if (!user) return;
+
+                            await supabase
+                              .from("event_participants")
+                              .upsert({
+                                event_id: eventId,
+                                user_id: user.id,
+                                joined_at: new Date().toISOString(),
+                              }, {
+                                onConflict: 'event_id,user_id'
+                              });
+                          } catch (error) {
+                            console.error("Error joining event:", error);
+                          }
+                        })();
                       }}
                     >
                       {({ pressed }) => (
@@ -3021,6 +3068,7 @@ function EventDetailsModal({
           </View>
         </Animated.View>
       </Animated.View>
+
     </Modal>
   );
 }
