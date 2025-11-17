@@ -65,18 +65,11 @@ export function IncomingCallModal() {
           event: 'INSERT',
           schema: 'public',
           table: 'call_participants',
-          // Remove filter temporarily to test if filtering is the issue
+          filter: `user_id=eq.${userId}`,  // Filter at subscription level
         },
         async (payload) => {
-          console.log('🔥 [IncomingCallModal] RAW INSERT EVENT RECEIVED (before filter check)');
-          console.log('🔥 [IncomingCallModal] Payload user_id:', payload.new?.user_id);
-          console.log('🔥 [IncomingCallModal] Expected user_id:', userId);
-
-          // Manual filter in callback
-          if (payload.new?.user_id !== userId) {
-            console.log('⏭️ [IncomingCallModal] Skipping - not for this user');
-            return;
-          }
+          console.log('🔥 [IncomingCallModal] RAW INSERT EVENT RECEIVED');
+          console.log('🔥 [IncomingCallModal] Payload:', JSON.stringify(payload.new, null, 2));
           console.log('📞 [IncomingCallModal] ========================================');
           console.log('📞 [IncomingCallModal] INCOMING CALL NOTIFICATION RECEIVED!!!');
           console.log('📞 [IncomingCallModal] ========================================');
