@@ -1,0 +1,237 @@
+================================================================================
+CRITICAL BUG FOUND: Call Feature Completely Non-Functional
+================================================================================
+
+PROBLEM:
+When an artist calls from the dashboard, the mobile app doesn't receive ANY
+notification, realtime update, or indication of an incoming call.
+
+ROOT CAUSE:
+The call feature is COMPLETELY MISSING from the mobile app codebase. This is
+not a configuration issue or a minor bug - it's a complete feature gap where
+zero code exists to handle incoming calls.
+
+================================================================================
+5 CRITICAL ISSUES FOUND:
+================================================================================
+
+1. NO REALTIME SUBSCRIPTIONS (CRITICAL)
+   Location: Mobile app /home/user/m0ve/
+   Status: NOT IMPLEMENTED
+   
+   The mobile app has ZERO realtime channel subscriptions for calls.
+   
+   Search results:
+   - grep -r "channel\|subscribe" app/ → 0 matches for calls
+   - grep -r "\.on(" app/ → 0 matches for call handlers
+   - Commit history → No call feature commits
+   
+   What's missing:
+   ```typescript
+   supabase.channel(`event:${eventId}:calls`)
+     .on('postgres_changes', ...)
+     .subscribe()  // ← NEVER HAPPENS
+   ```
+
+2. CALL DATABASE TABLES DON'T EXIST (CRITICAL)
+   Location: Supabase
+   Status: NOT CREATED
+   
+   The call_sessions and call_participants tables were never created in the
+   database despite being documented in CALL_FEATURE_SETUP.md
+   
+   Evidence:
+   - SUPABASE_FINAL_SETUP.sql - no call tables
+   - SUPABASE_SAFE_SETUP.sql - no call tables
+   - SUPABASE_SETUP.sql - no call tables
+   - No migrations/ directory
+   - No *_call*.sql files
+   
+   Tables referenced in documentation but never created:
+   - call_sessions (event_id, artist_id, room_name, status)
+   - call_participants (call_session_id, user_id, is_invited)
+
+3. MISSING LIVEKIT CONFIGURATION (CRITICAL)
+   Location: /home/user/m0ve/app.json
+   Status: NOT CONFIGURED
+   
+   app.json has:
+   ```json
+   "EXPO_PUBLIC_SUPABASE_URL": "...",
+   "EXPO_PUBLIC_SUPABASE_ANON_KEY": "...",
+   "EXPO_PUBLIC_INGEST_URL": "...",
+   "EXPO_PUBLIC_API_BASE": "..."
+   ```
+   
+   app.json is MISSING:
+   ```json
+   "EXPO_PUBLIC_LIVEKIT_URL": "wss://...",
+   "EXPO_PUBLIC_LIVEKIT_API_KEY": "API...",
+   "EXPO_PUBLIC_LIVEKIT_API_SECRET": "secret"
+   ```
+   
+   Even though the following packages are installed:
+   - @livekit/react-native
+   - @livekit/react-native-expo-plugin
+   - livekit-client
+
+4. NO CALL UI COMPONENTS (CRITICAL)
+   Location: /home/user/m0ve/
+   Status: NOT CREATED
+   
+   Missing files:
+   - CallInterface.tsx (full-screen video component) - NOT EXISTS
+   - CallInvitation.tsx (incoming call modal) - NOT EXISTS
+   - CallParticipantSelector.tsx (invite modal) - NOT EXISTS
+   
+   Existing placeholder:
+   - app/(home)/notifications.tsx - 66 lines, just says "Coming Soon"
+
+5. DOCUMENTATION DOESN'T MATCH CODE (DOCUMENTATION BUG)
+   Location: Documentation files
+   Status: MISLEADING
+   
+   CALL_FEATURE_SETUP.md - 217 lines describing implementation that doesn't exist
+   MOBILE_APP_HANDOFF.md - Explicitly says:
+   
+   "❌ No call invitation handling (dashboard can invite, but app can't receive)"
+   "No video call UI (LiveKit installed but not implemented)"
+   "No realtime notification system"
+
+================================================================================
+FILES INVOLVED IN THIS BUG:
+================================================================================
+
+MISSING IMPLEMENTATION:
+- /home/user/m0ve/hooks/useCallNotifications.ts (DOESN'T EXIST)
+- /home/user/m0ve/components/CallInvitation.tsx (DOESN'T EXIST)
+- /home/user/m0ve/src/lib/callService.ts (DOESN'T EXIST)
+
+INCOMPLETE SETUP:
+- /home/user/m0ve/app.json (missing LIVEKIT vars)
+- /home/user/m0ve/SUPABASE_FINAL_SETUP.sql (missing call tables)
+- /home/user/m0ve/SUPABASE_SAFE_SETUP.sql (missing call tables)
+- /home/user/m0ve/SUPABASE_SETUP.sql (missing call tables)
+
+PLACEHOLDER/EMPTY:
+- /home/user/m0ve/app/(home)/notifications.tsx (66 lines, just says "Coming Soon")
+
+CORRECTLY IMPLEMENTED (in app, but mobile doesn't listen):
+- Dashboard can call: POST /api/calls/start
+- Dashboard broadcasts via: Supabase Realtime `event:{eventId}:calls` channel
+- Mobile app should listen but DOESN'T
+
+================================================================================
+DATA FLOW ANALYSIS:
+================================================================================
+
+WHAT SHOULD HAPPEN:
+1. Artist clicks "Start Call" on dashboard
+2. Dashboard: POST /api/calls/start → creates call_sessions row
+3. Dashboard broadcasts call via Supabase Realtime
+4. Mobile app hears broadcast → shows notification
+5. User taps notification → launches video call UI
+6. LiveKit WebRTC connection established
+
+WHAT ACTUALLY HAPPENS:
+1. Artist clicks "Start Call" on dashboard
+2. Dashboard: POST /api/calls/start → TABLE DOESN'T EXIST!
+3. Database error or call never created
+4. Mobile app hears NOTHING (no listener exists)
+5. User sees NOTHING (no notification exists)
+6. Call never happens
+
+================================================================================
+ENVIRONMENT VARIABLES:
+================================================================================
+
+DASHBOARD HAS (move-dashboard-deploy):
+- NEXT_PUBLIC_LIVEKIT_URL
+- LIVEKIT_API_KEY
+- LIVEKIT_API_SECRET
+
+MOBILE APP IS MISSING:
+- EXPO_PUBLIC_LIVEKIT_URL
+- EXPO_PUBLIC_LIVEKIT_API_KEY
+- EXPO_PUBLIC_LIVEKIT_API_SECRET
+
+MOBILE APP HAS:
+- EXPO_PUBLIC_SUPABASE_URL (https://jxjaqamunkkqnwhrlnzk.supabase.co)
+- EXPO_PUBLIC_SUPABASE_ANON_KEY (sb_publishable_w7Zh42w1bNPIe3kicNVEEw_dBqEq_2I)
+- EXPO_PUBLIC_INGEST_URL (https://jxjaqamunkkqnwhrlnzk.supabase.co/functions/v1/ingest)
+- EXPO_PUBLIC_API_BASE (https://move-dashboard-deploy-production.up.railway.app)
+
+================================================================================
+HOW TO FIX (PRIORITY ORDER):
+================================================================================
+
+CRITICAL (BLOCKING):
+1. Create call_sessions table in Supabase
+2. Create call_participants table in Supabase
+3. Add LIVEKIT_* environment variables to app.json
+4. Create realtime listener hook (useCallNotifications.ts)
+5. Create call notification UI component (CallInvitation.tsx)
+
+HIGH (IMPORTANT):
+6. Create call interface component (CallInterface.tsx)
+7. Create call participant selector (CallParticipantSelector.tsx)
+8. Integrate listeners into move.tsx screen
+9. Add call routes to app/
+10. Implement LiveKit token fetching
+
+MEDIUM (POLISH):
+11. Add sound notifications
+12. Add haptic feedback
+13. Add visual animations
+14. Style with iOS 26 glassmorphism theme
+
+================================================================================
+EVIDENCE LOCATIONS:
+================================================================================
+
+File: /home/user/m0ve/app/(home)/notifications.tsx
+Lines: 1-67
+Evidence: Placeholder screen showing "Coming Soon" - no actual notification logic
+
+File: /home/user/m0ve/CALL_FEATURE_SETUP.md
+Lines: 1-217
+Evidence: Documents feature that doesn't exist in mobile app
+
+File: /home/user/m0ve/MOBILE_APP_HANDOFF.md
+Lines: 300-406
+Evidence: Explicitly lists "NEEDS IMPLEMENTATION" for call feature
+
+File: /home/user/m0ve/app.json
+Lines: 1-65
+Evidence: Missing LIVEKIT_* environment variables
+
+File: /home/user/m0ve/SUPABASE_FINAL_SETUP.sql
+Lines: 1-149
+Evidence: No CREATE TABLE for call_sessions or call_participants
+
+Search Results:
+- grep -r "\.channel(" app/ → 0 results
+- grep -r "\.subscribe(" app/ → 0 results
+- grep -r "livekit\|LiveKit" app/src/ → 0 results
+- grep -r "call\|Call" app/\(home\)/notifications.tsx → only in title
+
+================================================================================
+CONCLUSION:
+================================================================================
+
+THIS IS A COMPLETE FEATURE GAP - NOT A CONFIGURATION BUG
+
+The call feature is:
+- Documented (CALL_FEATURE_SETUP.md, MOBILE_APP_HANDOFF.md)
+- Partially implemented on dashboard (can start calls)
+- COMPLETELY MISSING from mobile app
+
+The mobile app is "deaf" - it has no code to listen for incoming calls, no
+database to store call data, no UI to show call invitations, and no LiveKit
+configuration to handle video.
+
+The dashboard is trying to call into a void. The mobile app will never know
+a call is incoming because zero code exists to tell it.
+
+STATUS: Root causes identified, awaiting fix implementation
+================================================================================
