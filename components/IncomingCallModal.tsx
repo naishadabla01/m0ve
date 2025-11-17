@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase/client';
 import { router } from 'expo-router';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../constants/Design';
+import ENV from '../config/env';
 
 interface IncomingCall {
   callSessionId: string;
@@ -46,6 +47,10 @@ export function IncomingCallModal() {
     if (!userId) {
       return;
     }
+
+    console.log('🔌 [IncomingCallModal] Setting up Realtime subscription...');
+    console.log('🔌 [IncomingCallModal] User ID:', userId);
+    console.log('🔌 [IncomingCallModal] Supabase URL:', ENV.SUPABASE_URL);
 
     const channel = supabase
       .channel(`incoming-calls:${userId}`, {
@@ -127,14 +132,24 @@ export function IncomingCallModal() {
         }
       )
       .subscribe((status, err) => {
-        if (status === 'CHANNEL_ERROR') {
+        console.log('🔌 [IncomingCallModal] Subscription status changed:', status);
+        if (err) {
+          console.error('❌ [IncomingCallModal] Subscription error:', err);
+        }
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ [IncomingCallModal] Successfully subscribed to Realtime!');
+          console.log('✅ [IncomingCallModal] Listening for INSERTs on call_participants table');
+        } else if (status === 'CHANNEL_ERROR') {
           console.error('❌ [IncomingCallModal] Channel error:', err);
         } else if (status === 'TIMED_OUT') {
           console.error('❌ [IncomingCallModal] Subscription timed out');
+        } else if (status === 'CLOSED') {
+          console.log('🔌 [IncomingCallModal] Channel closed');
         }
       });
 
     return () => {
+      console.log('🔌 [IncomingCallModal] Cleaning up subscription...');
       supabase.removeChannel(channel);
     };
   }, [userId]);
