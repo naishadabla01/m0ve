@@ -23,7 +23,7 @@ import {
 import { Track } from 'livekit-client';
 
 export default function CallScreen() {
-  const { callId, roomName } = useLocalSearchParams<{ callId: string; roomName: string }>();
+  const { callSessionId, roomName } = useLocalSearchParams<{ callSessionId: string; roomName: string }>();
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +31,7 @@ export default function CallScreen() {
 
   useEffect(() => {
     fetchCallToken();
-  }, [callId, roomName]);
+  }, [callSessionId, roomName]);
 
   const fetchCallToken = async () => {
     try {
@@ -88,9 +88,8 @@ export default function CallScreen() {
         .from('call_participants')
         .update({
           left_at: new Date().toISOString(),
-          status: 'left',
         })
-        .eq('call_id', callId)
+        .eq('call_session_id', callSessionId)
         .eq('user_id', user.id);
 
       // Navigate back

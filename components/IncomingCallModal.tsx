@@ -16,7 +16,7 @@ import { router } from 'expo-router';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../constants/Design';
 
 interface IncomingCall {
-  callId: string;
+  callSessionId: string;
   artistId: string;
   artistName: string;
   artistAvatar?: string;
@@ -59,26 +59,26 @@ export function IncomingCallModal() {
           const { data: callData } = await supabase
             .from('call_sessions')
             .select(`
-              call_id,
+              id,
               room_name,
               event:events(name),
-              host:profiles!call_sessions_host_id_fkey(display_name, avatar_url, user_id)
+              artist:profiles!call_sessions_artist_id_fkey(display_name, avatar_url, user_id)
             `)
-            .eq('call_id', payload.new.call_id)
+            .eq('id', payload.new.call_session_id)
             .eq('status', 'active')
             .single();
 
           if (callData) {
             // Type assertion for nested relations
-            const host = callData.host as any;
+            const artist = callData.artist as any;
             const event = callData.event as any;
 
-            if (host && event) {
+            if (artist && event) {
               setIncomingCall({
-                callId: callData.call_id,
-                artistId: host.user_id,
-                artistName: host.display_name || 'Artist',
-                artistAvatar: host.avatar_url,
+                callSessionId: callData.id,
+                artistId: artist.user_id,
+                artistName: artist.display_name || 'Artist',
+                artistAvatar: artist.avatar_url,
                 roomName: callData.room_name,
                 eventName: event.name || 'Event',
               });
@@ -125,7 +125,7 @@ export function IncomingCallModal() {
     router.push({
       pathname: '/call',
       params: {
-        callId: incomingCall.callId,
+        callSessionId: incomingCall.callSessionId,
         roomName: incomingCall.roomName,
       },
     });
@@ -139,8 +139,8 @@ export function IncomingCallModal() {
     // Update participant status to declined
     await supabase
       .from('call_participants')
-      .update({ status: 'declined', left_at: new Date().toISOString() })
-      .eq('call_id', incomingCall.callId)
+      .update({ left_at: new Date().toISOString() })
+      .eq('call_session_id', incomingCall.callSessionId)
       .eq('user_id', userId);
 
     setIncomingCall(null);
