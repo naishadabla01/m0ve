@@ -18,8 +18,8 @@ const ENV: EnvConfig = {
   // LiveKit configuration for video calls
   LIVEKIT_URL: 'wss://move-h8w0xjau.livekit.cloud',
 
-  // Backend API URL (update with your Railway deployment URL)
-  API_URL: 'http://localhost:3000', // Change to your Railway URL when deployed
+  // Backend API URL
+  API_URL: 'https://move-dashboard-deploy-production.up.railway.app'
 };
 
 export default ENV;
