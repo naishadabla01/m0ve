@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '@/lib/supabase/client';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../constants/Design';
+import ENV from '../config/env';
 import {
   LiveKitRoom,
   VideoTrack,
@@ -44,14 +45,12 @@ export default function CallScreen() {
         throw new Error('Not authenticated');
       }
 
-      // Fetch LiveKit URL from env or database
-      // For now, you'll need to set this in your environment
-      const url = process.env.EXPO_PUBLIC_LIVEKIT_URL || 'wss://your-project.livekit.cloud';
+      // Fetch LiveKit URL from config
+      const url = ENV.LIVEKIT_URL;
       setLivekitUrl(url);
 
       // Call your backend API to get LiveKit token
-      // You'll need to create this API endpoint
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || ''}/api/livekit/token`, {
+      const response = await fetch(`${ENV.API_URL}/api/livekit/token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
