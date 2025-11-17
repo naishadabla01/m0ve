@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import { Stack, router, useSegments } from "expo-router";
 import React, { useEffect, useState } from "react";
+import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { IncomingCallModal } from "@components/IncomingCallModal";
 
@@ -127,11 +128,13 @@ export default function RootLayout() {
         <Stack.Screen name="scan" options={{ headerShown: false }} />
         <Stack.Screen name="event-details" options={{ headerShown: false }} />
         <Stack.Screen name="leaderboard" options={{ headerShown: false }} />
-        <Stack.Screen name="call" options={{ headerShown: false, presentation: "fullScreenModal" }} />
+        {Platform.OS !== 'web' && (
+          <Stack.Screen name="call" options={{ headerShown: false, presentation: "fullScreenModal" }} />
+        )}
       </Stack>
 
-      {/* Global Incoming Call Modal - Shows on all screens */}
-      <IncomingCallModal />
+      {/* Global Incoming Call Modal - Only on native platforms (iOS/Android) */}
+      {Platform.OS !== 'web' && <IncomingCallModal />}
     </SafeAreaProvider>
   );
 }
