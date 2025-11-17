@@ -21,7 +21,7 @@ const ENV: EnvConfig = {
   // Backend API URL
   // For local testing: Use your Mac's local IP (see below)
   // For production: Use Railway URL
-  API_URL: 'http://192.168.4.27:3000'  // For physical iPhone. Use 'http://localhost:3000' for simulator
+  API_URL: 'https://move-dashboard-deploy-production.up.railway.app'  // Production Railway URL
 };
 
 export default ENV;
