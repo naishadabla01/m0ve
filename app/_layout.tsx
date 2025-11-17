@@ -5,7 +5,7 @@ import { Stack, router, useSegments } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { IncomingCallModal } from "@components/IncomingCallModal";
+import { IncomingCallModalWrapper } from "@components/IncomingCallModalWrapper";
 
 // 🚀 DEV MODE - Set to true to bypass login
 const DEV_MODE = true;
@@ -134,7 +134,7 @@ export default function RootLayout() {
       </Stack>
 
       {/* Global Incoming Call Modal - Only on native platforms (iOS/Android) */}
-      {Platform.OS !== 'web' && <IncomingCallModal />}
+      <IncomingCallModalWrapper />
     </SafeAreaProvider>
   );
 }
