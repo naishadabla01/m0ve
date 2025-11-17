@@ -7,9 +7,6 @@ import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { IncomingCallModalWrapper } from "@components/IncomingCallModalWrapper";
 
-// 🚀 DEV MODE - Set to true to bypass login
-const DEV_MODE = true;
-
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -20,44 +17,7 @@ export default function RootLayout() {
     const initAuth = async () => {
       // Get initial session
       const { data: { session } } = await supabase.auth.getSession();
-
-      // DEV MODE: Auto-login if no session
-      if (DEV_MODE && !session) {
-        try {
-          const DEV_EMAIL = "dev@m0ve.app";
-          const DEV_PASSWORD = "dev123456";
-
-          // Try to sign in
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: DEV_EMAIL,
-            password: DEV_PASSWORD,
-          });
-
-          if (signInError) {
-            // User doesn't exist, create it
-            await supabase.auth.signUp({
-              email: DEV_EMAIL,
-              password: DEV_PASSWORD,
-            });
-
-            // Sign in again
-            const { data: retryData } = await supabase.auth.signInWithPassword({
-              email: DEV_EMAIL,
-              password: DEV_PASSWORD,
-            });
-
-            setSession(retryData.session);
-          } else {
-            setSession(signInData.session);
-          }
-        } catch (e) {
-          console.error("Dev auto-login failed:", e);
-          setSession(session);
-        }
-      } else {
-        setSession(session);
-      }
-
+      setSession(session);
       setIsReady(true);
     };
 
@@ -77,20 +37,12 @@ export default function RootLayout() {
 
     const inAuthGroup = segments[0] === "(auth)";
     const onWelcomeScreens = segments[0] === "index" || segments[0] === "welcome";
-    const inHomeGroup = segments[0] === "(home)";
 
-    // DEV MODE: Only redirect from welcome/auth screens to home
-    if (DEV_MODE && session && (onWelcomeScreens || inAuthGroup)) {
-      router.replace("/(home)");
-      return;
-    }
-
-    // Regular auth flow (not dev mode specific)
     if (!session && !inAuthGroup && !onWelcomeScreens) {
-      // Not logged in and not on welcome screens, redirect to home (splash screen)
+      // Not logged in and not on welcome/auth screens, redirect to welcome
       router.replace("/");
-    } else if (session && inAuthGroup) {
-      // Logged in but on auth screen, redirect to home
+    } else if (session && (inAuthGroup || onWelcomeScreens)) {
+      // Logged in but on auth/welcome screen, redirect to home
       router.replace("/(home)");
     }
   }, [session, segments, isReady]);
@@ -118,23 +70,89 @@ export default function RootLayout() {
           headerShown: false,
           contentStyle: { backgroundColor: "#0a0a0a" },
           animation: "fade",
+          // Prevent back gesture when logged in to avoid accidental logout
+          gestureEnabled: !session,
         }}
       >
-        <Stack.Screen name="index" options={{ headerShown: false, animation: "fade" }} />
-        <Stack.Screen name="welcome" options={{ headerShown: false, animation: "slide_from_right" }} />
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(home)" options={{ headerShown: false }} />
-        <Stack.Screen name="move" options={{ headerShown: false }} />
-        <Stack.Screen name="scan" options={{ headerShown: false }} />
-        <Stack.Screen name="event-details" options={{ headerShown: false }} />
-        <Stack.Screen name="leaderboard" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="index"
+          options={{
+            headerShown: false,
+            animation: "fade",
+            gestureEnabled: false, // Never allow back gesture on splash
+          }}
+        />
+        <Stack.Screen
+          name="welcome"
+          options={{
+            headerShown: false,
+            animation: "slide_from_right",
+            gestureEnabled: !session, // Only allow back when not logged in
+          }}
+        />
+        <Stack.Screen
+          name="(auth)"
+          options={{
+            headerShown: false,
+            gestureEnabled: !session, // Only allow back when not logged in
+          }}
+        />
+        <Stack.Screen
+          name="(home)"
+          options={{
+            headerShown: false,
+            gestureEnabled: false, // Never allow back gesture from home (must sign out explicitly)
+          }}
+        />
+        <Stack.Screen
+          name="move"
+          options={{
+            headerShown: false,
+            gestureEnabled: true, // Allow back to home
+          }}
+        />
+        <Stack.Screen
+          name="scan"
+          options={{
+            headerShown: false,
+            gestureEnabled: true, // Allow back to previous screen
+          }}
+        />
+        <Stack.Screen
+          name="event-details"
+          options={{
+            headerShown: false,
+            gestureEnabled: true, // Allow back to home
+          }}
+        />
+        <Stack.Screen
+          name="leaderboard"
+          options={{
+            headerShown: false,
+            gestureEnabled: true, // Allow back to previous screen
+          }}
+        />
+        <Stack.Screen
+          name="final-leaderboard"
+          options={{
+            headerShown: false,
+            gestureEnabled: true, // Allow back to home
+          }}
+        />
         {Platform.OS !== 'web' && (
-          <Stack.Screen name="call" options={{ headerShown: false, presentation: "fullScreenModal" }} />
+          <Stack.Screen
+            name="call"
+            options={{
+              headerShown: false,
+              presentation: "fullScreenModal",
+              gestureEnabled: false, // Don't allow back during call
+            }}
+          />
         )}
       </Stack>
 
-      {/* Global Incoming Call Modal - Only on native platforms (iOS/Android) */}
-      <IncomingCallModalWrapper />
+      {/* Global Incoming Call Modal - Only render when user is logged in */}
+      {session && <IncomingCallModalWrapper />}
     </SafeAreaProvider>
   );
 }

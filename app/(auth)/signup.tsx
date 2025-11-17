@@ -109,11 +109,19 @@ export default function SignUpScreen() {
         console.warn('Profile creation warning:', profileError);
       }
 
-      Alert.alert(
-        'Success!',
-        'Your account has been created! Please sign in.',
-        [{ text: 'Sign In', onPress: () => router.replace('/(auth)/signin') }]
-      );
+      // Sign out immediately after signup to prevent auto-login
+      await supabase.auth.signOut();
+
+      // Navigate to signin page
+      router.replace('/(auth)/signin');
+
+      // Show success message after navigation
+      setTimeout(() => {
+        Alert.alert(
+          'Success!',
+          'Your account has been created! Please sign in with your credentials.'
+        );
+      }, 500);
 
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to create account');

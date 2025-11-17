@@ -123,8 +123,22 @@ export default function HomeScreen() {
           return;
         }
 
+        // Compute actual status based on time
+        const now = new Date();
+        let actualStatus = event.status;
+
+        if (event.ended_at || event.status === 'ended') {
+          actualStatus = 'ended';
+        } else if (event.end_at && new Date(event.end_at) < now) {
+          actualStatus = 'ended';
+        } else if (event.start_at && new Date(event.start_at) > now) {
+          actualStatus = 'scheduled';
+        } else if (event.start_at && new Date(event.start_at) <= now) {
+          actualStatus = 'live';
+        }
+
         // Check if event has ended
-        if (event.status === 'ended' || event.ended_at) {
+        if (actualStatus === 'ended') {
           // Event ended, clear storage
           await AsyncStorage.removeItem("event_id");
           setActiveEvent(null);
@@ -210,40 +224,48 @@ export default function HomeScreen() {
 
         const now = new Date();
 
-        // Map events to include artist_name from profiles
+        // Map events to include artist_name and compute actual status dynamically
         const mappedEvents = events.map((event: any) => {
+          // Compute actual status based on time, not just database field
+          let actualStatus = event.status;
+
+          // If event has been explicitly ended
+          if (event.ended_at || event.status === 'ended') {
+            actualStatus = 'ended';
+          }
+          // If event has end_at and it's passed
+          else if (event.end_at && new Date(event.end_at) < now) {
+            actualStatus = 'ended';
+          }
+          // If event hasn't started yet
+          else if (event.start_at && new Date(event.start_at) > now) {
+            actualStatus = 'scheduled';
+          }
+          // Event is currently happening
+          else if (event.start_at && new Date(event.start_at) <= now) {
+            actualStatus = 'live';
+          }
+
           return {
             ...event,
             artist_name: artistMap.get(event.artist_id) || null,
+            actualStatus, // computed status based on current time
           };
         });
 
-        // Ongoing events: live, scheduled (future), or started but not ended
-        // Status can be: 'scheduled', 'live', 'ended'
+        // Ongoing events: scheduled (upcoming) or live (currently happening)
         const ongoing = mappedEvents.filter(e => {
-          // Already ended - exclude
-          if (e.status === 'ended' || e.ended_at) return false;
-
-          // Live event - include
-          if (e.status === 'live') return true;
-
-          // Scheduled event - include
-          if (e.status === 'scheduled') return true;
-
-          // No status but has start_at and not ended - include
-          if (!e.status && e.start_at && !e.ended_at) return true;
-
-          return false;
+          return e.actualStatus === 'scheduled' || e.actualStatus === 'live';
         });
 
         // Past events: events that have ended
-        const past = mappedEvents.filter(e =>
-          e.status === 'ended' || e.ended_at
-        );
+        const past = mappedEvents.filter(e => {
+          return e.actualStatus === 'ended';
+        });
 
         console.log("✅ Ongoing events:", ongoing.length);
         console.log("🏁 Past events:", past.length);
-        console.log("Ongoing:", ongoing.map(e => ({ name: e.name, artist: e.artist_name, status: e.status, start_at: e.start_at })));
+        console.log("Ongoing:", ongoing.map(e => ({ name: e.name, artist: e.artist_name, status: e.actualStatus, db_status: e.status, start_at: e.start_at })));
 
         setOngoingEvents(ongoing);
         setPastEvents(past);
@@ -645,7 +667,7 @@ export default function HomeScreen() {
         setShowCodeInput={setShowCodeInput}
         eventCode={eventCode}
         setEventCode={setEventCode}
-        liveEvents={ongoingEvents.filter(e => e.status === 'live')}
+        liveEvents={ongoingEvents.filter(e => e.actualStatus === 'live')}
         activeEvent={activeEvent}
         setActiveEvent={setActiveEvent}
       />
@@ -775,7 +797,7 @@ function EventListSection({
                       width: 6,
                       height: 6,
                       borderRadius: 3,
-                      backgroundColor: event.status === 'live' ? '#10b981' : '#3b82f6',
+                      backgroundColor: event.actualStatus === 'live' ? '#10b981' : '#3b82f6',
                     }}
                   />
                 )}
@@ -1236,7 +1258,7 @@ function EventListSection({
                                   width: 6,
                                   height: 6,
                                   borderRadius: 3,
-                                  backgroundColor: event.status === 'live' ? '#10b981' : '#3b82f6',
+                                  backgroundColor: event.actualStatus === 'live' ? '#10b981' : '#3b82f6',
                                 }}
                               />
                             )}
@@ -1271,7 +1293,7 @@ function EventListSection({
                         </View>
 
                         {/* LIVE indicator on right */}
-                        {!isPast && event.status === 'live' && (
+                        {!isPast && event.actualStatus === 'live' && (
                           <View
                             style={{
                               backgroundColor: 'rgba(16, 185, 129, 0.15)',
@@ -1456,8 +1478,22 @@ function JoinEventModal({
 
       const event = events[0];
 
+      // Compute actual status based on time
+      const now = new Date();
+      let actualStatus = event.status;
+
+      if (event.ended_at || event.status === 'ended') {
+        actualStatus = 'ended';
+      } else if (event.end_at && new Date(event.end_at) < now) {
+        actualStatus = 'ended';
+      } else if (event.start_at && new Date(event.start_at) > now) {
+        actualStatus = 'scheduled';
+      } else if (event.start_at && new Date(event.start_at) <= now) {
+        actualStatus = 'live';
+      }
+
       // Check if event has ended
-      if (event.status === 'ended' || event.ended_at) {
+      if (actualStatus === 'ended') {
         setErrorMessage("This event has already ended");
         setIsJoining(false);
         return;
@@ -2470,7 +2506,7 @@ function EventDetailsModal({
                 >
                   {event.name || event.title || event.short_code || 'Untitled Event'}
                 </Text>
-                {event.status === 'live' && (
+                {event.actualStatus === 'live' && (
                   <View style={{
                     flexDirection: "row",
                     alignItems: "center",

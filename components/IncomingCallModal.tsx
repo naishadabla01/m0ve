@@ -25,6 +25,8 @@ interface IncomingCall {
 }
 
 export function IncomingCallModal() {
+  console.log('🆕 [v2] IncomingCallModal LOADED - New version with correct key');
+
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -34,29 +36,50 @@ export function IncomingCallModal() {
   useEffect(() => {
     // Get current user
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) setUserId(data.user.id);
+      if (data.user) {
+        setUserId(data.user.id);
+      }
     });
   }, []);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      return;
+    }
 
-    // Subscribe to incoming calls for this user
     const channel = supabase
-      .channel(`incoming-calls:${userId}`)
+      .channel(`incoming-calls:${userId}`, {
+        config: {
+          broadcast: { self: false },
+          presence: { key: '' },
+        },
+      })
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'call_participants',
-          filter: `user_id=eq.${userId}`,
+          // Remove filter temporarily to test if filtering is the issue
         },
         async (payload) => {
-          console.log('📞 Incoming call:', payload);
+          console.log('🔥 [IncomingCallModal] RAW INSERT EVENT RECEIVED (before filter check)');
+          console.log('🔥 [IncomingCallModal] Payload user_id:', payload.new?.user_id);
+          console.log('🔥 [IncomingCallModal] Expected user_id:', userId);
+
+          // Manual filter in callback
+          if (payload.new?.user_id !== userId) {
+            console.log('⏭️ [IncomingCallModal] Skipping - not for this user');
+            return;
+          }
+          console.log('📞 [IncomingCallModal] ========================================');
+          console.log('📞 [IncomingCallModal] INCOMING CALL NOTIFICATION RECEIVED!!!');
+          console.log('📞 [IncomingCallModal] ========================================');
+          console.log('📞 [IncomingCallModal] Payload:', JSON.stringify(payload, null, 2));
 
           // Fetch call details
-          const { data: callData } = await supabase
+          console.log('📞 [IncomingCallModal] Fetching call session details for ID:', payload.new.call_session_id);
+          const { data: callData, error: callDataError } = await supabase
             .from('call_sessions')
             .select(`
               id,
@@ -68,12 +91,24 @@ export function IncomingCallModal() {
             .eq('status', 'active')
             .single();
 
+          if (callDataError) {
+            console.error('❌ [IncomingCallModal] Error fetching call data:', callDataError);
+            return;
+          }
+
+          console.log('📞 [IncomingCallModal] Call data:', JSON.stringify(callData, null, 2));
+
           if (callData) {
             // Type assertion for nested relations
             const artist = callData.artist as any;
             const event = callData.event as any;
 
             if (artist && event) {
+              console.log('📞 [IncomingCallModal] Showing incoming call modal!');
+              console.log('📞 [IncomingCallModal] Artist:', artist.display_name);
+              console.log('📞 [IncomingCallModal] Event:', event.name);
+              console.log('📞 [IncomingCallModal] Room:', callData.room_name);
+
               setIncomingCall({
                 callSessionId: callData.id,
                 artistId: artist.user_id,
@@ -85,11 +120,19 @@ export function IncomingCallModal() {
 
               // Vibrate to alert user
               Vibration.vibrate([0, 400, 200, 400]);
+            } else {
+              console.error('❌ [IncomingCallModal] Missing artist or event data');
             }
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error('❌ [IncomingCallModal] Channel error:', err);
+        } else if (status === 'TIMED_OUT') {
+          console.error('❌ [IncomingCallModal] Subscription timed out');
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
