@@ -53,6 +53,11 @@ export default function SignUpScreen() {
       return;
     }
 
+    if (!firstName.trim() || !lastName.trim()) {
+      Alert.alert('Error', 'First name and last name are required');
+      return;
+    }
+
     if (!displayName.trim()) {
       Alert.alert('Error', 'Display name is required');
       return;
@@ -92,9 +97,10 @@ export default function SignUpScreen() {
         .upsert({
           user_id: authData.user?.id,
           email: email.trim().toLowerCase(),
-          first_name: firstName.trim() || null,
-          last_name: lastName.trim() || null,
-          display_name: displayName.trim() || firstName.trim() || email.split('@')[0],
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          display_name: displayName.trim(),
+          role: 'user', // Set default role
         }, {
           onConflict: 'user_id'
         });
@@ -105,8 +111,8 @@ export default function SignUpScreen() {
 
       Alert.alert(
         'Success!',
-        'Your account has been created!',
-        [{ text: 'Get Started', onPress: () => router.replace('/(home)') }]
+        'Your account has been created! Please sign in.',
+        [{ text: 'Sign In', onPress: () => router.replace('/(auth)/signin') }]
       );
 
     } catch (error: any) {
