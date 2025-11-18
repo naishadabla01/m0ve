@@ -20,8 +20,12 @@ import {
   useParticipants,
   useRoomContext,
   useTracks,
+  registerGlobals,
 } from '@livekit/react-native';
 import { Track } from 'livekit-client';
+
+// Initialize WebRTC
+registerGlobals();
 
 export default function CallScreen() {
   const { callSessionId, roomName } = useLocalSearchParams<{ callSessionId: string; roomName: string }>();
