@@ -73,31 +73,31 @@ BEGIN
 END $$;
 
 -- STEP 5: Verify setup
+
+-- Check RLS is enabled
 SELECT
     'RLS Enabled' as check_type,
     tablename,
-    rowsecurity as enabled
+    rowsecurity::text as enabled
 FROM pg_tables
-WHERE tablename = 'call_participants'
+WHERE tablename = 'call_participants';
 
-UNION ALL
-
+-- Check Realtime publication
 SELECT
     'Realtime Publication' as check_type,
     tablename,
-    'true' as enabled
+    'included' as enabled
 FROM pg_publication_tables
 WHERE pubname = 'supabase_realtime'
-AND tablename = 'call_participants'
+AND tablename = 'call_participants';
 
-UNION ALL
-
+-- Check RLS policies
 SELECT
-    'RLS Policies' as check_type,
+    'RLS Policy' as check_type,
     policyname as tablename,
-    cmd as enabled
+    cmd::text as enabled
 FROM pg_policies
 WHERE tablename = 'call_participants'
-ORDER BY check_type, tablename;
+ORDER BY policyname;
 
 -- Done! Realtime should now work.
