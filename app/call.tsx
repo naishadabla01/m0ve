@@ -45,25 +45,41 @@ export default function CallScreen() {
         throw new Error('Not authenticated');
       }
 
+      // Fetch call session to get event_id
+      const { data: callSession, error: callError } = await supabase
+        .from('call_sessions')
+        .select('event_id')
+        .eq('id', callSessionId)
+        .single();
+
+      if (callError || !callSession) {
+        throw new Error('Call session not found');
+      }
+
       // Fetch LiveKit URL from config
       const url = ENV.LIVEKIT_URL;
       setLivekitUrl(url);
 
-      // Call your backend API to get LiveKit token
+      // Get auth session for Authorization header
+      const { data: { session } } = await supabase.auth.getSession();
+
+      // Call backend API to get LiveKit token with correct parameters
       const response = await fetch(`${ENV.API_URL}/api/livekit/token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
-          roomName: roomName,
-          participantName: user.email || user.id,
-          participantId: user.id,
+          room_name: roomName,
+          event_id: callSession.event_id,
+          participant_name: user.email || user.id,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get call token');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to get call token');
       }
 
       const data = await response.json();
