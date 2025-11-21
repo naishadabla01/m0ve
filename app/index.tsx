@@ -13,10 +13,21 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Gradients, BorderRadius, Spacing, Typography, Shadows } from "../constants/Design";
+import { supabase } from "@/lib/supabase/client";
 
 const { width, height } = Dimensions.get("window");
 
 export default function SplashWelcome() {
+  // Check if user is already logged in and skip welcome page
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        router.replace("/(home)");
+      }
+    };
+    checkSession();
+  }, []);
   // Animation values for flowing gradients
   const flowAnim1 = useRef(new Animated.Value(0)).current;
   const flowAnim2 = useRef(new Animated.Value(0)).current;

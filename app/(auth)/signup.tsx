@@ -53,6 +53,16 @@ export default function SignUpScreen() {
       return;
     }
 
+    if (!firstName.trim() || !lastName.trim()) {
+      Alert.alert('Error', 'First name and last name are required');
+      return;
+    }
+
+    if (!displayName.trim()) {
+      Alert.alert('Error', 'Display name is required');
+      return;
+    }
+
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match');
       return;
@@ -87,9 +97,10 @@ export default function SignUpScreen() {
         .upsert({
           user_id: authData.user?.id,
           email: email.trim().toLowerCase(),
-          first_name: firstName.trim() || null,
-          last_name: lastName.trim() || null,
-          display_name: displayName.trim() || firstName.trim() || email.split('@')[0],
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          display_name: displayName.trim(),
+          role: 'user', // Set default role
         }, {
           onConflict: 'user_id'
         });
@@ -98,11 +109,19 @@ export default function SignUpScreen() {
         console.warn('Profile creation warning:', profileError);
       }
 
-      Alert.alert(
-        'Success!',
-        'Your account has been created!',
-        [{ text: 'Get Started', onPress: () => router.replace('/(home)') }]
-      );
+      // Sign out immediately after signup to prevent auto-login
+      await supabase.auth.signOut();
+
+      // Navigate to signin page
+      router.replace('/(auth)/signin');
+
+      // Show success message after navigation
+      setTimeout(() => {
+        Alert.alert(
+          'Success!',
+          'Your account has been created! Please sign in with your credentials.'
+        );
+      }, 500);
 
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to create account');
@@ -256,7 +275,7 @@ export default function SignUpScreen() {
                 />
 
                 <GlassInput
-                  label="Display Name (Optional)"
+                  label="Display Name *"
                   value={displayName}
                   onChangeText={setDisplayName}
                   placeholder="JohnD"

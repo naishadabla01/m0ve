@@ -8,7 +8,7 @@
     "slug": "move",
     "extra": {
       "EXPO_PUBLIC_SUPABASE_URL": "https://jxjaqamunkkqnwhrlnzk.supabase.co",
-      "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_w7Zh42w1bNPIe3kicNVEEw_dBqEq_2I",
+      "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4amFxYW11bmtrcW53aHJsbnprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyNjkyMjIsImV4cCI6MjA3NDg0NTIyMn0.xp3nDY0b2W7blNFDEg2XoVAUkY4ELu2r1FfDYCcZnqk",
       "EXPO_PUBLIC_INGEST_URL": "https://jxjaqamunkkqnwhrlnzk.supabase.co/functions/v1/ingest",
       "EXPO_PUBLIC_API_BASE": "https://move-dashboard-deploy-production.up.railway.app",
       "router": {},

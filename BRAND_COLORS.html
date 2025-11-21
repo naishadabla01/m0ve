@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M0VE Brand Colors</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            color: white;
+            padding: 40px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 3em;
+            text-align: center;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #a855f7, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #9BA1A6;
+            margin-bottom: 50px;
+            font-size: 1.2em;
+        }
+
+        .section {
+            margin-bottom: 60px;
+        }
+
+        .section-title {
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #a855f7;
+            border-bottom: 3px solid #a855f7;
+            padding-bottom: 10px;
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .color-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 0;
+            overflow: hidden;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .color-card:hover {
+            transform: translateY(-5px);
+            border-color: #a855f7;
+        }
+
+        .color-swatch {
+            height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            font-weight: bold;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .color-info {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .color-name {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: white;
+        }
+
+        .color-hex {
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+            color: #9BA1A6;
+            background: rgba(168, 85, 247, 0.1);
+            padding: 8px 12px;
+            border-radius: 8px;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+
+        .color-usage {
+            font-size: 0.9em;
+            color: #687076;
+            margin-top: 8px;
+        }
+
+        .gradient-card {
+            height: 200px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .gradient-label {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1.3em;
+            font-weight: 600;
+            z-index: 1;
+        }
+
+        .glass-demo {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(0, 0, 0, 0.4), rgba(236, 72, 153, 0.1));
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 32px;
+            padding: 40px;
+            margin-bottom: 20px;
+        }
+
+        .copy-btn {
+            background: linear-gradient(90deg, #a855f7, #ec4899);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-top: 8px;
+            transition: opacity 0.3s;
+        }
+
+        .copy-btn:hover {
+            opacity: 0.8;
+        }
+
+        .three-color-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .three-color-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>M0VE Brand Colors</h1>
+        <p class="subtitle">iOS 26 Glassmorphism Design System</p>
+
+        <!-- PRIMARY BRAND COLORS -->
+        <div class="section">
+            <h2 class="section-title">🎨 Primary Brand Colors</h2>
+
+            <h3 style="color: #a855f7; margin: 30px 0 20px 0; font-size: 1.5em;">Purple (Primary)</h3>
+            <div class="three-color-grid">
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #a855f7;">
+                        💜
+                    </div>
+                    <div class="color-info">
+                        <div class="color-name">Purple Light</div>
+                        <div class="color-hex">#a855f7</div>
+                        <div class="color-usage">Main accent, buttons, highlights</div>
+                        <button class="copy-btn" onclick="copyColor('#a855f7')">Copy</button>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #9333ea;">
+                        💜
+                    </div>
+                    <div class="color-info">
+                        <div class="color-name">Purple Default</div>
+                        <div class="color-hex">#9333ea</div>
+                        <div class="color-usage">Secondary accent</div>
+                        <button class="copy-btn" onclick="copyColor('#9333ea')">Copy</button>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #7e22ce;">
+                        💜
+                    </div>
+                    <div class="color-info">
+                        <div class="color-name">Purple Dark</div>
+                        <div class="color-hex">#7e22ce</div>
+                        <div class="color-usage">Darker variant</div>
+                        <button class="copy-btn" onclick="copyColor('#7e22ce')">Copy</button>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="color: #ec4899; margin: 40px 0 20px 0; font-size: 1.5em;">Pink (Secondary)</h3>
+            <div class="three-color-grid">
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #ec4899;">
+                        💗
+                    </div>
+                    <div class="color-info">
+                        <div class="color-name">Pink Light</div>
+                        <div class="color-hex">#ec4899</div>
+                        <div class="color-usage">Secondary accent, gradients</div>
+                        <button class="copy-btn" onclick="copyColor('#ec4899')">Copy</button>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #db2777;">
+                        💗
+                    </div>
+                    <div class="color-info">
+                        <div class="color-name">Pink Default</div>
+                        <div class="color-hex">#db2777</div>
+                        <div class="color-usage">Medium pink</div>
+                        <button class="copy-btn" onclick="copyColor('#db2777')">Copy</button>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #be185d;">
+                        💗
+                    </div>
+                    <div class="color-info">
+                        <div class="color-name">Pink Dark</div>
+                        <div class="color-hex">#be185d</div>
+                        <div class="color-usage">Darker variant</div>
+                        <button class="copy-btn" onclick="copyColor('#be185d')">Copy</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SIGNATURE GRADIENTS -->
+        <div class="section">
+            <h2 class="section-title">✨ Signature Gradients</h2>
+
+            <div class="gradient-card" style="background: linear-gradient(90deg, #a855f7, #ec4899);">
+                <div class="gradient-label">Purple → Pink (Primary)</div>
+            </div>
+            <div style="background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 12px; margin-bottom: 30px;">
+                <code style="color: #a855f7;">background: linear-gradient(90deg, #a855f7, #ec4899);</code>
+                <button class="copy-btn" onclick="copyColor('linear-gradient(90deg, #a855f7, #ec4899)')">Copy CSS</button>
+            </div>
+
+            <div class="gradient-card" style="background: linear-gradient(90deg, #9333ea, #7e22ce);">
+                <div class="gradient-label">Purple Gradient</div>
+            </div>
+            <div style="background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 12px; margin-bottom: 30px;">
+                <code style="color: #a855f7;">background: linear-gradient(90deg, #9333ea, #7e22ce);</code>
+                <button class="copy-btn" onclick="copyColor('linear-gradient(90deg, #9333ea, #7e22ce)')">Copy CSS</button>
+            </div>
+
+            <div class="gradient-card" style="background: linear-gradient(90deg, #ec4899, #be185d);">
+                <div class="gradient-label">Pink Gradient</div>
+            </div>
+            <div style="background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 12px;">
+                <code style="color: #ec4899;">background: linear-gradient(90deg, #ec4899, #be185d);</code>
+                <button class="copy-btn" onclick="copyColor('linear-gradient(90deg, #ec4899, #be185d)')">Copy CSS</button>
+            </div>
+        </div>
+
+        <!-- GLASSMORPHISM -->
+        <div class="section">
+            <h2 class="section-title">🪟 Glassmorphism (Signature Style)</h2>
+
+            <div class="glass-demo">
+                <h3 style="font-size: 1.5em; margin-bottom: 15px;">Glass Effect Card</h3>
+                <p style="color: #9BA1A6; line-height: 1.6;">
+                    This is M0VE's signature iOS 26 glassmorphism style with purple/pink gradients,
+                    transparent backgrounds, and frosted glass blur effects.
+                </p>
+            </div>
+
+            <div style="background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 12px;">
+                <h4 style="color: #a855f7; margin-bottom: 15px;">Glass Gradient (Light)</h4>
+                <code style="color: #9BA1A6; display: block; margin-bottom: 10px;">
+                    rgba(168, 85, 247, 0.1)  /* Purple 10% */<br>
+                    rgba(0, 0, 0, 0.4)       /* Black 40% */<br>
+                    rgba(236, 72, 153, 0.1)  /* Pink 10% */
+                </code>
+                <button class="copy-btn" onclick="copyColor('linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(0, 0, 0, 0.4), rgba(236, 72, 153, 0.1))')">Copy CSS</button>
+            </div>
+        </div>
+
+        <!-- BACKGROUNDS -->
+        <div class="section">
+            <h2 class="section-title">🖤 Backgrounds</h2>
+
+            <div class="color-grid">
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #0a0a0a; color: #a855f7;">
+                        ⬛
+                    </div>
+                    <div class="color-info">
+                        <div class="color-name">Primary Background</div>
+                        <div class="color-hex">#0a0a0a</div>
+                        <div class="color-usage">Deep black, main background</div>
+                        <button class="copy-btn" onclick="copyColor('#0a0a0a')">Copy</button>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #151718; color: #a855f7;">
+                        ⬛
+                    </div>
+                    <div class="color-info">
+                        <div class="color-name">Secondary Background</div>
+                        <div class="color-hex">#151718</div>
+                        <div class="color-usage">Slightly lighter black</div>
+                        <button class="copy-btn" onclick="copyColor('#151718')">Copy</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TEXT COLORS -->
+        <div class="section">
+            <h2 class="section-title">📝 Text Colors</h2>
+
+            <div class="color-grid">
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #FFFFFF; color: #0a0a0a;">
+                        Aa
+                    </div>
+                    <div class="color-info">
+                        <div class="color-name">Primary Text</div>
+                        <div class="color-hex">#FFFFFF</div>
+                        <div class="color-usage">Main text, headings</div>
+                        <button class="copy-btn" onclick="copyColor('#FFFFFF')">Copy</button>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #ECEDEE; color: #0a0a0a;">
+                        Aa
+                    </div>
+                    <div class="color-info">
+                        <div class="color-name">Secondary Text</div>
+                        <div class="color-hex">#ECEDEE</div>
+                        <div class="color-usage">Secondary text</div>
+                        <button class="copy-btn" onclick="copyColor('#ECEDEE')">Copy</button>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #9BA1A6; color: #0a0a0a;">
+                        Aa
+                    </div>
+                    <div class="color-info">
+                        <div class="color-name">Muted Text</div>
+                        <div class="color-hex">#9BA1A6</div>
+                        <div class="color-usage">Muted, less important text</div>
+                        <button class="copy-btn" onclick="copyColor('#9BA1A6')">Copy</button>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #687076; color: white;">
+                        Aa
+                    </div>
+                    <div class="color-info">
+                        <div class="color-name">Tertiary Text</div>
+                        <div class="color-hex">#687076</div>
+                        <div class="color-usage">Subtle text</div>
+                        <button class="copy-btn" onclick="copyColor('#687076')">Copy</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STATUS COLORS -->
+        <div class="section">
+            <h2 class="section-title">🚦 Status Colors</h2>
+
+            <div class="color-grid">
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #10b981;">
+                        ✓
+                    </div>
+                    <div class="color-info">
+                        <div class="color-name">Success / Live</div>
+                        <div class="color-hex">#10b981</div>
+                        <div class="color-usage">Success states, live indicators</div>
+                        <button class="copy-btn" onclick="copyColor('#10b981')">Copy</button>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #ef4444;">
+                        ✕
+                    </div>
+                    <div class="color-info">
+                        <div class="color-name">Error</div>
+                        <div class="color-hex">#ef4444</div>
+                        <div class="color-usage">Error states, alerts</div>
+                        <button class="copy-btn" onclick="copyColor('#ef4444')">Copy</button>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #f59e0b;">
+                        ⚠
+                    </div>
+                    <div class="color-info">
+                        <div class="color-name">Warning</div>
+                        <div class="color-hex">#f59e0b</div>
+                        <div class="color-usage">Warning states</div>
+                        <button class="copy-btn" onclick="copyColor('#f59e0b')">Copy</button>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #3b82f6;">
+                        ℹ
+                    </div>
+                    <div class="color-info">
+                        <div class="color-name">Info</div>
+                        <div class="color-hex">#3b82f6</div>
+                        <div class="color-usage">Info states</div>
+                        <button class="copy-btn" onclick="copyColor('#3b82f6')">Copy</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DESIGN TOKENS -->
+        <div class="section">
+            <h2 class="section-title">🎯 Quick Reference</h2>
+
+            <div style="background: rgba(255, 255, 255, 0.05); border-radius: 20px; padding: 30px;">
+                <h3 style="color: #a855f7; margin-bottom: 20px;">Design Tokens</h3>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                    <div>
+                        <h4 style="color: #ec4899; margin-bottom: 10px;">Border Radius</h4>
+                        <div style="color: #9BA1A6;">32px (2rem) - Signature</div>
+                    </div>
+
+                    <div>
+                        <h4 style="color: #ec4899; margin-bottom: 10px;">Glass Blur</h4>
+                        <div style="color: #9BA1A6;">backdrop-filter: blur(20px)</div>
+                    </div>
+
+                    <div>
+                        <h4 style="color: #ec4899; margin-bottom: 10px;">Border</h4>
+                        <div style="color: #9BA1A6;">rgba(255, 255, 255, 0.1)</div>
+                    </div>
+
+                    <div>
+                        <h4 style="color: #ec4899; margin-bottom: 10px;">Theme</h4>
+                        <div style="color: #9BA1A6;">iOS 26 Glassmorphism</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 60px; padding: 30px; background: rgba(168, 85, 247, 0.1); border-radius: 20px; border: 1px solid rgba(168, 85, 247, 0.3);">
+            <p style="color: #9BA1A6;">
+                <strong style="color: white;">M0VE Brand Color Palette</strong><br>
+                iOS 26 Glassmorphism Design System
+            </p>
+        </div>
+    </div>
+
+    <script>
+        function copyColor(colorValue) {
+            navigator.clipboard.writeText(colorValue).then(() => {
+                // Show temporary success message
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copied!';
+                btn.style.background = '#10b981';
+
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = 'linear-gradient(90deg, #a855f7, #ec4899)';
+                }, 1500);
+            });
+        }
+    </script>
+</body>
+</html>
