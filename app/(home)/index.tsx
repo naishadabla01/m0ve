@@ -23,6 +23,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Gradients, BorderRadius, Spacing, Typography, Shadows } from "../../constants/Design";
+import QRCode from "react-native-qrcode-svg";
 
 const { width } = Dimensions.get("window");
 
@@ -2733,6 +2734,76 @@ function EventDetailsModal({
                     </Text>
                     <Text style={{ color: Colors.text.muted, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                       Players
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* QR Code - Scan to Join */}
+              {event.short_code && (
+                <View
+                  style={{
+                    borderRadius: BorderRadius['2xl'],
+                    borderWidth: 1,
+                    borderColor: 'rgba(255, 255, 255, 0.08)',
+                    backgroundColor: 'rgba(18, 18, 22, 0.85)',
+                    padding: Spacing.xl,
+                    marginBottom: Spacing.lg,
+                    alignItems: 'center',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 12,
+                    elevation: 8,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: Colors.text.primary,
+                      fontSize: Typography.size.lg,
+                      fontWeight: Typography.weight.bold,
+                      marginBottom: Spacing.md,
+                      textAlign: 'center',
+                    }}
+                  >
+                    Scan to Join Event
+                  </Text>
+                  <View
+                    style={{
+                      backgroundColor: 'white',
+                      padding: Spacing.lg,
+                      borderRadius: BorderRadius.lg,
+                      marginBottom: Spacing.md,
+                    }}
+                  >
+                    <QRCode
+                      value={event.short_code}
+                      size={180}
+                      color="#000000"
+                      backgroundColor="#ffffff"
+                    />
+                  </View>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: Spacing.xs,
+                      backgroundColor: 'rgba(168, 85, 247, 0.15)',
+                      paddingHorizontal: Spacing.md,
+                      paddingVertical: Spacing.sm,
+                      borderRadius: BorderRadius.lg,
+                      borderWidth: 1,
+                      borderColor: 'rgba(168, 85, 247, 0.3)',
+                    }}
+                  >
+                    <Ionicons name="key-outline" size={16} color={Colors.accent.purple.light} />
+                    <Text
+                      style={{
+                        color: Colors.text.muted,
+                        fontSize: Typography.size.sm,
+                      }}
+                    >
+                      Code: <Text style={{ color: Colors.accent.purple.light, fontWeight: Typography.weight.bold }}>{event.short_code}</Text>
                     </Text>
                   </View>
                 </View>
