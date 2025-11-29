@@ -52,15 +52,15 @@ export default function ScanScreen() {
       const eventId = url.searchParams.get("event_id");
 
       if (code) {
-        // Has event code - navigate to join with code
+        // Has event code - navigate to join page
         router.replace({
-          pathname: "/(home)",
-          params: { autoJoinCode: code },
+          pathname: "/join",
+          params: { code: code },
         });
       } else if (eventId) {
-        // Has event ID - navigate directly to event
+        // Has event ID - navigate directly to event details
         router.replace({
-          pathname: "/move",
+          pathname: "/event-details",
           params: { event_id: eventId },
         });
       } else {
@@ -69,12 +69,12 @@ export default function ScanScreen() {
     } catch (e) {
       // Not a URL, treat as plain event code
       const trimmed = data.trim();
-      
-      if (trimmed.length === 6 || trimmed.length === 36) {
-        // Valid code format
+
+      if (trimmed.length > 0) {
+        // Navigate to join page with the scanned code
         router.replace({
-          pathname: "/(home)",
-          params: { autoJoinCode: trimmed },
+          pathname: "/join",
+          params: { code: trimmed },
         });
       } else {
         Alert.alert(

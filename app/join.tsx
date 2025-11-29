@@ -5,8 +5,8 @@ import { apiBase } from '@/lib/apiBase';
 import { fetchJson } from '@/lib/http';
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useState, useEffect } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, SafeAreaView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 async function ensureSession() {
@@ -36,8 +36,18 @@ function extractCodeOrId(input: string): { code?: string; event_id?: string } {
 
 export default function JoinScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
+  const [autoJoinTriggered, setAutoJoinTriggered] = useState(false);
+
+  // Auto-fill code from QR scan
+  useEffect(() => {
+    if (params.code && typeof params.code === 'string') {
+      setValue(params.code);
+      setAutoJoinTriggered(true);
+    }
+  }, [params.code]);
 
   const onJoin = useCallback(async () => {
     if (!value.trim()) {
@@ -115,6 +125,18 @@ export default function JoinScreen() {
       setBusy(false);
     }
   }, [value]);
+
+  // Auto-join after code is filled from QR scan
+  useEffect(() => {
+    if (autoJoinTriggered && value && !busy) {
+      setAutoJoinTriggered(false);
+      // Small delay to show the code was scanned
+      const timer = setTimeout(() => {
+        onJoin();
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [autoJoinTriggered, value, busy, onJoin]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'black' }}>
