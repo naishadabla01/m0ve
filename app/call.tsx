@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   SafeAreaView,
   Alert,
+  Platform,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,18 +15,39 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '@/lib/supabase/client';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../constants/Design';
 import ENV from '../config/env';
-import {
-  LiveKitRoom,
-  VideoTrack,
-  useParticipants,
-  useRoomContext,
-  useTracks,
-  registerGlobals,
-} from '@livekit/react-native';
-import { Track } from 'livekit-client';
 
-// Initialize WebRTC
-registerGlobals();
+// Safely import LiveKit (only available in native builds)
+let LiveKitRoom: any;
+let VideoTrack: any;
+let useParticipants: any;
+let useRoomContext: any;
+let useTracks: any;
+let registerGlobals: any;
+let Track: any;
+
+let livekitAvailable = false;
+
+try {
+  if (Platform.OS !== 'web') {
+    const livekit = require('@livekit/react-native');
+    const livekitClient = require('livekit-client');
+
+    LiveKitRoom = livekit.LiveKitRoom;
+    VideoTrack = livekit.VideoTrack;
+    useParticipants = livekit.useParticipants;
+    useRoomContext = livekit.useRoomContext;
+    useTracks = livekit.useTracks;
+    registerGlobals = livekit.registerGlobals;
+    Track = livekitClient.Track;
+
+    // Initialize WebRTC
+    registerGlobals();
+    livekitAvailable = true;
+  }
+} catch (error) {
+  console.warn('LiveKit not available - requires native build. Run: npx expo prebuild');
+  livekitAvailable = false;
+}
 
 export default function CallScreen() {
   const { callSessionId, roomName } = useLocalSearchParams<{ callSessionId: string; roomName: string }>();
@@ -118,6 +140,71 @@ export default function CallScreen() {
       router.back();
     }
   };
+
+  // Show message if LiveKit is not available (Expo Go)
+  if (!livekitAvailable) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: Spacing.xl,
+            gap: Spacing.lg,
+          }}
+        >
+          <Ionicons name="videocam-off" size={64} color={Colors.accent.purple.light} />
+          <Text
+            style={{
+              color: Colors.text.primary,
+              fontSize: Typography.size.xl,
+              fontWeight: '600',
+              textAlign: 'center',
+            }}
+          >
+            Video Calls Require Native Build
+          </Text>
+          <Text
+            style={{
+              color: Colors.text.muted,
+              fontSize: Typography.size.base,
+              textAlign: 'center',
+              lineHeight: 24,
+            }}
+          >
+            Video calls use LiveKit which requires native modules.{'\n\n'}
+            To enable video calls, create a development build:{'\n'}
+            <Text style={{ fontFamily: 'monospace', color: Colors.accent.purple.light }}>
+              npx expo prebuild
+            </Text>
+          </Text>
+          <Pressable onPress={() => router.back()}>
+            <LinearGradient
+              colors={['rgba(168, 85, 247, 0.2)', 'rgba(236, 72, 153, 0.2)']}
+              style={{
+                paddingHorizontal: Spacing.xl,
+                paddingVertical: Spacing.md,
+                borderRadius: BorderRadius.xl,
+                borderWidth: 1,
+                borderColor: 'rgba(168, 85, 247, 0.3)',
+              }}
+            >
+              <Text
+                style={{
+                  color: Colors.text.primary,
+                  fontSize: Typography.size.base,
+                  fontWeight: '600',
+                }}
+              >
+                Go Back
+              </Text>
+            </LinearGradient>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (loading) {
     return (
