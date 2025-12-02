@@ -7,9 +7,13 @@ import { Alert, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-na
 export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
+  const [navigating, setNavigating] = useState(false);
+
+  console.log('📷 [SCAN] Camera permission status:', permission);
 
   // Permission not determined yet
   if (!permission) {
+    console.log('📷 [SCAN] Permission not determined, checking...');
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
@@ -21,6 +25,7 @@ export default function ScanScreen() {
 
   // Permission denied
   if (!permission.granted) {
+    console.log('📷 [SCAN] Permission denied, showing prompt');
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.permissionContainer}>
@@ -39,6 +44,8 @@ export default function ScanScreen() {
     );
   }
 
+  console.log('📷 [SCAN] Camera permission granted, rendering camera');
+
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     if (scanned) return;
     
@@ -49,20 +56,26 @@ export default function ScanScreen() {
       // Try to parse as URL
       const url = new URL(data);
       const code = url.searchParams.get("code");
-      const eventId = url.searchParams.get("event_id");
+      let eventId = url.searchParams.get("event_id");
 
-      if (code) {
-        // Has event code - navigate to join page
+      // Also check for event_id in the URL path (e.g., /events/{event_id})
+      const pathMatch = url.pathname.match(/\/events\/([a-f0-9-]+)/);
+      if (pathMatch && pathMatch[1]) {
+        eventId = pathMatch[1];
+      }
+
+      if (code || eventId) {
+        // Set navigating to prevent button flash
+        setNavigating(true);
+        // Use replace to remove scanner from stack
         router.replace({
-          pathname: "/join",
-          params: { code: code },
+          pathname: "/event-join",
+          params: {
+            event_id: eventId || undefined,
+            code: code || undefined
+          },
         });
-      } else if (eventId) {
-        // Has event ID - navigate directly to event details
-        router.replace({
-          pathname: "/event-details",
-          params: { event_id: eventId },
-        });
+        return;
       } else {
         throw new Error("No code or event_id in QR");
       }
@@ -71,11 +84,14 @@ export default function ScanScreen() {
       const trimmed = data.trim();
 
       if (trimmed.length > 0) {
-        // Navigate to join page with the scanned code
+        // Set navigating to prevent button flash
+        setNavigating(true);
+        // Use replace to remove scanner from stack
         router.replace({
-          pathname: "/join",
+          pathname: "/event-join",
           params: { code: trimmed },
         });
+        return;
       } else {
         Alert.alert(
           "Invalid QR Code",
@@ -109,6 +125,8 @@ export default function ScanScreen() {
           barcodeScannerSettings={{
             barcodeTypes: ["qr"],
           }}
+          onCameraReady={() => console.log('📷 [SCAN] Camera is ready!')}
+          onMountError={(error) => console.error('📷 [SCAN] Camera mount error:', error)}
         />
 
         {/* Scan Frame Overlay */}
@@ -129,11 +147,14 @@ export default function ScanScreen() {
         </View>
       </View>
 
-      {/* Scan Again Button (shown after scan) */}
-      {scanned && (
+      {/* Scan Again Button (shown after scan, hidden when navigating) */}
+      {scanned && !navigating && (
         <View style={styles.footer}>
           <Pressable
-            onPress={() => setScanned(false)}
+            onPress={() => {
+              setScanned(false);
+              setNavigating(false);
+            }}
             style={styles.scanAgainButton}
           >
             <Text style={styles.scanAgainButtonText}>Scan Again</Text>

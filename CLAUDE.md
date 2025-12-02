@@ -1,0 +1,1 @@
+- Always remember to make new pages with component style, use react layout, make it seemless and yet efficent and clean, no lengthy codes with 5-6 functions in the file.

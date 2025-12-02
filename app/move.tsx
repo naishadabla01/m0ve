@@ -4,7 +4,7 @@ import { startMotionStream, StreamHandle } from "@/lib/motionStream";
 import { supabase } from "@/lib/supabase/client";
 import { normalizeScoreForDisplay, calculateProgress } from "@/lib/scoreUtils";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, Stack } from "expo-router";
 import { Accelerometer } from "expo-sensors";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -19,6 +19,7 @@ import {
   Animated,
   Dimensions,
   Image,
+  BackHandler,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -64,6 +65,37 @@ export default function MoveScreen() {
   useEffect(() => {
     AsyncStorage.removeItem("navigating_to_move");
   }, []);
+
+  // Intercept hardware/gesture back button
+  useEffect(() => {
+    const handleBackPress = async () => {
+      console.log('🔙 [MOVE] ========== NATIVE BACK GESTURE/BUTTON INTERCEPTED ==========');
+      console.log('🔙 [MOVE] Current event_id:', eventId);
+      console.log('🔙 [MOVE] Current eventInfo:', eventInfo);
+
+      // Set flag to show Event Details modal when home screen loads
+      await AsyncStorage.setItem("shouldShowEventDetails", "true");
+      console.log('🔙 [MOVE] ✅ Set shouldShowEventDetails flag to true');
+
+      // Verify it was saved
+      const saved = await AsyncStorage.getItem("shouldShowEventDetails");
+      console.log('🔙 [MOVE] ✅ Verified flag value:', saved);
+
+      const savedEventId = await AsyncStorage.getItem("event_id");
+      console.log('🔙 [MOVE] ✅ Saved event_id in AsyncStorage:', savedEventId);
+
+      // Navigate to home (use replace to clear navigation stack)
+      console.log('🔙 [MOVE] Navigating to /(home) with router.replace');
+      router.replace("/(home)");
+      console.log('🔙 [MOVE] ========================================');
+
+      return true; // Prevent default back behavior
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+
+    return () => backHandler.remove();
+  }, [eventId, eventInfo]);
 
   // Start pulse animation
   useEffect(() => {
@@ -408,7 +440,7 @@ export default function MoveScreen() {
 
   const openLeaderboard = () => {
     router.push({
-      pathname: "/(home)/leaderboard",
+      pathname: "/leaderboard",
       params: { event_id: eventId! },
     });
   };
@@ -584,11 +616,19 @@ export default function MoveScreen() {
   const artistName = eventInfo?.artist_name || "Unknown Artist";
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
-      <LinearGradient
-        colors={[Colors.background.primary, Colors.background.secondary]}
-        style={{ flex: 1 }}
-      >
+    <>
+      <Stack.Screen
+        options={{
+          headerShown: false,
+          gestureEnabled: false, // Disable swipe back gesture
+          animation: 'slide_from_right',
+        }}
+      />
+      <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
+        <LinearGradient
+          colors={[Colors.background.primary, Colors.background.secondary]}
+          style={{ flex: 1 }}
+        >
         <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xl }} showsVerticalScrollIndicator={false}>
           {/* Header - Apple Music Style */}
           <View
@@ -600,10 +640,51 @@ export default function MoveScreen() {
             }}
           >
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-              <Pressable onPress={() => router.back()}>
+              <Pressable
+                onPress={async () => {
+                  console.log('🔙 [MOVE] ========== BACK BUTTON PRESSED ==========');
+                  console.log('🔙 [MOVE] Current event_id:', eventId);
+                  console.log('🔙 [MOVE] Current eventInfo:', eventInfo);
+
+                  // Set flag to show Event Details modal when home screen loads
+                  await AsyncStorage.setItem("shouldShowEventDetails", "true");
+                  console.log('🔙 [MOVE] ✅ Set shouldShowEventDetails flag to true');
+
+                  // Verify it was saved
+                  const saved = await AsyncStorage.getItem("shouldShowEventDetails");
+                  console.log('🔙 [MOVE] ✅ Verified flag value:', saved);
+
+                  const savedEventId = await AsyncStorage.getItem("event_id");
+                  console.log('🔙 [MOVE] ✅ Saved event_id in AsyncStorage:', savedEventId);
+
+                  // Navigate to home (use replace to clear navigation stack)
+                  console.log('🔙 [MOVE] Navigating to /(home) with router.replace');
+                  router.replace("/(home)");
+                  console.log('🔙 [MOVE] ========================================');
+                }}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: Spacing.sm,
+                  paddingRight: Spacing.md,
+                }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
                 {({ pressed }) => (
-                  <View style={{ opacity: pressed ? 0.5 : 1 }}>
-                    <Ionicons name="chevron-back" size={28} color={Colors.accent.purple.light} />
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    opacity: pressed ? 0.6 : 1,
+                  }}>
+                    <Ionicons name="chevron-back" size={32} color={Colors.accent.purple.light} />
+                    <Text style={{
+                      color: Colors.accent.purple.light,
+                      fontSize: Typography.size.lg,
+                      fontWeight: Typography.weight.semibold,
+                      marginLeft: -4,
+                    }}>
+                      Home
+                    </Text>
                   </View>
                 )}
               </Pressable>
@@ -972,7 +1053,8 @@ export default function MoveScreen() {
           </View>
           </View>
         </ScrollView>
-      </LinearGradient>
-    </SafeAreaView>
+        </LinearGradient>
+      </SafeAreaView>
+    </>
   );
 }

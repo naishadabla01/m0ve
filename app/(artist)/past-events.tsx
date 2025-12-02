@@ -210,7 +210,7 @@ export default function PastEventsScreen() {
                     <Ionicons name="trophy-outline" size={18} color="#FFD700" />
                     <Text style={styles.actionButtonText}>View Results</Text>
                   </TouchableOpacity>
-                  
+
                   <TouchableOpacity
                     style={[styles.actionButton, styles.reopenButton]}
                     onPress={() => handleReopenEvent(event.event_id)}

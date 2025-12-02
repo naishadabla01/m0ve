@@ -125,21 +125,13 @@ export function IncomingCallModal() {
         }
       )
       .subscribe((status, err) => {
-        console.log('🔌 [IncomingCallModal] Subscription status changed:', status);
-        if (err) {
-          console.error('❌ [IncomingCallModal] Subscription error:', err);
-        }
         if (status === 'SUBSCRIBED') {
           console.log('✅ [IncomingCallModal] Successfully subscribed to Realtime!');
-          console.log('✅ [IncomingCallModal] Listening for INSERTs on call_participants table');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ [IncomingCallModal] Channel error:', err || 'Unknown channel error');
-          console.error('❌ [IncomingCallModal] Check if Realtime is enabled on call_participants table');
+        } else if (status === 'CHANNEL_ERROR' && err) {
+          // Only log if there's an actual error object
+          console.error('❌ [IncomingCallModal] Channel error:', err);
         } else if (status === 'TIMED_OUT') {
           console.error('❌ [IncomingCallModal] Subscription timed out');
-          console.error('❌ [IncomingCallModal] Possible causes: Network issue, Realtime not enabled, or RLS policies');
-        } else if (status === 'CLOSED') {
-          console.log('🔌 [IncomingCallModal] Channel closed');
         }
       });
 

@@ -2,7 +2,7 @@
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Accelerometer, Subscription as SensorSub } from 'expo-sensors';
+import { Accelerometer } from 'expo-sensors';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
 
@@ -60,7 +60,7 @@ export default function Stage() {
   const [eventId, setEventId] = useState<string | null>(p ?? null);
   const [running, setRunning] = useState(false);
 
-  const accelSub = useRef<SensorSub | null>(null);
+  const accelSub = useRef<{ remove: () => void } | null>(null);
   const timerRef = useRef<any>(null);
   const buffer = useRef<Sample[]>([]);
   const lastFlush = useRef<number>(0);
@@ -138,7 +138,7 @@ export default function Stage() {
           const mean = sum / count;
           const { error } = await supabase
             .from('motion_samples')
-            .insert({ event_id: eventId, user_id, accel: mean, steps: null }, { returning: 'minimal' });
+            .insert({ event_id: eventId, user_id, accel: mean, steps: null });
           if (error) console.warn('motion_samples insert failed:', error.message);
         }
 

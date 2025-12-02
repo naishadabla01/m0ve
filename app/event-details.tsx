@@ -16,7 +16,6 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Gradients, BorderRadius, Spacing, Typography, Shadows } from "../constants/Design";
-import QRCode from "react-native-qrcode-svg";
 
 interface Event {
   event_id: string;
@@ -257,59 +256,6 @@ export default function EventDetailsScreen() {
               Code: <Text style={{ color: Colors.accent.purple.light, fontWeight: Typography.weight.bold }}>{event.short_code}</Text>
             </Text>
           </View>
-        )}
-
-        {/* QR Code */}
-        {event.short_code && (
-          <LinearGradient
-            colors={Gradients.glass.light}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
-              marginTop: Spacing.xl,
-              padding: Spacing.xl,
-              borderRadius: BorderRadius.xl,
-              borderWidth: 1,
-              borderColor: Colors.border.glass,
-              alignItems: "center",
-              ...Shadows.md,
-            }}
-          >
-            <Text
-              style={{
-                color: Colors.text.primary,
-                fontSize: Typography.size.lg,
-                fontWeight: Typography.weight.bold,
-                marginBottom: Spacing.md,
-              }}
-            >
-              Scan to Join
-            </Text>
-            <View
-              style={{
-                backgroundColor: "white",
-                padding: Spacing.lg,
-                borderRadius: BorderRadius.lg,
-              }}
-            >
-              <QRCode
-                value={event.short_code}
-                size={200}
-                color="#000000"
-                backgroundColor="#ffffff"
-              />
-            </View>
-            <Text
-              style={{
-                color: Colors.text.muted,
-                fontSize: Typography.size.sm,
-                marginTop: Spacing.md,
-                textAlign: "center",
-              }}
-            >
-              Or enter code: <Text style={{ color: Colors.accent.purple.light, fontWeight: Typography.weight.bold }}>{event.short_code}</Text>
-            </Text>
-          </LinearGradient>
         )}
 
         {/* Location */}
