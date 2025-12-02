@@ -1,11 +1,20 @@
 {
   "expo": {
+    "name": "Move",
+    "slug": "move",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0a"
+    },
     "web": {
       "bundler": "metro",
       "favicon": "@/assets/favicon.png"
     },
-    "name": "move",
-    "slug": "move",
     "extra": {
       "EXPO_PUBLIC_SUPABASE_URL": "https://jxjaqamunkkqnwhrlnzk.supabase.co",
       "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4amFxYW11bmtrcW53aHJsbnprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyNjkyMjIsImV4cCI6MjA3NDg0NTIyMn0.xp3nDY0b2W7blNFDEg2XoVAUkY4ELu2r1FfDYCcZnqk",
@@ -16,7 +25,6 @@
         "projectId": "96370249-284e-417e-bb0e-4b1aacaaa305"
       }
     },
-    "version": "1.0.0",
     "scheme": "move",
     "plugins": [
       "expo-router",
@@ -39,6 +47,11 @@
     },
     "android": {
       "package": "com.naishadabla.move",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0a0a0a"
+      },
       "usesCleartextTraffic": true,
       "permissions": [
         "CAMERA",
