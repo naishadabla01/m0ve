@@ -140,32 +140,35 @@ export default function EventJoinScreen() {
       }
 
       // b) Check if within entry time window
-      const entryWindowCheck = await isWithinEntryWindow(event.event_id);
-      if (!entryWindowCheck.isValid) {
-        Alert.alert(
-          "Entry Time Restriction",
-          entryWindowCheck.error || "You cannot join at this time",
-          [{ text: "OK" }]
-        );
-        setJoining(false);
-        return;
-      }
+      // DISABLED FOR EXPO GO TESTING - Entry allowed anytime
+      // const entryWindowCheck = await isWithinEntryWindow(event.event_id);
+      // if (!entryWindowCheck.isValid) {
+      //   Alert.alert(
+      //     "Entry Time Restriction",
+      //     entryWindowCheck.error || "You cannot join at this time",
+      //     [{ text: "OK" }]
+      //   );
+      //   setJoining(false);
+      //   return;
+      // }
 
       // c) Check if user is at venue
-      const venueCheck = await isUserAtVenue(event.event_id);
-      if (!venueCheck.isValid) {
-        Alert.alert(
-          "Location Verification Failed",
-          venueCheck.error || "You must be at the venue to join",
-          [{ text: "OK" }]
-        );
-        setJoining(false);
-        return;
-      }
+      // DISABLED FOR EXPO GO TESTING - Geolocation doesn't work reliably in Expo Go
+      // const venueCheck = await isUserAtVenue(event.event_id);
+      // if (!venueCheck.isValid) {
+      //   Alert.alert(
+      //     "Location Verification Failed",
+      //     venueCheck.error || "You must be at the venue to join",
+      //     [{ text: "OK" }]
+      //   );
+      //   setJoining(false);
+      //   return;
+      // }
 
       // d) All checks passed - proceed with join logic
       // Get current location for storing coordinates
-      const location = await getCurrentLocation();
+      // DISABLED FOR EXPO GO TESTING - Location fetching doesn't work reliably
+      const location = null; // await getCurrentLocation();
 
       // Insert participant (permanent join) with venue verification data
       const { error: participantError } = await supabase
@@ -173,9 +176,9 @@ export default function EventJoinScreen() {
         .insert({
           event_id: event.event_id,
           user_id: user.id,
-          verified_at_venue: true,
-          join_latitude: location?.coords.latitude || null,
-          join_longitude: location?.coords.longitude || null,
+          verified_at_venue: false, // Disabled for Expo Go testing
+          join_latitude: null, // location?.coords.latitude || null,
+          join_longitude: null, // location?.coords.longitude || null,
         })
         .select()
         .single();
@@ -193,8 +196,8 @@ export default function EventJoinScreen() {
           .update({
             checked_in: true,
             checked_in_at: new Date().toISOString(),
-            check_in_latitude: location?.coords.latitude || null,
-            check_in_longitude: location?.coords.longitude || null,
+            check_in_latitude: null, // location?.coords.latitude || null,
+            check_in_longitude: null, // location?.coords.longitude || null,
           })
           .eq("event_id", event.event_id)
           .eq("user_id", user.id);
