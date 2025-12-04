@@ -27,21 +27,21 @@ export function apiBase(): string {
   // FALLBACK FOR WEB: If on web and no env vars worked, hardcode Railway URL
   if (Platform.OS === "web") {
     console.log("⚠️  Using hardcoded Railway URL for web");
-    return "https://move-dashboard-deploy-production.up.railway.app";
+    return "https://move.up.railway.app";
   }
 
   // NATIVE FALLBACKS
   if (Platform.OS === "android") {
     console.log("⚠️  Using hardcoded Railway URL for Android");
-    return "https://move-dashboard-deploy-production.up.railway.app";
+    return "https://move.up.railway.app";
   }
-  
+
   if (Platform.OS === "ios") {
     console.log("⚠️  Using hardcoded Railway URL for iOS");
-    return "https://move-dashboard-deploy-production.up.railway.app";
+    return "https://move.up.railway.app";
   }
 
   // ABSOLUTE FALLBACK
   console.log("⚠️  Using absolute fallback Railway URL");
-  return "https://move-dashboard-deploy-production.up.railway.app";
+  return "https://move.up.railway.app";
 }
