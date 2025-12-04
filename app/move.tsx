@@ -314,6 +314,31 @@ export default function MoveScreen() {
     (async () => {
       if (Platform.OS === "web") return;
 
+      // Request Android motion permissions
+      if (Platform.OS === "android") {
+        try {
+          const { PermissionsAndroid } = require('react-native');
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.ACTIVITY_RECOGNITION,
+            {
+              title: "Motion Tracking Permission",
+              message: "m0ve needs access to your device's motion sensors to track your movement and award energy points.",
+              buttonPositive: "Allow",
+            }
+          );
+          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+            Alert.alert(
+              "Permission Required",
+              "Motion tracking requires sensor access. Please enable it in Settings > Apps > m0ve > Permissions."
+            );
+            return;
+          }
+        } catch (err) {
+          console.error("Permission error:", err);
+          return;
+        }
+      }
+
       try {
         const available = await Accelerometer.isAvailableAsync();
         if (!available) return;

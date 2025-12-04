@@ -25,6 +25,12 @@
         "projectId": "96370249-284e-417e-bb0e-4b1aacaaa305"
       }
     },
+    "updates": {
+      "url": "https://u.expo.dev/96370249-284e-417e-bb0e-4b1aacaaa305"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "scheme": "move",
     "plugins": [
       "expo-router",

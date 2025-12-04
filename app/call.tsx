@@ -57,8 +57,14 @@ export default function CallScreen() {
   const [livekitUrl, setLivekitUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchCallToken();
-  }, [callSessionId, roomName]);
+    // Only fetch token if LiveKit is available (native build)
+    if (livekitAvailable) {
+      fetchCallToken();
+    } else {
+      setLoading(false);
+      setError('Video calls require a native build. Please use: npx expo run:ios or npx expo run:android');
+    }
+  }, [callSessionId, roomName, livekitAvailable]);
 
   const fetchCallToken = async () => {
     try {
